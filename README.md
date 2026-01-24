@@ -31,7 +31,7 @@ A powerful Home Assistant custom integration for reliable light control with sta
 
 ### Manual Installation
 
-1. Download the `light_controller` folder from the `custom_components` directory
+1. Download the `ha_light_controller` folder from the `custom_components` directory
 2. Copy it to your Home Assistant's `custom_components` folder
 3. Restart Home Assistant
 
@@ -58,12 +58,12 @@ Access options via the integration's **Configure** button:
 
 ## Services
 
-### `light_controller.ensure_state`
+### `ha_light_controller.ensure_state`
 
 The main service for controlling lights with verification.
 
 ```yaml
-service: light_controller.ensure_state
+service: ha_light_controller.ensure_state
 data:
   entities:
     - light.living_room_ceiling
@@ -103,7 +103,7 @@ data:
 Use the `targets` parameter to set different values for each light:
 
 ```yaml
-service: light_controller.ensure_state
+service: ha_light_controller.ensure_state
 data:
   entities:
     - light.ceiling
@@ -123,22 +123,22 @@ data:
       effect: "colorloop"
 ```
 
-### `light_controller.activate_preset`
+### `ha_light_controller.activate_preset`
 
 Activate a saved preset by name or ID.
 
 ```yaml
-service: light_controller.activate_preset
+service: ha_light_controller.activate_preset
 data:
   preset: "Evening Mode"
 ```
 
-### `light_controller.create_preset`
+### `ha_light_controller.create_preset`
 
 Create a new preset programmatically.
 
 ```yaml
-service: light_controller.create_preset
+service: ha_light_controller.create_preset
 data:
   name: "Movie Night"
   entities:
@@ -150,12 +150,12 @@ data:
   transition: 3
 ```
 
-### `light_controller.create_preset_from_current`
+### `ha_light_controller.create_preset_from_current`
 
 Capture the current state of lights as a new preset.
 
 ```yaml
-service: light_controller.create_preset_from_current
+service: ha_light_controller.create_preset_from_current
 data:
   name: "Current Scene"
   entities:
@@ -163,12 +163,12 @@ data:
     - light.living_room_lamp
 ```
 
-### `light_controller.delete_preset`
+### `ha_light_controller.delete_preset`
 
 Delete a preset by its ID.
 
 ```yaml
-service: light_controller.delete_preset
+service: ha_light_controller.delete_preset
 data:
   preset_id: "abc123-def456"
 ```
@@ -193,7 +193,7 @@ Add preset buttons to your dashboard:
 
 ```yaml
 type: button
-entity: button.light_controller_evening_mode
+entity: button.ha_light_controller_evening_mode
 tap_action:
   action: toggle
 ```
@@ -209,7 +209,7 @@ automation:
     action:
       - service: button.press
         target:
-          entity_id: button.light_controller_evening_mode
+          entity_id: button.ha_light_controller_evening_mode
 ```
 
 ## Blueprints
@@ -260,7 +260,7 @@ Adjusts color temperature and brightness based on sun position.
 
 Blueprints are located in:
 ```
-custom_components/light_controller/blueprints/automation/light_controller/
+custom_components/ha_light_controller/blueprints/automation/ha_light_controller/
 ```
 
 To use them:
@@ -277,7 +277,7 @@ script:
   living_room_evening:
     alias: "Living Room Evening"
     sequence:
-      - service: light_controller.ensure_state
+      - service: ha_light_controller.ensure_state
         data:
           entities:
             - light.living_room_ceiling
@@ -302,7 +302,7 @@ automation:
       - platform: time
         at: "22:00:00"
     action:
-      - service: light_controller.ensure_state
+      - service: ha_light_controller.ensure_state
         data:
           entities:
             - group.all_lights
@@ -316,7 +316,7 @@ automation:
 For situations where speed matters more than verification:
 
 ```yaml
-service: light_controller.ensure_state
+service: ha_light_controller.ensure_state
 data:
   entities:
     - light.hallway
@@ -338,7 +338,7 @@ data:
 logger:
   default: info
   logs:
-    custom_components.light_controller: debug
+    custom_components.ha_light_controller: debug
 ```
 
 ### Verification Always Fails

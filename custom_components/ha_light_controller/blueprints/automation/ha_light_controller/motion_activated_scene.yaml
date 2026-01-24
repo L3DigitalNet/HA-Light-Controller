@@ -6,7 +6,7 @@ blueprint:
     them off when motion clears.
   domain: automation
   author: Light Controller
-  source_url: https://github.com/your-repo/light-controller/blueprints/motion_activated_scene.yaml
+  source_url: https://github.com/L3DigitalNet/HA-Light-Controller/blueprints/motion_activated_scene.yaml
 
   input:
     motion_sensor:
@@ -135,7 +135,7 @@ action:
             value_template: >-
               {{ not only_dark or is_state('sun.sun', 'below_horizon') }}
         sequence:
-          - service: light_controller.ensure_state
+          - service: ha_light_controller.ensure_state
             data:
               entities: !input target_lights
               state: "on"
@@ -151,7 +151,7 @@ action:
           - condition: template
             value_template: "{{ off_action == 'turn_off' }}"
         sequence:
-          - service: light_controller.ensure_state
+          - service: ha_light_controller.ensure_state
             data:
               entities: !input target_lights
               state: "off"

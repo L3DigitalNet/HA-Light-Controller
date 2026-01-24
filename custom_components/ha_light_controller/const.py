@@ -3,7 +3,7 @@
 from typing import Final
 
 # Integration domain
-DOMAIN: Final = "light_controller"
+DOMAIN: Final = "ha_light_controller"
 
 # Service names
 SERVICE_ENSURE_STATE: Final = "ensure_state"

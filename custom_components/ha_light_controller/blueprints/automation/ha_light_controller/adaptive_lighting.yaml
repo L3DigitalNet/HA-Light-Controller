@@ -6,7 +6,7 @@ blueprint:
     lights reach the target state. Only adjusts lights that are currently on.
   domain: automation
   author: Light Controller
-  source_url: https://github.com/your-repo/light-controller/blueprints/adaptive_lighting.yaml
+  source_url: https://github.com/L3DigitalNet/HA-Light-Controller/blueprints/adaptive_lighting.yaml
 
   input:
     target_lights:
@@ -167,7 +167,7 @@ action:
   - condition: template
     value_template: "{{ lights_to_update | length > 0 }}"
 
-  - service: light_controller.ensure_state
+  - service: ha_light_controller.ensure_state
     data:
       entities: "{{ lights_to_update }}"
       state: "on"

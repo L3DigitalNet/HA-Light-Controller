@@ -1,5 +1,5 @@
 {
-  "domain": "light_controller",
+  "domain": "ha_light_controller",
   "name": "Light Controller",
   "codeowners": ["@L3DigitalNet"],
   "config_flow": true,

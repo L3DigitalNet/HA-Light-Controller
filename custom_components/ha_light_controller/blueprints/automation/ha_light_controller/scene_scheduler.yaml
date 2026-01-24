@@ -6,7 +6,7 @@ blueprint:
     conditions like presence detection or day-of-week filtering.
   domain: automation
   author: Light Controller
-  source_url: https://github.com/your-repo/light-controller/blueprints/scene_scheduler.yaml
+  source_url: https://github.com/L3DigitalNet/HA-Light-Controller/blueprints/scene_scheduler.yaml
 
   input:
     target_lights:
@@ -169,7 +169,7 @@ condition:
       {{ turn_on or any_on }}
 
 action:
-  - service: light_controller.ensure_state
+  - service: ha_light_controller.ensure_state
     data:
       entities: !input target_lights
       state: "on"

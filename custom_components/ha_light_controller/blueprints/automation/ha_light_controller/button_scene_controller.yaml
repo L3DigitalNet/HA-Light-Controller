@@ -6,7 +6,7 @@ blueprint:
     Each button activates a specific brightness and color configuration.
   domain: automation
   author: Light Controller
-  source_url: https://github.com/your-repo/light-controller/blueprints/button_scene_controller.yaml
+  source_url: https://github.com/L3DigitalNet/HA-Light-Controller/blueprints/button_scene_controller.yaml
 
   input:
     # Button inputs
@@ -209,7 +209,7 @@ action:
           - condition: trigger
             id: button_1
         sequence:
-          - service: light_controller.ensure_state
+          - service: ha_light_controller.ensure_state
             data:
               entities: !input target_lights
               state: "on"
@@ -222,7 +222,7 @@ action:
           - condition: trigger
             id: button_2
         sequence:
-          - service: light_controller.ensure_state
+          - service: ha_light_controller.ensure_state
             data:
               entities: !input target_lights
               state: "on"
@@ -235,7 +235,7 @@ action:
           - condition: trigger
             id: button_3
         sequence:
-          - service: light_controller.ensure_state
+          - service: ha_light_controller.ensure_state
             data:
               entities: !input target_lights
               state: "on"
@@ -248,7 +248,7 @@ action:
           - condition: trigger
             id: button_4
         sequence:
-          - service: light_controller.ensure_state
+          - service: ha_light_controller.ensure_state
             data:
               entities: !input target_lights
               state: "on"
