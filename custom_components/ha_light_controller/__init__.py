@@ -291,29 +291,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             if config_notify:
                 notify_on_failure = config_notify
 
-        result = await controller.ensure_state(
-            entities=entities,
-            state_target=state_target,
-            default_brightness_pct=brightness_pct,
-            default_rgb_color=rgb_color,
-            default_color_temp_kelvin=color_temp_kelvin,
-            default_effect=effect,
-            targets=targets,
-            brightness_tolerance=brightness_tolerance,
-            rgb_tolerance=rgb_tolerance,
-            kelvin_tolerance=kelvin_tolerance,
-            transition=transition,
-            delay_after_send=delay_after_send,
-            max_retries=max_retries,
-            max_runtime_seconds=max_runtime_seconds,
-            use_exponential_backoff=use_exponential_backoff,
-            max_backoff_seconds=max_backoff_seconds,
-            skip_verification=skip_verification,
-            log_success=log_success,
-            notify_on_failure=notify_on_failure,
-        )
-
-        return result
+        try:
+            result = await controller.ensure_state(
+                entities=entities,
+                state_target=state_target,
+                default_brightness_pct=brightness_pct,
+                default_rgb_color=rgb_color,
+                default_color_temp_kelvin=color_temp_kelvin,
+                default_effect=effect,
+                targets=targets,
+                brightness_tolerance=brightness_tolerance,
+                rgb_tolerance=rgb_tolerance,
+                kelvin_tolerance=kelvin_tolerance,
+                transition=transition,
+                delay_after_send=delay_after_send,
+                max_retries=max_retries,
+                max_runtime_seconds=max_runtime_seconds,
+                use_exponential_backoff=use_exponential_backoff,
+                max_backoff_seconds=max_backoff_seconds,
+                skip_verification=skip_verification,
+                log_success=log_success,
+                notify_on_failure=notify_on_failure,
+            )
+            return result
+        except Exception as e:
+            _LOGGER.exception("Error in ensure_state service: %s", e)
+            return {
+                "success": False,
+                "result": "error",
+                "message": f"Service error: {str(e)}",
+            }
 
     # =========================================================================
     # Service: activate_preset
@@ -342,33 +349,42 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
 
         # Execute
-        result = await controller.ensure_state(
-            entities=preset.entities,
-            state_target=preset.state,
-            default_brightness_pct=preset.brightness_pct,
-            default_rgb_color=preset.rgb_color,
-            default_color_temp_kelvin=preset.color_temp_kelvin,
-            default_effect=preset.effect,
-            targets=preset.targets if preset.targets else None,
-            transition=preset.transition,
-            skip_verification=preset.skip_verification,
-            brightness_tolerance=options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
-            rgb_tolerance=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-            kelvin_tolerance=options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
-            delay_after_send=options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
-            max_retries=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-            max_runtime_seconds=options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
-            use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
-            max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
-            log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-            notify_on_failure=options.get(CONF_NOTIFY_ON_FAILURE),
-        )
+        try:
+            result = await controller.ensure_state(
+                entities=preset.entities,
+                state_target=preset.state,
+                default_brightness_pct=preset.brightness_pct,
+                default_rgb_color=preset.rgb_color,
+                default_color_temp_kelvin=preset.color_temp_kelvin,
+                default_effect=preset.effect,
+                targets=preset.targets if preset.targets else None,
+                transition=preset.transition,
+                skip_verification=preset.skip_verification,
+                brightness_tolerance=options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
+                rgb_tolerance=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
+                kelvin_tolerance=options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
+                delay_after_send=options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
+                max_retries=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
+                max_runtime_seconds=options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
+                use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
+                max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
+                log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
+                notify_on_failure=options.get(CONF_NOTIFY_ON_FAILURE),
+            )
 
-        # Update status
-        status = PRESET_STATUS_SUCCESS if result.get("success") else PRESET_STATUS_FAILED
-        preset_manager.set_status(preset.id, status, result)
+            # Update status
+            status = PRESET_STATUS_SUCCESS if result.get("success") else PRESET_STATUS_FAILED
+            preset_manager.set_status(preset.id, status, result)
 
-        return result
+            return result
+        except Exception as e:
+            _LOGGER.exception("Error activating preset %s: %s", preset.name, e)
+            preset_manager.set_status(preset.id, PRESET_STATUS_FAILED, {"message": str(e)})
+            return {
+                "success": False,
+                "result": "error",
+                "message": f"Error activating preset: {str(e)}",
+            }
 
     # =========================================================================
     # Service: create_preset
@@ -386,27 +402,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "message": "Name and entities are required",
             }
 
-        preset = await preset_manager.create_preset(
-            name=name,
-            entities=entities,
-            state=call.data.get(ATTR_STATE_TARGET, "on"),
-            brightness_pct=call.data.get(ATTR_DEFAULT_BRIGHTNESS_PCT, 100),
-            rgb_color=call.data.get(ATTR_DEFAULT_RGB_COLOR),
-            color_temp_kelvin=call.data.get(ATTR_DEFAULT_COLOR_TEMP_KELVIN),
-            effect=call.data.get(ATTR_DEFAULT_EFFECT),
-            targets=call.data.get(ATTR_TARGETS),
-            transition=call.data.get(ATTR_TRANSITION, 0),
-            skip_verification=call.data.get(ATTR_SKIP_VERIFICATION, False),
-        )
+        try:
+            preset = await preset_manager.create_preset(
+                name=name,
+                entities=entities,
+                state=call.data.get(ATTR_STATE_TARGET, "on"),
+                brightness_pct=call.data.get(ATTR_DEFAULT_BRIGHTNESS_PCT, 100),
+                rgb_color=call.data.get(ATTR_DEFAULT_RGB_COLOR),
+                color_temp_kelvin=call.data.get(ATTR_DEFAULT_COLOR_TEMP_KELVIN),
+                effect=call.data.get(ATTR_DEFAULT_EFFECT),
+                targets=call.data.get(ATTR_TARGETS),
+                transition=call.data.get(ATTR_TRANSITION, 0),
+                skip_verification=call.data.get(ATTR_SKIP_VERIFICATION, False),
+            )
 
-        _LOGGER.info("Created preset: %s (%s)", preset.name, preset.id)
+            _LOGGER.info("Created preset: %s (%s)", preset.name, preset.id)
 
-        return {
-            "success": True,
-            "result": "created",
-            "preset_id": preset.id,
-            "preset_name": preset.name,
-        }
+            return {
+                "success": True,
+                "result": "created",
+                "preset_id": preset.id,
+                "preset_name": preset.name,
+            }
+        except Exception as e:
+            _LOGGER.exception("Error creating preset: %s", e)
+            return {
+                "success": False,
+                "result": "error",
+                "message": f"Error creating preset: {str(e)}",
+            }
 
     # =========================================================================
     # Service: delete_preset
@@ -423,20 +447,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "message": "Preset ID is required",
             }
 
-        success = await preset_manager.delete_preset(preset_id)
+        try:
+            success = await preset_manager.delete_preset(preset_id)
 
-        if success:
-            _LOGGER.info("Deleted preset: %s", preset_id)
-            return {
-                "success": True,
-                "result": "deleted",
-                "preset_id": preset_id,
-            }
-        else:
+            if success:
+                _LOGGER.info("Deleted preset: %s", preset_id)
+                return {
+                    "success": True,
+                    "result": "deleted",
+                    "preset_id": preset_id,
+                }
+            else:
+                return {
+                    "success": False,
+                    "result": "error",
+                    "message": f"Preset not found: {preset_id}",
+                }
+        except Exception as e:
+            _LOGGER.exception("Error deleting preset: %s", e)
             return {
                 "success": False,
                 "result": "error",
-                "message": f"Preset not found: {preset_id}",
+                "message": f"Error deleting preset: {str(e)}",
             }
 
     # =========================================================================
@@ -455,21 +487,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "message": "Name and entities are required",
             }
 
-        preset = await preset_manager.create_preset_from_current(name, entities)
+        try:
+            preset = await preset_manager.create_preset_from_current(name, entities)
 
-        if preset:
-            _LOGGER.info("Created preset from current state: %s (%s)", preset.name, preset.id)
-            return {
-                "success": True,
-                "result": "created",
-                "preset_id": preset.id,
-                "preset_name": preset.name,
-            }
-        else:
+            if preset:
+                _LOGGER.info("Created preset from current state: %s (%s)", preset.name, preset.id)
+                return {
+                    "success": True,
+                    "result": "created",
+                    "preset_id": preset.id,
+                    "preset_name": preset.name,
+                }
+            else:
+                return {
+                    "success": False,
+                    "result": "error",
+                    "message": "Failed to create preset",
+                }
+        except Exception as e:
+            _LOGGER.exception("Error creating preset from current state: %s", e)
             return {
                 "success": False,
                 "result": "error",
-                "message": "Failed to create preset",
+                "message": f"Error creating preset: {str(e)}",
             }
 
     # =========================================================================

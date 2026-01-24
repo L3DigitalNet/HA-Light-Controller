@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field, asdict
-from typing import Any
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any, Callable
 import uuid
 
 from homeassistant.config_entries import ConfigEntry
@@ -111,7 +112,7 @@ class PresetManager:
         self.entry = entry
         self._presets: dict[str, PresetConfig] = {}
         self._status: dict[str, PresetStatus] = {}
-        self._listeners: list[callable] = []
+        self._listeners: list[Callable] = []
 
         # Load presets from config entry
         self._load_presets()
@@ -156,7 +157,7 @@ class PresetManager:
                 _LOGGER.error("Error notifying listener: %s", e)
 
     @callback
-    def register_listener(self, listener: callable) -> callable:
+    def register_listener(self, listener: Callable) -> Callable:
         """Register a listener for preset changes. Returns unsubscribe function."""
         self._listeners.append(listener)
 
@@ -202,7 +203,6 @@ class PresetManager:
             self._status[preset_id].last_result = result
 
         if status in [PRESET_STATUS_SUCCESS, PRESET_STATUS_FAILED]:
-            from datetime import datetime
             self._status[preset_id].last_activated = datetime.now().isoformat()
 
         # Trigger entity updates
