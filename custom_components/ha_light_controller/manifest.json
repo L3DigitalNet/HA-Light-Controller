@@ -6,7 +6,7 @@
   "documentation": "https://github.com/L3DigitalNet/HA-Light-Controller",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/L3DigitalNet/HA-Light-Controller/issues",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "integration_type": "service",
   "requirements": [],
   "dependencies": ["light", "group", "logbook"]
