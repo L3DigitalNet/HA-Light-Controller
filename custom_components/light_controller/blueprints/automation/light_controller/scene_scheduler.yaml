@@ -1,0 +1,191 @@
+blueprint:
+  name: Scene Scheduler with Verification
+  description: >-
+    Schedules light scenes at specific times with state verification and retry.
+    Supports different scenes for different times of day, with optional
+    conditions like presence detection or day-of-week filtering.
+  domain: automation
+  author: Light Controller
+  source_url: https://github.com/your-repo/light-controller/blueprints/scene_scheduler.yaml
+
+  input:
+    target_lights:
+      name: Target Lights
+      description: Lights or light groups to control
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+    trigger_time:
+      name: Trigger Time
+      description: Time to activate the scene
+      selector:
+        time:
+
+    brightness_pct:
+      name: Brightness
+      description: Brightness level for the scene
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    color_temp_kelvin:
+      name: Color Temperature
+      description: Color temperature in Kelvin. Set to 0 to skip.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 6500
+          step: 100
+          unit_of_measurement: "K"
+
+    rgb_color:
+      name: RGB Color (optional)
+      description: RGB color as [R, G, B]. Takes precedence over color temperature.
+      default: []
+      selector:
+        object:
+
+    transition:
+      name: Transition Time
+      description: Time in seconds to transition to the scene
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 1
+          unit_of_measurement: "s"
+
+    turn_on_if_off:
+      name: Turn On If Off
+      description: Turn lights on if they're currently off
+      default: true
+      selector:
+        boolean:
+
+    skip_if_away:
+      name: Skip If Away
+      description: >-
+        Person or group to check. If not home, scene won't activate.
+        Leave empty to always activate.
+      default: {}
+      selector:
+        entity:
+          domain:
+            - person
+            - group
+            - device_tracker
+
+    weekday_filter:
+      name: Days of Week
+      description: Only run on selected days. Leave empty for all days.
+      default: []
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: "Monday"
+              value: "mon"
+            - label: "Tuesday"
+              value: "tue"
+            - label: "Wednesday"
+              value: "wed"
+            - label: "Thursday"
+              value: "thu"
+            - label: "Friday"
+              value: "fri"
+            - label: "Saturday"
+              value: "sat"
+            - label: "Sunday"
+              value: "sun"
+
+    max_retries:
+      name: Max Retries
+      description: Maximum retry attempts
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+
+    notify_on_failure:
+      name: Notify on Failure
+      description: >-
+        Notification service to call if scene fails (e.g., notify.mobile_app).
+        Leave empty to skip notifications.
+      default: ""
+      selector:
+        text:
+
+mode: single
+max_exceeded: silent
+
+trigger:
+  - platform: time
+    at: !input trigger_time
+
+variables:
+  brightness: !input brightness_pct
+  kelvin: !input color_temp_kelvin
+  rgb: !input rgb_color
+  trans: !input transition
+  turn_on: !input turn_on_if_off
+  presence_entity: !input skip_if_away
+  days: !input weekday_filter
+  retries: !input max_retries
+  notify_service: !input notify_on_failure
+  # Current day abbreviation
+  current_day: "{{ now().strftime('%a') | lower }}"
+
+condition:
+  # Check weekday filter
+  - condition: template
+    value_template: >-
+      {{ days | length == 0 or current_day in days }}
+
+  # Check presence if configured
+  - condition: template
+    value_template: >-
+      {% if presence_entity %}
+        {{ states(presence_entity) == 'home' }}
+      {% else %}
+        true
+      {% endif %}
+
+  # Check if lights should be turned on or are already on
+  - condition: template
+    value_template: >-
+      {% set lights = expand(target_lights) %}
+      {% set any_on = lights | selectattr('state', 'eq', 'on') | list | length > 0 %}
+      {{ turn_on or any_on }}
+
+action:
+  - service: light_controller.ensure_state
+    data:
+      entities: !input target_lights
+      state: "on"
+      brightness_pct: "{{ brightness }}"
+      color_temp_kelvin: "{{ kelvin if kelvin > 0 and (rgb | length == 0) else none }}"
+      rgb_color: "{{ rgb if rgb | length == 3 else none }}"
+      transition: "{{ trans }}"
+      max_retries: "{{ retries }}"
+      notify_on_failure: "{{ notify_service if notify_service else none }}"
+    response_variable: result
+
+  - if:
+      - condition: template
+        value_template: "{{ not result.success and notify_service }}"
+    then:
+      - service: "{{ notify_service }}"
+        data:
+          title: "Scheduled Scene Failed"
+          message: "{{ result.message }}"

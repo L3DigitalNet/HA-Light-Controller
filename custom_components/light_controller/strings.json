@@ -1,0 +1,312 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Light Controller Setup",
+        "description": "Configure default settings for the Light Controller. These can be changed later in the integration options.",
+        "data": {
+          "default_brightness_pct": "Default Brightness",
+          "default_transition": "Default Transition Time"
+        },
+        "data_description": {
+          "default_brightness_pct": "Default brightness percentage when not specified in service calls",
+          "default_transition": "Default transition time in seconds for light changes"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Light Controller is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Light Controller Options",
+        "description": "Select a category to configure",
+        "menu_options": {
+          "defaults": "Default Settings",
+          "tolerances": "Verification Tolerances",
+          "retry": "Retry & Timing",
+          "notifications": "Logging & Notifications",
+          "add_preset": "Add New Preset",
+          "manage_presets": "Manage Presets"
+        }
+      },
+      "defaults": {
+        "title": "Default Settings",
+        "description": "Configure default brightness and transition settings",
+        "data": {
+          "default_brightness_pct": "Default Brightness",
+          "default_transition": "Default Transition Time"
+        },
+        "data_description": {
+          "default_brightness_pct": "Default brightness percentage (1-100%) when not specified in service calls",
+          "default_transition": "Default transition time in seconds for smooth light changes"
+        }
+      },
+      "tolerances": {
+        "title": "Verification Tolerances",
+        "description": "Configure how strictly lights are verified. Higher tolerances are more forgiving of minor differences.",
+        "data": {
+          "brightness_tolerance": "Brightness Tolerance",
+          "rgb_tolerance": "RGB Color Tolerance",
+          "kelvin_tolerance": "Color Temperature Tolerance"
+        },
+        "data_description": {
+          "brightness_tolerance": "Allowed ± deviation in brightness percentage (e.g., 3 means 47-53% passes for target 50%)",
+          "rgb_tolerance": "Allowed ± deviation per RGB color channel (0-255 scale)",
+          "kelvin_tolerance": "Allowed ± deviation in color temperature (Kelvin)"
+        }
+      },
+      "retry": {
+        "title": "Retry & Timing Settings",
+        "description": "Configure retry behavior when lights don't immediately reach target state",
+        "data": {
+          "delay_after_send": "Delay After Send",
+          "max_retries": "Maximum Retries",
+          "max_runtime_seconds": "Maximum Runtime",
+          "use_exponential_backoff": "Use Exponential Backoff",
+          "max_backoff_seconds": "Maximum Backoff Delay"
+        },
+        "data_description": {
+          "delay_after_send": "Seconds to wait after sending commands before checking state",
+          "max_retries": "Maximum number of retry attempts before giving up",
+          "max_runtime_seconds": "Hard timeout - abort after this many seconds regardless of retries",
+          "use_exponential_backoff": "Double the delay after each failed retry (2s → 4s → 8s → ...)",
+          "max_backoff_seconds": "Cap on delay when using exponential backoff"
+        }
+      },
+      "notifications": {
+        "title": "Logging & Notifications",
+        "description": "Configure logging and failure notifications",
+        "data": {
+          "log_success": "Log Success to Logbook",
+          "notify_on_failure": "Notification Service for Failures"
+        },
+        "data_description": {
+          "log_success": "Write a message to the Home Assistant logbook when lights successfully reach target state",
+          "notify_on_failure": "Service to call when lights fail (e.g., notify.mobile_app_phone). Leave empty to disable."
+        }
+      },
+      "add_preset": {
+        "title": "Add New Preset",
+        "description": "Create a new light preset. Presets store light settings and can be activated via service call or button entity.",
+        "data": {
+          "name": "Preset Name",
+          "entities": "Light Entities",
+          "state": "Target State",
+          "brightness_pct": "Brightness",
+          "color_temp_kelvin": "Color Temperature",
+          "transition": "Transition Time",
+          "skip_verification": "Fire-and-Forget Mode"
+        },
+        "data_description": {
+          "name": "A unique name for this preset",
+          "entities": "Select the lights to include in this preset",
+          "state": "Whether lights should be turned on or off",
+          "brightness_pct": "Brightness percentage (1-100%)",
+          "color_temp_kelvin": "Color temperature in Kelvin (leave empty for current)",
+          "transition": "Transition time in seconds when activating",
+          "skip_verification": "Skip state verification (faster but won't retry on failure)"
+        }
+      },
+      "manage_presets": {
+        "title": "Manage Presets",
+        "description": "You have {preset_count} preset(s) configured. Select a preset to delete it.",
+        "data": {
+          "preset_to_delete": "Select Preset to Delete"
+        },
+        "data_description": {
+          "preset_to_delete": "Warning: This action cannot be undone"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Preset name is required",
+      "entities_required": "At least one entity is required",
+      "no_presets": "No presets configured. Use 'Add New Preset' to create one."
+    }
+  },
+  "services": {
+    "ensure_state": {
+      "name": "Ensure State",
+      "description": "Ensure lights reach a target state with verification and retries",
+      "fields": {
+        "entities": {
+          "name": "Entities",
+          "description": "Light entities, light groups, or helper groups to control"
+        },
+        "state": {
+          "name": "State",
+          "description": "Target state for the lights (on or off)"
+        },
+        "brightness_pct": {
+          "name": "Brightness",
+          "description": "Default brightness percentage (1-100)"
+        },
+        "rgb_color": {
+          "name": "RGB Color",
+          "description": "Default RGB color for all lights"
+        },
+        "color_temp_kelvin": {
+          "name": "Color Temperature",
+          "description": "Default color temperature in Kelvin"
+        },
+        "effect": {
+          "name": "Effect",
+          "description": "Default effect to apply"
+        },
+        "targets": {
+          "name": "Per-Light Overrides",
+          "description": "List of per-light overrides with entity_id and settings"
+        },
+        "brightness_tolerance": {
+          "name": "Brightness Tolerance",
+          "description": "Allowed ± deviation when verifying brightness"
+        },
+        "rgb_tolerance": {
+          "name": "RGB Tolerance",
+          "description": "Allowed ± deviation per RGB channel"
+        },
+        "kelvin_tolerance": {
+          "name": "Kelvin Tolerance",
+          "description": "Allowed ± deviation for color temperature"
+        },
+        "transition": {
+          "name": "Transition",
+          "description": "Transition time in seconds"
+        },
+        "delay_after_send": {
+          "name": "Delay After Send",
+          "description": "Seconds to wait after commands before verification"
+        },
+        "max_retries": {
+          "name": "Max Retries",
+          "description": "Maximum retry attempts"
+        },
+        "max_runtime_seconds": {
+          "name": "Max Runtime",
+          "description": "Hard timeout in seconds"
+        },
+        "use_exponential_backoff": {
+          "name": "Exponential Backoff",
+          "description": "Double delay after each retry"
+        },
+        "max_backoff_seconds": {
+          "name": "Max Backoff",
+          "description": "Maximum delay with exponential backoff"
+        },
+        "skip_verification": {
+          "name": "Skip Verification",
+          "description": "Fire-and-forget mode without verification"
+        },
+        "log_success": {
+          "name": "Log Success",
+          "description": "Write success message to logbook"
+        },
+        "notify_on_failure": {
+          "name": "Notify on Failure",
+          "description": "Notification service for failures"
+        }
+      }
+    },
+    "activate_preset": {
+      "name": "Activate Preset",
+      "description": "Activate a saved preset by name or ID",
+      "fields": {
+        "preset": {
+          "name": "Preset",
+          "description": "The name or ID of the preset to activate"
+        }
+      }
+    },
+    "create_preset": {
+      "name": "Create Preset",
+      "description": "Create a new preset with specified settings",
+      "fields": {
+        "name": {
+          "name": "Preset Name",
+          "description": "A unique name for this preset"
+        },
+        "entities": {
+          "name": "Entities",
+          "description": "Light entities to include"
+        },
+        "state": {
+          "name": "State",
+          "description": "Target state when activated"
+        },
+        "brightness_pct": {
+          "name": "Brightness",
+          "description": "Brightness percentage"
+        },
+        "rgb_color": {
+          "name": "RGB Color",
+          "description": "RGB color for the preset"
+        },
+        "color_temp_kelvin": {
+          "name": "Color Temperature",
+          "description": "Color temperature in Kelvin"
+        },
+        "effect": {
+          "name": "Effect",
+          "description": "Effect to apply"
+        },
+        "targets": {
+          "name": "Per-Light Overrides",
+          "description": "Optional per-light settings"
+        },
+        "transition": {
+          "name": "Transition",
+          "description": "Transition time"
+        },
+        "skip_verification": {
+          "name": "Skip Verification",
+          "description": "Use fire-and-forget mode"
+        }
+      }
+    },
+    "delete_preset": {
+      "name": "Delete Preset",
+      "description": "Delete a saved preset",
+      "fields": {
+        "preset_id": {
+          "name": "Preset ID",
+          "description": "The ID of the preset to delete"
+        }
+      }
+    },
+    "create_preset_from_current": {
+      "name": "Create Preset from Current",
+      "description": "Create a preset from the current state of lights",
+      "fields": {
+        "name": {
+          "name": "Preset Name",
+          "description": "A unique name for this preset"
+        },
+        "entities": {
+          "name": "Entities",
+          "description": "Light entities to capture state from"
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "preset": {
+        "name": "{name}"
+      }
+    },
+    "sensor": {
+      "preset_status": {
+        "name": "{name} Status",
+        "state": {
+          "idle": "Idle",
+          "activating": "Activating",
+          "success": "Success",
+          "failed": "Failed"
+        }
+      }
+    }
+  }
+}

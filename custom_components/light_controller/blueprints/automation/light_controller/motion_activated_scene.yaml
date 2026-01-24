@@ -1,0 +1,158 @@
+blueprint:
+  name: Motion-Activated Scene with Verification
+  description: >-
+    Activates a light scene when motion is detected, with state verification
+    and automatic retry. Optionally restores lights to previous state or turns
+    them off when motion clears.
+  domain: automation
+  author: Light Controller
+  source_url: https://github.com/your-repo/light-controller/blueprints/motion_activated_scene.yaml
+
+  input:
+    motion_sensor:
+      name: Motion Sensor
+      description: The motion sensor that triggers the scene
+      selector:
+        entity:
+          domain: binary_sensor
+          device_class: motion
+
+    target_lights:
+      name: Target Lights
+      description: Lights or light groups to control
+      selector:
+        entity:
+          domain: light
+          multiple: true
+
+    brightness_pct:
+      name: Brightness
+      description: Brightness level when motion is detected
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    color_temp_kelvin:
+      name: Color Temperature (optional)
+      description: Color temperature in Kelvin. Leave at 0 to skip.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 6500
+          step: 100
+          unit_of_measurement: "K"
+
+    transition:
+      name: Transition Time
+      description: Time in seconds to transition to the new state
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 30
+          step: 0.5
+          unit_of_measurement: "s"
+
+    no_motion_wait:
+      name: Wait Time After Motion Clears
+      description: Time to wait after motion clears before restoring/turning off
+      default: 120
+      selector:
+        number:
+          min: 0
+          max: 3600
+          step: 30
+          unit_of_measurement: "s"
+
+    off_action:
+      name: Action When Motion Clears
+      description: What to do when motion clears
+      default: "turn_off"
+      selector:
+        select:
+          options:
+            - label: "Turn off lights"
+              value: "turn_off"
+            - label: "Do nothing"
+              value: "nothing"
+
+    only_when_dark:
+      name: Only When Dark
+      description: Only activate when sun is below horizon
+      default: false
+      selector:
+        boolean:
+
+    max_retries:
+      name: Max Retries
+      description: Maximum retry attempts if lights fail to reach state
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+
+mode: restart
+max_exceeded: silent
+
+trigger:
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "on"
+    id: motion_detected
+
+  - platform: state
+    entity_id: !input motion_sensor
+    to: "off"
+    for:
+      seconds: !input no_motion_wait
+    id: motion_cleared
+
+variables:
+  brightness: !input brightness_pct
+  kelvin: !input color_temp_kelvin
+  trans: !input transition
+  retries: !input max_retries
+  off_action: !input off_action
+  only_dark: !input only_when_dark
+
+condition: []
+
+action:
+  - choose:
+      # Motion detected - turn on lights
+      - conditions:
+          - condition: trigger
+            id: motion_detected
+          - condition: template
+            value_template: >-
+              {{ not only_dark or is_state('sun.sun', 'below_horizon') }}
+        sequence:
+          - service: light_controller.ensure_state
+            data:
+              entities: !input target_lights
+              state: "on"
+              brightness_pct: "{{ brightness }}"
+              color_temp_kelvin: "{{ kelvin if kelvin > 0 else none }}"
+              transition: "{{ trans }}"
+              max_retries: "{{ retries }}"
+
+      # Motion cleared - turn off or do nothing
+      - conditions:
+          - condition: trigger
+            id: motion_cleared
+          - condition: template
+            value_template: "{{ off_action == 'turn_off' }}"
+        sequence:
+          - service: light_controller.ensure_state
+            data:
+              entities: !input target_lights
+              state: "off"
+              max_retries: "{{ retries }}"

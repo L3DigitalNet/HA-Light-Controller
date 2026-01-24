@@ -1,0 +1,324 @@
+ensure_state:
+  name: Ensure State
+  description: >-
+    Ensure lights reach a target state with optional verification and retries.
+    Expands light groups, filters unavailable entities, batches commands, and
+    verifies lights reached the target state.
+  fields:
+    entities:
+      name: Entities
+      description: Light entities, light groups, or helper groups to control
+      required: true
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+            - domain: group
+
+    state:
+      name: State
+      description: Target state for the lights
+      default: "on"
+      selector:
+        select:
+          options:
+            - label: "On"
+              value: "on"
+            - label: "Off"
+              value: "off"
+
+    brightness_pct:
+      name: Brightness
+      description: Default brightness percentage (1-100). Overridden by integration settings if not specified.
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    rgb_color:
+      name: RGB Color
+      description: Default RGB color for all lights
+      selector:
+        color_rgb:
+
+    color_temp_kelvin:
+      name: Color Temperature
+      description: Default color temperature in Kelvin
+      selector:
+        color_temp:
+          unit: kelvin
+          min: 2000
+          max: 6500
+
+    effect:
+      name: Effect
+      description: Default effect to apply (e.g., "colorloop", "rainbow")
+      selector:
+        text:
+
+    targets:
+      name: Per-Light Overrides
+      description: >-
+        List of per-light overrides. Each item should have entity_id and optional
+        brightness_pct, rgb_color, color_temp_kelvin, effect.
+      selector:
+        object:
+
+    brightness_tolerance:
+      name: Brightness Tolerance
+      description: Allowed ± deviation when verifying brightness percentage
+      selector:
+        number:
+          min: 0
+          max: 20
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    rgb_tolerance:
+      name: RGB Tolerance
+      description: Allowed ± deviation per RGB channel when verifying color
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+          mode: slider
+
+    kelvin_tolerance:
+      name: Kelvin Tolerance
+      description: Allowed ± deviation when verifying color temperature
+      selector:
+        number:
+          min: 0
+          max: 500
+          step: 10
+          unit_of_measurement: "K"
+          mode: slider
+
+    transition:
+      name: Transition
+      description: Transition time in seconds (first attempt only, ON state only)
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 0.5
+          unit_of_measurement: "s"
+          mode: slider
+
+    delay_after_send:
+      name: Delay After Send
+      description: Seconds to wait after sending commands before verification
+      selector:
+        number:
+          min: 0.5
+          max: 30
+          step: 0.5
+          unit_of_measurement: "s"
+          mode: slider
+
+    max_retries:
+      name: Max Retries
+      description: Maximum number of retry attempts
+      selector:
+        number:
+          min: 1
+          max: 10
+          step: 1
+          mode: slider
+
+    max_runtime_seconds:
+      name: Max Runtime
+      description: Maximum total runtime before aborting (hard timeout)
+      selector:
+        number:
+          min: 10
+          max: 300
+          step: 10
+          unit_of_measurement: "s"
+          mode: slider
+
+    use_exponential_backoff:
+      name: Exponential Backoff
+      description: Double the delay after each retry attempt
+      selector:
+        boolean:
+
+    max_backoff_seconds:
+      name: Max Backoff
+      description: Maximum delay when using exponential backoff
+      selector:
+        number:
+          min: 5
+          max: 120
+          step: 5
+          unit_of_measurement: "s"
+          mode: slider
+
+    skip_verification:
+      name: Skip Verification
+      description: >-
+        Fire-and-forget mode. Send commands without verifying lights reached
+        the target state. Faster but no retry on failure.
+      default: false
+      selector:
+        boolean:
+
+    log_success:
+      name: Log Success
+      description: Write a message to the logbook on successful completion
+      selector:
+        boolean:
+
+    notify_on_failure:
+      name: Notify on Failure
+      description: >-
+        Notification service to call if lights fail to reach target state
+        (e.g., "notify.mobile_app_phone"). Leave empty to use integration default.
+      selector:
+        text:
+
+activate_preset:
+  name: Activate Preset
+  description: >-
+    Activate a saved preset by name or ID. Uses the preset's stored settings
+    for brightness, color, and target entities.
+  fields:
+    preset:
+      name: Preset
+      description: The name or ID of the preset to activate
+      required: true
+      selector:
+        text:
+
+create_preset:
+  name: Create Preset
+  description: >-
+    Create a new preset with specified settings. The preset will be saved and
+    can be activated later via service call or button entity.
+  fields:
+    name:
+      name: Preset Name
+      description: A unique name for this preset
+      required: true
+      selector:
+        text:
+
+    entities:
+      name: Entities
+      description: Light entities, light groups, or helper groups to include
+      required: true
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
+            - domain: group
+
+    state:
+      name: State
+      description: Target state when preset is activated
+      default: "on"
+      selector:
+        select:
+          options:
+            - label: "On"
+              value: "on"
+            - label: "Off"
+              value: "off"
+
+    brightness_pct:
+      name: Brightness
+      description: Brightness percentage for the preset
+      default: 100
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+
+    rgb_color:
+      name: RGB Color
+      description: RGB color for the preset
+      selector:
+        color_rgb:
+
+    color_temp_kelvin:
+      name: Color Temperature
+      description: Color temperature for the preset
+      selector:
+        color_temp:
+          unit: kelvin
+          min: 2000
+          max: 6500
+
+    effect:
+      name: Effect
+      description: Effect to apply
+      selector:
+        text:
+
+    targets:
+      name: Per-Light Overrides
+      description: Optional per-light settings
+      selector:
+        object:
+
+    transition:
+      name: Transition
+      description: Transition time when activating
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 0.5
+          unit_of_measurement: "s"
+
+    skip_verification:
+      name: Skip Verification
+      description: Use fire-and-forget mode for this preset
+      default: false
+      selector:
+        boolean:
+
+delete_preset:
+  name: Delete Preset
+  description: Delete a saved preset by its ID
+  fields:
+    preset_id:
+      name: Preset ID
+      description: The ID of the preset to delete
+      required: true
+      selector:
+        text:
+
+create_preset_from_current:
+  name: Create Preset from Current State
+  description: >-
+    Create a new preset by capturing the current state of specified lights.
+    Automatically reads brightness, color, and effect from each light.
+  fields:
+    name:
+      name: Preset Name
+      description: A unique name for this preset
+      required: true
+      selector:
+        text:
+
+    entities:
+      name: Entities
+      description: Light entities to capture state from
+      required: true
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: light
