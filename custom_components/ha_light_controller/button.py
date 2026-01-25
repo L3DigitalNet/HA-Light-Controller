@@ -174,7 +174,7 @@ class PresetButton(ButtonEntity):
         _LOGGER.info("Activating preset: %s", preset.name)
 
         # Update status to activating
-        self._preset_manager.set_status(self._preset_id, PRESET_STATUS_ACTIVATING)
+        await self._preset_manager.set_status(self._preset_id, PRESET_STATUS_ACTIVATING)
 
         # Get configured defaults from options
         options = self._entry.options
@@ -206,12 +206,12 @@ class PresetButton(ButtonEntity):
 
         # Update status based on result
         if result.get("success", False):
-            self._preset_manager.set_status(
+            await self._preset_manager.set_status(
                 self._preset_id, PRESET_STATUS_SUCCESS, result
             )
             _LOGGER.info("Preset activated successfully: %s", preset.name)
         else:
-            self._preset_manager.set_status(
+            await self._preset_manager.set_status(
                 self._preset_id, PRESET_STATUS_FAILED, result
             )
             _LOGGER.warning(

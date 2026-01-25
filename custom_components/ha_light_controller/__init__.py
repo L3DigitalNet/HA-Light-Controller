@@ -358,7 +358,7 @@ async def async_setup_entry(
         _LOGGER.info("Activating preset: %s", preset.name)
 
         # Update status
-        preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
+        await preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
 
         # Execute
         try:
@@ -386,12 +386,12 @@ async def async_setup_entry(
 
             # Update status
             status = PRESET_STATUS_SUCCESS if result.get("success") else PRESET_STATUS_FAILED
-            preset_manager.set_status(preset.id, status, result)
+            await preset_manager.set_status(preset.id, status, result)
 
             return result
         except Exception as e:
             _LOGGER.exception("Error activating preset %s: %s", preset.name, e)
-            preset_manager.set_status(preset.id, PRESET_STATUS_FAILED, {"message": str(e)})
+            await preset_manager.set_status(preset.id, PRESET_STATUS_FAILED, {"message": str(e)})
             return {
                 "success": False,
                 "result": "error",

@@ -188,7 +188,7 @@ class PresetManager:
         """Get the status of a preset."""
         return self._status.get(preset_id, PresetStatus())
 
-    def set_status(
+    async def set_status(
         self,
         preset_id: str,
         status: str,
@@ -206,7 +206,7 @@ class PresetManager:
             self._status[preset_id].last_activated = datetime.now().isoformat()
 
         # Trigger entity updates
-        self.hass.async_create_task(self._notify_listeners())
+        await self._notify_listeners()
 
     async def create_preset(
         self,

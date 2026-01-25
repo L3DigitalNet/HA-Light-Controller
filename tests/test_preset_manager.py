@@ -369,42 +369,46 @@ class TestPresetManagerStatus:
         status = manager.get_status("nonexistent")
         assert status.status == PRESET_STATUS_IDLE
 
-    def test_set_status_activating(self, hass, config_entry_with_presets):
+    @pytest.mark.asyncio
+    async def test_set_status_activating(self, hass, config_entry_with_presets):
         """Test setting status to activating."""
         manager = PresetManager(hass, config_entry_with_presets)
-        manager.set_status("preset_1", PRESET_STATUS_ACTIVATING)
+        await manager.set_status("preset_1", PRESET_STATUS_ACTIVATING)
 
         status = manager.get_status("preset_1")
         assert status.status == PRESET_STATUS_ACTIVATING
         # Activating doesn't set last_activated
         assert status.last_activated is None
 
-    def test_set_status_success(self, hass, config_entry_with_presets):
+    @pytest.mark.asyncio
+    async def test_set_status_success(self, hass, config_entry_with_presets):
         """Test setting status to success."""
         manager = PresetManager(hass, config_entry_with_presets)
         result = {"success": True, "message": "Done"}
-        manager.set_status("preset_1", PRESET_STATUS_SUCCESS, result)
+        await manager.set_status("preset_1", PRESET_STATUS_SUCCESS, result)
 
         status = manager.get_status("preset_1")
         assert status.status == PRESET_STATUS_SUCCESS
         assert status.last_result == result
         assert status.last_activated is not None
 
-    def test_set_status_failed(self, hass, config_entry_with_presets):
+    @pytest.mark.asyncio
+    async def test_set_status_failed(self, hass, config_entry_with_presets):
         """Test setting status to failed."""
         manager = PresetManager(hass, config_entry_with_presets)
         result = {"success": False, "message": "Error"}
-        manager.set_status("preset_1", PRESET_STATUS_FAILED, result)
+        await manager.set_status("preset_1", PRESET_STATUS_FAILED, result)
 
         status = manager.get_status("preset_1")
         assert status.status == PRESET_STATUS_FAILED
         assert status.last_result == result
         assert status.last_activated is not None
 
-    def test_set_status_creates_entry_if_missing(self, hass, config_entry):
+    @pytest.mark.asyncio
+    async def test_set_status_creates_entry_if_missing(self, hass, config_entry):
         """Test that set_status creates status entry if missing."""
         manager = PresetManager(hass, config_entry)
-        manager.set_status("new_preset", PRESET_STATUS_ACTIVATING)
+        await manager.set_status("new_preset", PRESET_STATUS_ACTIVATING)
 
         status = manager.get_status("new_preset")
         assert status.status == PRESET_STATUS_ACTIVATING
@@ -455,16 +459,17 @@ class TestPresetManagerListeners:
 
         callback.assert_called()
 
-    def test_listeners_notified_on_status_change(self, hass, config_entry_with_presets):
+    @pytest.mark.asyncio
+    async def test_listeners_notified_on_status_change(self, hass, config_entry_with_presets):
         """Test that listeners are notified when status changes."""
         manager = PresetManager(hass, config_entry_with_presets)
         callback = MagicMock()
         manager.register_listener(callback)
 
-        manager.set_status("preset_1", PRESET_STATUS_SUCCESS)
+        await manager.set_status("preset_1", PRESET_STATUS_SUCCESS)
 
-        # set_status uses async_create_task to notify
-        hass.async_create_task.assert_called()
+        # set_status directly awaits _notify_listeners
+        callback.assert_called()
 
 
 class TestPresetManagerCreateFromCurrent:

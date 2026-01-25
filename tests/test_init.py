@@ -53,7 +53,7 @@ def mock_preset_manager():
     manager.presets = {}
     manager.get_preset = MagicMock(return_value=None)
     manager.get_preset_by_name = MagicMock(return_value=None)
-    manager.set_status = MagicMock()
+    manager.set_status = AsyncMock()
     manager.create_preset = AsyncMock()
     manager.delete_preset = AsyncMock()
     manager.create_preset_from_current = AsyncMock()
