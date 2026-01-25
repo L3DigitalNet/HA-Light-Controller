@@ -114,7 +114,9 @@ class TestLightControllerOptionsFlow:
     @pytest.fixture
     def options_flow(self, config_entry):
         """Create an options flow instance."""
-        return LightControllerOptionsFlow(config_entry)
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        return flow
 
     @pytest.mark.asyncio
     async def test_step_init_shows_menu(self, options_flow, hass):
@@ -263,7 +265,8 @@ class TestOptionsFlowAddPreset:
     @pytest.fixture
     def options_flow_with_manager(self, config_entry, hass):
         """Create options flow with mock preset manager."""
-        flow = LightControllerOptionsFlow(config_entry)
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
         flow.hass = hass
 
         # Set up mock preset manager
@@ -344,7 +347,8 @@ class TestOptionsFlowManagePresets:
     @pytest.fixture
     def options_flow_with_presets(self, config_entry_with_presets, hass):
         """Create options flow with mock preset manager containing presets."""
-        flow = LightControllerOptionsFlow(config_entry_with_presets)
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry_with_presets
         flow.hass = hass
 
         # Create mock preset manager with actual presets
@@ -378,7 +382,8 @@ class TestOptionsFlowManagePresets:
     @pytest.fixture
     def options_flow_no_presets(self, config_entry, hass):
         """Create options flow with empty preset manager."""
-        flow = LightControllerOptionsFlow(config_entry)
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
         flow.hass = hass
 
         preset_manager = MagicMock()
