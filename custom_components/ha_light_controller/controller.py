@@ -517,7 +517,9 @@ class LightController:
                     else VerificationResult.WRONG_COLOR
                 )
 
-            return VerificationResult.SUCCESS
+            # Defensive fallback - all (has_rgb, has_kelvin) combinations are
+            # handled above, so this is unreachable but kept for type safety
+            return VerificationResult.SUCCESS  # pragma: no cover
 
         except Exception as e:
             _LOGGER.error("Error verifying %s: %s", entity_id, e)

@@ -147,6 +147,30 @@ class TestPresetButton:
         # Icon is now a dynamic property based on preset state
         assert button_entity.icon == "mdi:lightbulb-group"
 
+    def test_icon_off_preset(
+        self, hass, config_entry, mock_preset_manager, mock_controller
+    ):
+        """Test icon for preset with state='off'."""
+        preset = PresetConfig(
+            id="off_preset",
+            name="Turn Off",
+            entities=["light.test"],
+            state="off",
+            brightness_pct=0,
+        )
+        mock_preset_manager.get_preset.return_value = preset
+
+        button = PresetButton(
+            hass=hass,
+            entry=config_entry,
+            preset_manager=mock_preset_manager,
+            controller=mock_controller,
+            preset_id="off_preset",
+            preset=preset,
+        )
+
+        assert button.icon == "mdi:lightbulb-group-off"
+
     def test_unique_id(self, button_entity, config_entry):
         """Test unique ID generation."""
         expected_id = f"{config_entry.entry_id}_preset_test_preset_id_button"

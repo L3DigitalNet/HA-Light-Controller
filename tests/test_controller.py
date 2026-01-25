@@ -981,6 +981,46 @@ class TestLightControllerEntityExpansionEdgeCases:
         assert valid == []
         assert skipped == []
 
+    def test_expand_group_domain_with_set_members(self, hass):
+        """Test expanding group.* domain entity with set-based entity_id.
+
+        This tests the Case 2 code path (lines 261-271) which handles group.*
+        entities when entity_id is not a list/tuple but is still iterable.
+        """
+        from tests.conftest import create_light_state
+
+        # Create a group.* entity with entity_id as a SET (not list/tuple)
+        # This bypasses Case 1 (which requires list/tuple) and enters Case 2
+        group_state = MagicMock()
+        group_state.state = "on"
+        group_state.attributes = {
+            "entity_id": {"light.member_1", "light.member_2", "sensor.not_a_light"}
+        }
+
+        # Create member light states
+        member_1 = create_light_state("light.member_1", STATE_ON)
+        member_2 = create_light_state("light.member_2", STATE_UNAVAILABLE)
+
+        def get_state(entity_id):
+            if entity_id == "group.set_group":
+                return group_state
+            elif entity_id == "light.member_1":
+                return member_1
+            elif entity_id == "light.member_2":
+                return member_2
+            return None
+
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("group.set_group")
+
+        # member_1 is available, member_2 is unavailable, sensor is ignored
+        assert "light.member_1" in valid
+        assert "light.member_2" in skipped
+        assert "sensor.not_a_light" not in valid
+        assert "sensor.not_a_light" not in skipped
+
 
 class TestLightControllerVerificationEdgeCases:
     """Tests for verification edge cases."""

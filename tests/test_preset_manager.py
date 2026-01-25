@@ -307,6 +307,27 @@ class TestPresetManagerCRUD:
         result = await manager.delete_preset("nonexistent")
         assert result is False
 
+    @pytest.mark.asyncio
+    async def test_delete_preset_entity_registry_error(self, hass, config_entry_with_presets):
+        """Test deleting a preset when entity registry raises an exception."""
+        from homeassistant.helpers import entity_registry as er
+
+        # Set up mock entity registry that raises an exception
+        mock_ent_reg = MagicMock()
+        mock_ent_reg.async_get_entity_id = MagicMock(
+            side_effect=Exception("Registry error")
+        )
+        er.async_get = MagicMock(return_value=mock_ent_reg)
+
+        manager = PresetManager(hass, config_entry_with_presets)
+        assert "preset_1" in manager.presets
+
+        # Should still succeed - exception is caught and logged
+        result = await manager.delete_preset("preset_1")
+
+        assert result is True
+        assert "preset_1" not in manager.presets
+
 
 class TestPresetManagerLookup:
     """Tests for PresetManager lookup methods."""
