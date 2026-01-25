@@ -20,7 +20,9 @@ Complete reference for services, configuration options, and examples.
 
 ## Configuration Options
 
-Access configuration options by going to **Settings** → **Devices & Services** → **Light Controller** → **Configure**.
+Access configuration options by going to **Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Settings**.
+
+All configuration options are available on a single settings page.
 
 ### Default Settings
 
@@ -272,6 +274,17 @@ Shows the current activation status with dynamic icons:
 ### Creating Presets via UI
 
 **Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Add New Preset**
+
+The preset creation flow supports per-entity configuration:
+
+1. **Basic Settings** - Enter preset name, select entities, optionally skip verification
+2. **Entity Hub** - Manage entities and their configurations:
+   - **Configure an entity** - Set state, brightness, color, and transition for each light individually
+   - **Add more entities** - Include additional lights
+   - **Remove an entity** - Remove lights from the preset (requires at least one)
+   - **Save preset** - Finalize once at least one entity is configured
+
+This allows presets where different lights have different settings (e.g., ceiling at 100% warm white, accent at 30% RGB red).
 
 ### Dashboard Cards
 

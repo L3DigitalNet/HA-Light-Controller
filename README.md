@@ -11,6 +11,8 @@
 [![License](https://img.shields.io/github/license/L3DigitalNet/HA-Light-Controller.svg)](LICENSE)
 [![Issues](https://img.shields.io/github/issues/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
 
+*This is an early beta release and many features are still in development and likely buggy. Please report any issues you encounter.*
+
 HA Light Controller adds state verification and automatic retries to light commands. When you call `light.turn_on`, Home Assistant sends the command once and assumes success. This integration verifies that entities actually reached the target state and retries if they didn't.
 
 This solves the common problem of lights occasionally missing commands due to network congestion, Zigbee/Z-Wave mesh issues, or unresponsive devices. Instead of building retry logic into every script and automation, HA Light Controller handles verification centrally with configurable tolerances and backoff strategies.
@@ -86,7 +88,7 @@ data:
 
 ### Presets
 
-Create presets via the integration options or programmatically:
+Create presets via the integration options UI or programmatically. The UI supports per-entity configuration - set different brightness, color, and state for each light in the preset.
 
 ```yaml
 service: ha_light_controller.create_preset
