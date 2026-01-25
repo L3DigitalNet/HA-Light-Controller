@@ -1,3 +1,9 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand-images/dark_logo.png">
+  <source media="(prefers-color-scheme: light)" srcset="brand-images/logo.png">
+  <img alt="HA Light Controller" src="brand-images/logo.png" width="400">
+</picture>
+
 # HA Light Controller
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
