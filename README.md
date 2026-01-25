@@ -92,9 +92,9 @@ data:
 | `kelvin_tolerance` | int | No | Override Kelvin tolerance |
 | `delay_after_send` | float | No | Override delay before verification |
 | `max_retries` | int | No | Override maximum retry attempts |
-| `max_runtime_seconds` | int | No | Override hard timeout |
+| `max_runtime_seconds` | float | No | Override hard timeout |
 | `use_exponential_backoff` | bool | No | Override backoff setting |
-| `max_backoff_seconds` | int | No | Override maximum backoff delay |
+| `max_backoff_seconds` | float | No | Override maximum backoff delay |
 | `log_success` | bool | No | Log success to logbook |
 | `notify_on_failure` | string | No | Notification service for failures |
 
