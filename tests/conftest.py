@@ -81,7 +81,14 @@ mock_ha.helpers.selector = MagicMock()
 mock_ha.helpers.entity = MagicMock()
 mock_ha.helpers.entity.DeviceInfo = dict
 mock_ha.helpers.entity_platform = MagicMock()
+
+# Create a proper mock for entity_registry
+mock_entity_registry = MagicMock()
+mock_entity_registry.async_get_entity_id = MagicMock(return_value=None)
+mock_entity_registry.async_remove = MagicMock()
+
 mock_ha.helpers.entity_registry = MagicMock()
+mock_ha.helpers.entity_registry.async_get = MagicMock(return_value=mock_entity_registry)
 
 mock_ha.components = MagicMock()
 mock_ha.components.light = MagicMock()

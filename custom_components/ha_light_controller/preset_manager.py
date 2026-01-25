@@ -11,6 +11,7 @@ import uuid
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_PRESETS,
@@ -264,7 +265,7 @@ class PresetManager:
         return preset
 
     async def delete_preset(self, preset_id: str) -> bool:
-        """Delete a preset."""
+        """Delete a preset and its associated entities."""
         if preset_id not in self._presets:
             _LOGGER.warning("Preset not found: %s", preset_id)
             return False
@@ -273,6 +274,24 @@ class PresetManager:
         self._status.pop(preset_id, None)
 
         await self._save_presets()
+
+        # Remove associated entities from the entity registry
+        ent_reg = er.async_get(self.hass)
+        entry_id = self.entry.entry_id
+
+        # Remove button entity
+        button_unique_id = f"{entry_id}_preset_{preset_id}_button"
+        button_entity = ent_reg.async_get_entity_id("button", "ha_light_controller", button_unique_id)
+        if button_entity:
+            ent_reg.async_remove(button_entity)
+            _LOGGER.debug("Removed button entity: %s", button_entity)
+
+        # Remove sensor entity
+        sensor_unique_id = f"{entry_id}_preset_{preset_id}_status"
+        sensor_entity = ent_reg.async_get_entity_id("sensor", "ha_light_controller", sensor_unique_id)
+        if sensor_entity:
+            ent_reg.async_remove(sensor_entity)
+            _LOGGER.debug("Removed sensor entity: %s", sensor_entity)
 
         _LOGGER.info("Deleted preset: %s (%s)", preset.name, preset_id)
         return True

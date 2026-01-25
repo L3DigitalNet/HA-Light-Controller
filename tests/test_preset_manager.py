@@ -279,7 +279,15 @@ class TestPresetManagerCRUD:
 
     @pytest.mark.asyncio
     async def test_delete_preset(self, hass, config_entry_with_presets):
-        """Test deleting a preset."""
+        """Test deleting a preset removes data and entities."""
+        from homeassistant.helpers import entity_registry as er
+
+        # Set up mock entity registry
+        mock_ent_reg = MagicMock()
+        mock_ent_reg.async_get_entity_id = MagicMock(side_effect=lambda domain, platform, unique_id: f"{domain}.test_entity" if "preset_1" in unique_id else None)
+        mock_ent_reg.async_remove = MagicMock()
+        er.async_get = MagicMock(return_value=mock_ent_reg)
+
         manager = PresetManager(hass, config_entry_with_presets)
         assert "preset_1" in manager.presets
 
@@ -287,6 +295,10 @@ class TestPresetManagerCRUD:
 
         assert result is True
         assert "preset_1" not in manager.presets
+
+        # Verify entity registry was called to remove entities
+        assert mock_ent_reg.async_get_entity_id.call_count == 2  # button + sensor
+        assert mock_ent_reg.async_remove.call_count == 2
 
     @pytest.mark.asyncio
     async def test_delete_preset_not_found(self, hass, config_entry):
