@@ -1,0 +1,1366 @@
+"""Tests for the Light Controller controller module."""
+
+from __future__ import annotations
+
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
+
+from homeassistant.const import STATE_ON, STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN
+
+from custom_components.ha_light_controller.controller import (
+    LightController,
+    TargetState,
+    VerificationResult,
+    ColorTolerance,
+    RetryConfig,
+    LightTarget,
+    LightGroup,
+    OperationResult,
+)
+from custom_components.ha_light_controller.const import (
+    RESULT_CODE_SUCCESS,
+    RESULT_CODE_FAILED,
+    RESULT_CODE_TIMEOUT,
+    RESULT_CODE_ERROR,
+    RESULT_CODE_NO_VALID_ENTITIES,
+)
+
+
+# =============================================================================
+# TargetState Enum Tests
+# =============================================================================
+
+
+class TestTargetState:
+    """Tests for TargetState enum."""
+
+    def test_from_string_on(self):
+        """Test parsing 'on' string."""
+        assert TargetState.from_string("on") == TargetState.ON
+        assert TargetState.from_string("ON") == TargetState.ON
+        assert TargetState.from_string("  on  ") == TargetState.ON
+
+    def test_from_string_off(self):
+        """Test parsing 'off' string."""
+        assert TargetState.from_string("off") == TargetState.OFF
+        assert TargetState.from_string("OFF") == TargetState.OFF
+        assert TargetState.from_string("  off  ") == TargetState.OFF
+
+    def test_from_string_invalid(self):
+        """Test parsing invalid string raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            TargetState.from_string("invalid")
+        assert "Invalid state" in str(exc_info.value)
+
+    def test_from_string_empty(self):
+        """Test parsing empty string raises ValueError."""
+        with pytest.raises(ValueError):
+            TargetState.from_string("")
+
+
+# =============================================================================
+# RetryConfig Tests
+# =============================================================================
+
+
+class TestRetryConfig:
+    """Tests for RetryConfig dataclass."""
+
+    def test_default_values(self):
+        """Test default values."""
+        config = RetryConfig()
+        assert config.max_retries == 3
+        assert config.delay_after_send == 2.0
+        assert config.max_runtime_seconds == 60.0
+        assert config.use_exponential_backoff is False
+        assert config.max_backoff_seconds == 30.0
+
+    def test_custom_values(self):
+        """Test custom values."""
+        config = RetryConfig(
+            max_retries=5,
+            delay_after_send=1.5,
+            max_runtime_seconds=120.0,
+            use_exponential_backoff=True,
+            max_backoff_seconds=60.0,
+        )
+        assert config.max_retries == 5
+        assert config.delay_after_send == 1.5
+        assert config.max_runtime_seconds == 120.0
+        assert config.use_exponential_backoff is True
+        assert config.max_backoff_seconds == 60.0
+
+    def test_calculate_delay_no_backoff(self):
+        """Test delay calculation without exponential backoff."""
+        config = RetryConfig(delay_after_send=2.0, use_exponential_backoff=False)
+        assert config.calculate_delay(0) == 2.0
+        assert config.calculate_delay(1) == 2.0
+        assert config.calculate_delay(2) == 2.0
+        assert config.calculate_delay(5) == 2.0
+
+    def test_calculate_delay_with_backoff(self):
+        """Test delay calculation with exponential backoff."""
+        config = RetryConfig(
+            delay_after_send=2.0,
+            use_exponential_backoff=True,
+            max_backoff_seconds=30.0,
+        )
+        # Attempt 0: no backoff applied
+        assert config.calculate_delay(0) == 2.0
+        # Attempt 1: 2.0 * 2^1 = 4.0
+        assert config.calculate_delay(1) == 4.0
+        # Attempt 2: 2.0 * 2^2 = 8.0
+        assert config.calculate_delay(2) == 8.0
+        # Attempt 3: 2.0 * 2^3 = 16.0
+        assert config.calculate_delay(3) == 16.0
+
+    def test_calculate_delay_backoff_capped(self):
+        """Test delay is capped at max_backoff_seconds."""
+        config = RetryConfig(
+            delay_after_send=2.0,
+            use_exponential_backoff=True,
+            max_backoff_seconds=10.0,
+        )
+        # Attempt 3: would be 16.0, but capped at 10.0
+        assert config.calculate_delay(3) == 10.0
+        # Attempt 5: would be 64.0, but capped at 10.0
+        assert config.calculate_delay(5) == 10.0
+
+
+# =============================================================================
+# LightTarget Tests
+# =============================================================================
+
+
+class TestLightTarget:
+    """Tests for LightTarget dataclass."""
+
+    def test_default_values(self):
+        """Test default values."""
+        target = LightTarget(entity_id="light.test")
+        assert target.entity_id == "light.test"
+        assert target.brightness_pct == 100
+        assert target.rgb_color is None
+        assert target.color_temp_kelvin is None
+        assert target.effect is None
+
+    def test_to_service_data_brightness_only(self):
+        """Test service data with brightness only."""
+        target = LightTarget(entity_id="light.test", brightness_pct=75)
+        data = target.to_service_data()
+        assert data == {"brightness_pct": 75}
+
+    def test_to_service_data_with_rgb(self):
+        """Test service data with RGB color."""
+        target = LightTarget(
+            entity_id="light.test",
+            brightness_pct=80,
+            rgb_color=[255, 128, 64],
+        )
+        data = target.to_service_data()
+        assert data == {"brightness_pct": 80, "rgb_color": [255, 128, 64]}
+
+    def test_to_service_data_with_kelvin(self):
+        """Test service data with color temperature."""
+        target = LightTarget(
+            entity_id="light.test",
+            brightness_pct=90,
+            color_temp_kelvin=4000,
+        )
+        data = target.to_service_data()
+        assert data == {"brightness_pct": 90, "color_temp_kelvin": 4000}
+
+    def test_to_service_data_rgb_overrides_kelvin(self):
+        """Test that RGB takes precedence over kelvin when both provided."""
+        target = LightTarget(
+            entity_id="light.test",
+            brightness_pct=50,
+            rgb_color=[255, 0, 0],
+            color_temp_kelvin=4000,
+        )
+        data = target.to_service_data()
+        assert "rgb_color" in data
+        assert "color_temp_kelvin" not in data
+
+    def test_to_service_data_with_effect(self):
+        """Test service data with effect."""
+        target = LightTarget(
+            entity_id="light.test",
+            brightness_pct=100,
+            effect="rainbow",
+        )
+        data = target.to_service_data()
+        assert data == {"brightness_pct": 100, "effect": "rainbow"}
+
+    def test_to_service_data_with_transition(self):
+        """Test service data with transition."""
+        target = LightTarget(entity_id="light.test", brightness_pct=50)
+        data = target.to_service_data(include_transition=2.5)
+        assert data == {"brightness_pct": 50, "transition": 2.5}
+
+    def test_to_service_data_zero_transition_excluded(self):
+        """Test that zero transition is not included."""
+        target = LightTarget(entity_id="light.test", brightness_pct=50)
+        data = target.to_service_data(include_transition=0)
+        assert "transition" not in data
+
+
+# =============================================================================
+# LightGroup Tests
+# =============================================================================
+
+
+class TestLightGroup:
+    """Tests for LightGroup dataclass."""
+
+    def test_creation(self):
+        """Test creating a light group."""
+        group = LightGroup(
+            entities=["light.a", "light.b"],
+            brightness_pct=75,
+        )
+        assert group.entities == ["light.a", "light.b"]
+        assert group.brightness_pct == 75
+
+    def test_to_service_data(self):
+        """Test service data conversion."""
+        group = LightGroup(
+            entities=["light.a", "light.b"],
+            brightness_pct=80,
+            rgb_color=[255, 0, 0],
+        )
+        data = group.to_service_data()
+        assert data == {"brightness_pct": 80, "rgb_color": [255, 0, 0]}
+
+    def test_to_service_data_with_transition(self):
+        """Test service data with transition."""
+        group = LightGroup(
+            entities=["light.a"],
+            brightness_pct=50,
+            color_temp_kelvin=3500,
+        )
+        data = group.to_service_data(include_transition=1.5)
+        assert data == {
+            "brightness_pct": 50,
+            "color_temp_kelvin": 3500,
+            "transition": 1.5,
+        }
+
+
+# =============================================================================
+# OperationResult Tests
+# =============================================================================
+
+
+class TestOperationResult:
+    """Tests for OperationResult dataclass."""
+
+    def test_success_result(self):
+        """Test successful operation result."""
+        result = OperationResult(
+            success=True,
+            result_code=RESULT_CODE_SUCCESS,
+            message="All lights set",
+            attempts=2,
+            total_lights=5,
+            elapsed_seconds=3.456,
+        )
+        assert result.success is True
+        assert result.result_code == RESULT_CODE_SUCCESS
+
+    def test_to_dict(self):
+        """Test conversion to dictionary."""
+        result = OperationResult(
+            success=False,
+            result_code=RESULT_CODE_FAILED,
+            message="Failed to set lights",
+            attempts=3,
+            total_lights=5,
+            failed_lights=["light.a", "light.b"],
+            skipped_lights=["light.c"],
+            elapsed_seconds=10.123,
+        )
+        data = result.to_dict()
+        assert data["success"] is False
+        assert data["result"] == RESULT_CODE_FAILED
+        assert data["message"] == "Failed to set lights"
+        assert data["attempts"] == 3
+        assert data["total_lights"] == 5
+        assert data["failed_lights"] == ["light.a", "light.b"]
+        assert data["skipped_lights"] == ["light.c"]
+        assert data["elapsed_seconds"] == 10.12  # Rounded to 2 decimal places
+
+
+# =============================================================================
+# ColorTolerance Tests
+# =============================================================================
+
+
+class TestColorTolerance:
+    """Tests for ColorTolerance dataclass."""
+
+    def test_default_values(self):
+        """Test default tolerance values."""
+        tolerance = ColorTolerance()
+        assert tolerance.brightness == 3
+        assert tolerance.rgb == 10
+        assert tolerance.kelvin == 150
+
+    def test_custom_values(self):
+        """Test custom tolerance values."""
+        tolerance = ColorTolerance(brightness=5, rgb=20, kelvin=200)
+        assert tolerance.brightness == 5
+        assert tolerance.rgb == 20
+        assert tolerance.kelvin == 200
+
+
+# =============================================================================
+# LightController Tests
+# =============================================================================
+
+
+class TestLightControllerHelpers:
+    """Tests for LightController helper methods."""
+
+    def test_get_state(self, hass, mock_light_states):
+        """Test getting entity state."""
+        controller = LightController(hass)
+        state = controller._get_state("light.test_light_1")
+        assert state is not None
+        assert state.state == STATE_ON
+
+    def test_get_state_not_found(self, hass, mock_light_states):
+        """Test getting non-existent entity state."""
+        controller = LightController(hass)
+        state = controller._get_state("light.nonexistent")
+        assert state is None
+
+    def test_get_state_value(self, hass, mock_light_states):
+        """Test getting entity state value."""
+        controller = LightController(hass)
+        assert controller._get_state_value("light.test_light_1") == STATE_ON
+        assert controller._get_state_value("light.test_light_3") == STATE_OFF
+
+    def test_get_attributes(self, hass, mock_light_states):
+        """Test getting entity attributes."""
+        controller = LightController(hass)
+        attrs = controller._get_attributes("light.test_light_1")
+        assert "brightness" in attrs
+        assert attrs["brightness"] == 255
+
+    def test_is_available_true(self, hass, mock_light_states):
+        """Test checking if entity is available."""
+        controller = LightController(hass)
+        assert controller._is_available("light.test_light_1") is True
+        assert controller._is_available("light.test_light_3") is True
+
+    def test_is_available_false(self, hass, mock_light_states):
+        """Test checking if unavailable entity."""
+        controller = LightController(hass)
+        assert controller._is_available("light.unavailable_light") is False
+        assert controller._is_available("light.nonexistent") is False
+
+
+class TestLightControllerEntityExpansion:
+    """Tests for entity expansion methods."""
+
+    def test_expand_single_light(self, hass, mock_light_states):
+        """Test expanding a single light entity."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("light.test_light_1")
+        assert valid == ["light.test_light_1"]
+        assert skipped == []
+
+    def test_expand_unavailable_light(self, hass, mock_light_states):
+        """Test expanding an unavailable light."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("light.unavailable_light")
+        assert valid == []
+        assert skipped == ["light.unavailable_light"]
+
+    def test_expand_light_group(self, hass, mock_light_states):
+        """Test expanding a light group."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("light.test_group")
+        assert "light.test_light_1" in valid
+        assert "light.test_light_2" in valid
+        assert skipped == []
+
+    def test_expand_entities_multiple(self, hass, mock_light_states):
+        """Test expanding multiple entities."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entities([
+            "light.test_light_1",
+            "light.test_light_2",
+            "light.unavailable_light",
+        ])
+        assert "light.test_light_1" in valid
+        assert "light.test_light_2" in valid
+        assert "light.unavailable_light" in skipped
+
+    def test_expand_entities_deduplication(self, hass, mock_light_states):
+        """Test that duplicate entities are deduplicated."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entities([
+            "light.test_light_1",
+            "light.test_light_1",  # Duplicate
+            "light.test_group",  # Contains test_light_1
+        ])
+        # Should only have unique entries
+        assert valid.count("light.test_light_1") == 1
+
+    def test_expand_invalid_entity_type(self, hass, mock_light_states):
+        """Test expanding non-light entity."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("sensor.temperature")
+        assert valid == []
+        assert skipped == []
+
+
+class TestLightControllerTargetBuilding:
+    """Tests for target building methods."""
+
+    def test_build_targets_basic(self, hass, mock_light_states):
+        """Test building basic targets."""
+        controller = LightController(hass)
+        targets = controller._build_targets(
+            members=["light.test_light_1", "light.test_light_2"],
+            overrides={},
+            default_brightness_pct=75,
+            default_rgb_color=None,
+            default_color_temp_kelvin=4000,
+            default_effect=None,
+        )
+        assert len(targets) == 2
+        assert targets[0].entity_id == "light.test_light_1"
+        assert targets[0].brightness_pct == 75
+        assert targets[0].color_temp_kelvin == 4000
+
+    def test_build_targets_with_overrides(self, hass, mock_light_states):
+        """Test building targets with per-entity overrides."""
+        controller = LightController(hass)
+        overrides = {
+            "light.test_light_1": {
+                "entity_id": "light.test_light_1",
+                "brightness_pct": 50,
+                "rgb_color": [255, 0, 0],
+            }
+        }
+        targets = controller._build_targets(
+            members=["light.test_light_1", "light.test_light_2"],
+            overrides=overrides,
+            default_brightness_pct=100,
+            default_rgb_color=None,
+            default_color_temp_kelvin=None,
+            default_effect=None,
+        )
+        # First light has override
+        assert targets[0].brightness_pct == 50
+        assert targets[0].rgb_color == [255, 0, 0]
+        # Second light uses defaults
+        assert targets[1].brightness_pct == 100
+        assert targets[1].rgb_color is None
+
+    def test_group_by_settings(self, hass, mock_light_states):
+        """Test grouping targets by identical settings."""
+        controller = LightController(hass)
+        targets = [
+            LightTarget("light.a", brightness_pct=75, color_temp_kelvin=4000),
+            LightTarget("light.b", brightness_pct=75, color_temp_kelvin=4000),
+            LightTarget("light.c", brightness_pct=50, color_temp_kelvin=4000),
+        ]
+        groups = controller._group_by_settings(targets)
+        # Should have 2 groups: one with 75% brightness, one with 50%
+        assert len(groups) == 2
+
+        # Find the group with 2 entities
+        large_group = next(g for g in groups if len(g.entities) == 2)
+        assert large_group.brightness_pct == 75
+        assert "light.a" in large_group.entities
+        assert "light.b" in large_group.entities
+
+
+class TestLightControllerVerification:
+    """Tests for verification methods."""
+
+    def test_verify_brightness_within_tolerance(self, hass):
+        """Test brightness verification within tolerance."""
+        from tests.conftest import create_light_state
+        state = create_light_state("light.test", STATE_ON, brightness=191)  # ~75%
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        # 75% ± 3% should pass
+        assert controller._verify_brightness("light.test", 75, 3) is True
+
+    def test_verify_brightness_outside_tolerance(self, hass):
+        """Test brightness verification outside tolerance."""
+        from tests.conftest import create_light_state
+        state = create_light_state("light.test", STATE_ON, brightness=128)  # ~50%
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        # Target 75%, actual 50%, tolerance 3% - should fail
+        assert controller._verify_brightness("light.test", 75, 3) is False
+
+    def test_verify_rgb_within_tolerance(self, hass):
+        """Test RGB verification within tolerance."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            rgb_color=(250, 5, 10),
+            supported_color_modes=["rgb"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        # Target [255, 0, 5], actual [250, 5, 10], tolerance 10 - should pass
+        assert controller._verify_rgb("light.test", [255, 0, 5], 10) is True
+
+    def test_verify_rgb_outside_tolerance(self, hass):
+        """Test RGB verification outside tolerance."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            rgb_color=(200, 50, 50),
+            supported_color_modes=["rgb"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        # Target [255, 0, 0], actual [200, 50, 50] - should fail
+        assert controller._verify_rgb("light.test", [255, 0, 0], 10) is False
+
+    def test_verify_rgb_none_expected(self, hass):
+        """Test RGB verification when no RGB expected."""
+        controller = LightController(hass)
+        result = controller._verify_rgb("light.test", None, 10)
+        assert result is None
+
+    def test_verify_rgb_not_supported(self, hass):
+        """Test RGB verification when RGB not supported."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            supported_color_modes=["brightness"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        result = controller._verify_rgb("light.test", [255, 0, 0], 10)
+        assert result is None
+
+    def test_verify_kelvin_within_tolerance(self, hass):
+        """Test kelvin verification within tolerance."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            color_temp_kelvin=4050,
+            supported_color_modes=["color_temp"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        # Target 4000K, actual 4050K, tolerance 150K - should pass
+        assert controller._verify_kelvin("light.test", 4000, 150) is True
+
+    def test_verify_kelvin_outside_tolerance(self, hass):
+        """Test kelvin verification outside tolerance."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            color_temp_kelvin=5000,
+            supported_color_modes=["color_temp"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        # Target 4000K, actual 5000K, tolerance 150K - should fail
+        assert controller._verify_kelvin("light.test", 4000, 150) is False
+
+    def test_verify_light_off_target_off(self, hass, mock_light_off):
+        """Test verifying light off when target is off."""
+        controller = LightController(hass)
+        target = LightTarget("light.single_light", brightness_pct=0)
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.OFF, tolerances)
+        assert result == VerificationResult.SUCCESS
+
+    def test_verify_light_on_target_off(self, hass, mock_light_on):
+        """Test verifying light on when target is off."""
+        controller = LightController(hass)
+        target = LightTarget("light.single_light", brightness_pct=0)
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.OFF, tolerances)
+        assert result == VerificationResult.WRONG_STATE
+
+    def test_verify_light_unavailable(self, hass):
+        """Test verifying unavailable light."""
+        from tests.conftest import create_light_state
+        state = create_light_state("light.test", STATE_UNAVAILABLE)
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100)
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.UNAVAILABLE
+
+
+class TestLightControllerEnsureState:
+    """Tests for the main ensure_state method."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_no_entities(self, hass):
+        """Test ensure_state with no entities."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(entities=[])
+
+        assert result["success"] is False
+        assert result["result"] == RESULT_CODE_ERROR
+        assert "No entities" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_invalid_state(self, hass, mock_light_states):
+        """Test ensure_state with invalid state target."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="invalid",
+        )
+
+        assert result["success"] is False
+        assert result["result"] == RESULT_CODE_ERROR
+        assert "Invalid state" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_no_valid_entities(self, hass, mock_light_states):
+        """Test ensure_state when all entities are unavailable."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.unavailable_light"],
+        )
+
+        assert result["success"] is False
+        assert result["result"] == RESULT_CODE_NO_VALID_ENTITIES
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_fire_and_forget(self, hass, mock_light_states):
+        """Test ensure_state in fire-and-forget mode."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            default_brightness_pct=100,
+            skip_verification=True,
+        )
+
+        assert result["success"] is True
+        assert result["result"] == RESULT_CODE_SUCCESS
+        assert "Fire-and-forget" in result["message"]
+
+        # Verify service was called
+        hass.services.async_call.assert_called()
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_turn_off(self, hass, mock_light_states):
+        """Test ensure_state for turning lights off."""
+        # Make lights appear off after command
+        from tests.conftest import create_light_state
+        call_count = [0]
+
+        def get_state_after_call(entity_id):
+            if call_count[0] > 0:
+                return create_light_state(entity_id, STATE_OFF)
+            return mock_light_states.get(entity_id)
+
+        original_get = hass.states.get
+        def mock_get(entity_id):
+            result = get_state_after_call(entity_id)
+            return result if result else original_get(entity_id)
+
+        async def mark_called(*args, **kwargs):
+            call_count[0] += 1
+
+        hass.services.async_call = mark_called
+        hass.states.get = mock_get
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="off",
+            max_retries=1,
+            delay_after_send=0.01,
+        )
+
+        assert result["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_with_transition(self, hass, mock_light_states):
+        """Test ensure_state with transition."""
+        controller = LightController(hass)
+        await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            default_brightness_pct=100,
+            transition=2.5,
+            skip_verification=True,
+        )
+
+        # Check that service was called with transition
+        call_args = hass.services.async_call.call_args
+        assert call_args is not None
+        service_data = call_args[0][2]  # Third positional arg is service data
+        assert service_data.get("transition") == 2.5
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_with_targets(self, hass, mock_light_states):
+        """Test ensure_state with per-entity targets."""
+        controller = LightController(hass)
+        targets = [
+            {"entity_id": "light.test_light_1", "brightness_pct": 50},
+            {"entity_id": "light.test_light_2", "brightness_pct": 75},
+        ]
+
+        result = await controller.ensure_state(
+            entities=["light.test_light_1", "light.test_light_2"],
+            state_target="on",
+            default_brightness_pct=100,
+            targets=targets,
+            skip_verification=True,
+        )
+
+        assert result["success"] is True
+        assert result["total_lights"] == 2
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_reports_skipped(self, hass, mock_light_states):
+        """Test that skipped entities are reported."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1", "light.unavailable_light"],
+            state_target="on",
+            skip_verification=True,
+        )
+
+        assert result["success"] is True
+        assert "light.unavailable_light" in result["skipped_lights"]
+
+
+class TestLightControllerCommands:
+    """Tests for command execution methods."""
+
+    @pytest.mark.asyncio
+    async def test_send_turn_off(self, hass):
+        """Test sending turn_off command."""
+        controller = LightController(hass)
+        await controller._send_turn_off(["light.a", "light.b"])
+
+        hass.services.async_call.assert_called_once_with(
+            "light",
+            "turn_off",
+            {"entity_id": ["light.a", "light.b"]},
+            blocking=True,
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_turn_on(self, hass):
+        """Test sending turn_on command."""
+        controller = LightController(hass)
+        group = LightGroup(
+            entities=["light.a", "light.b"],
+            brightness_pct=75,
+            rgb_color=[255, 0, 0],
+        )
+        await controller._send_turn_on(group, transition=1.5)
+
+        call_args = hass.services.async_call.call_args
+        assert call_args[0][0] == "light"
+        assert call_args[0][1] == "turn_on"
+        service_data = call_args[0][2]
+        assert service_data["entity_id"] == ["light.a", "light.b"]
+        assert service_data["brightness_pct"] == 75
+        assert service_data["rgb_color"] == [255, 0, 0]
+        assert service_data["transition"] == 1.5
+
+    @pytest.mark.asyncio
+    async def test_send_turn_off_exception(self, hass):
+        """Test that turn_off exception is logged but doesn't crash."""
+        hass.services.async_call = AsyncMock(side_effect=Exception("Service error"))
+        controller = LightController(hass)
+        # Should not raise exception
+        await controller._send_turn_off(["light.a"])
+        hass.services.async_call.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_turn_on_exception(self, hass):
+        """Test that turn_on exception is logged but doesn't crash."""
+        hass.services.async_call = AsyncMock(side_effect=Exception("Service error"))
+        controller = LightController(hass)
+        group = LightGroup(entities=["light.a"], brightness_pct=75)
+        # Should not raise exception
+        await controller._send_turn_on(group)
+        hass.services.async_call.assert_called_once()
+
+
+class TestLightControllerLogging:
+    """Tests for logging and notification methods."""
+
+    @pytest.mark.asyncio
+    async def test_log_to_logbook(self, hass):
+        """Test logging to logbook."""
+        controller = LightController(hass)
+        await controller._log_to_logbook("Test Name", "Test message")
+
+        hass.services.async_call.assert_called_once_with(
+            "logbook",
+            "log",
+            {"name": "Test Name", "message": "Test message"},
+            blocking=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_log_to_logbook_exception(self, hass):
+        """Test that logbook exception doesn't crash."""
+        hass.services.async_call = AsyncMock(side_effect=Exception("Logbook error"))
+        controller = LightController(hass)
+        # Should not raise
+        await controller._log_to_logbook("Test", "Message")
+
+    @pytest.mark.asyncio
+    async def test_send_notification(self, hass):
+        """Test sending notification."""
+        controller = LightController(hass)
+        await controller._send_notification(
+            "notify.mobile_app", "Test Title", "Test message"
+        )
+
+        hass.services.async_call.assert_called_once_with(
+            "notify",
+            "mobile_app",
+            {"title": "Test Title", "message": "Test message"},
+            blocking=False,
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_notification_invalid_service(self, hass):
+        """Test notification with invalid service format."""
+        controller = LightController(hass)
+        await controller._send_notification(
+            "invalid_service_format", "Title", "Message"
+        )
+        # Should not call service with invalid format
+        hass.services.async_call.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_send_notification_exception(self, hass):
+        """Test that notification exception doesn't crash."""
+        hass.services.async_call = AsyncMock(side_effect=Exception("Notify error"))
+        controller = LightController(hass)
+        # Should not raise
+        await controller._send_notification("notify.test", "Title", "Message")
+
+
+class TestLightGroupWithEffect:
+    """Tests for LightGroup with effect."""
+
+    def test_to_service_data_with_effect(self):
+        """Test service data includes effect."""
+        group = LightGroup(
+            entities=["light.a"],
+            brightness_pct=75,
+            effect="rainbow",
+        )
+        data = group.to_service_data()
+        assert data == {"brightness_pct": 75, "effect": "rainbow"}
+
+
+class TestLightControllerEntityExpansionEdgeCases:
+    """Tests for entity expansion edge cases."""
+
+    def test_expand_invalid_entity_type(self, hass):
+        """Test expanding non-string entity_id."""
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity(12345)  # Not a string
+        assert valid == []
+        assert skipped == []
+
+    def test_expand_group_domain_entity(self, hass):
+        """Test expanding traditional group.* domain entity."""
+        from tests.conftest import create_light_state
+
+        # Create a group.* entity with member lights
+        group_state = MagicMock()
+        group_state.state = "on"
+        group_state.attributes = {
+            "entity_id": ["light.member_1", "light.member_2", "sensor.not_a_light"]
+        }
+
+        # Create member light states
+        member_1 = create_light_state("light.member_1", STATE_ON)
+        member_2 = create_light_state("light.member_2", STATE_ON)
+
+        def get_state(entity_id):
+            if entity_id == "group.test_group":
+                return group_state
+            elif entity_id == "light.member_1":
+                return member_1
+            elif entity_id == "light.member_2":
+                return member_2
+            return None
+
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("group.test_group")
+
+        assert "light.member_1" in valid
+        assert "light.member_2" in valid
+        # sensor.not_a_light should be ignored (not a light)
+        assert "sensor.not_a_light" not in valid
+        assert "sensor.not_a_light" not in skipped
+
+    def test_expand_group_with_unavailable_member(self, hass):
+        """Test expanding group with unavailable member lights."""
+        from tests.conftest import create_light_state
+
+        # Create light group with member entities
+        group_state = MagicMock()
+        group_state.state = "on"
+        group_state.attributes = {
+            "entity_id": ["light.available", "light.unavailable"]
+        }
+
+        available = create_light_state("light.available", STATE_ON)
+        unavailable = create_light_state("light.unavailable", STATE_UNAVAILABLE)
+
+        def get_state(entity_id):
+            if entity_id == "light.test_group":
+                return group_state
+            elif entity_id == "light.available":
+                return available
+            elif entity_id == "light.unavailable":
+                return unavailable
+            return None
+
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("light.test_group")
+
+        assert "light.available" in valid
+        assert "light.unavailable" in skipped
+
+    def test_expand_group_domain_empty(self, hass):
+        """Test expanding group.* domain entity with no members."""
+        # Create a group.* entity with no entity_id members
+        group_state = MagicMock()
+        group_state.state = "on"
+        group_state.attributes = {}  # No entity_id attribute
+
+        def get_state(entity_id):
+            if entity_id == "group.empty":
+                return group_state
+            return None
+
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("group.empty")
+
+        # With no members, nothing to expand
+        assert valid == []
+        assert skipped == []
+
+
+class TestLightControllerVerificationEdgeCases:
+    """Tests for verification edge cases."""
+
+    def test_verify_rgb_invalid_actual(self, hass):
+        """Test RGB verification with invalid actual RGB value."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            rgb_color=None,  # No RGB color set
+            supported_color_modes=["rgb"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        result = controller._verify_rgb("light.test", [255, 0, 0], 10)
+        assert result is False
+
+    def test_verify_kelvin_none_expected(self, hass):
+        """Test kelvin verification when no kelvin expected."""
+        controller = LightController(hass)
+        result = controller._verify_kelvin("light.test", None, 150)
+        assert result is None
+
+    def test_verify_kelvin_not_supported(self, hass):
+        """Test kelvin verification when color_temp not supported."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            supported_color_modes=["brightness"],  # No color_temp
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        result = controller._verify_kelvin("light.test", 4000, 150)
+        assert result is None
+
+    def test_verify_kelvin_no_actual_value(self, hass):
+        """Test kelvin verification when no actual kelvin value."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            color_temp_kelvin=None,
+            supported_color_modes=["color_temp"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        result = controller._verify_kelvin("light.test", 4000, 150)
+        assert result is False
+
+    def test_verify_light_wrong_state_on(self, hass):
+        """Test verifying light off when target is on."""
+        from tests.conftest import create_light_state
+        state = create_light_state("light.test", STATE_OFF)
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100)
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.WRONG_STATE
+
+    def test_verify_light_wrong_brightness(self, hass):
+        """Test verifying light with wrong brightness."""
+        from tests.conftest import create_light_state
+        state = create_light_state("light.test", STATE_ON, brightness=50)  # ~20%
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100)
+        tolerances = ColorTolerance(brightness=3)
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.WRONG_BRIGHTNESS
+
+    def test_verify_light_rgb_only_wrong_color(self, hass):
+        """Test verifying light with RGB target but wrong color."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            brightness=255,
+            rgb_color=(0, 0, 255),  # Blue
+            supported_color_modes=["rgb"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100, rgb_color=[255, 0, 0])  # Red
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.WRONG_COLOR
+
+    def test_verify_light_kelvin_only_wrong_color(self, hass):
+        """Test verifying light with kelvin target but wrong temp."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            brightness=255,
+            color_temp_kelvin=6500,  # Cool white
+            supported_color_modes=["color_temp"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100, color_temp_kelvin=2700)  # Warm
+        tolerances = ColorTolerance(kelvin=150)
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.WRONG_COLOR
+
+    def test_verify_light_both_rgb_and_kelvin_rgb_matches(self, hass):
+        """Test verifying light with both RGB and kelvin when RGB matches."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            brightness=255,
+            rgb_color=(255, 0, 0),
+            supported_color_modes=["rgb", "color_temp"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget(
+            "light.test",
+            brightness_pct=100,
+            rgb_color=[255, 0, 0],
+            color_temp_kelvin=4000,
+        )
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.SUCCESS
+
+    def test_verify_light_both_unsupported(self, hass):
+        """Test verifying light with both RGB and kelvin but neither supported."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            brightness=255,
+            supported_color_modes=["brightness"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget(
+            "light.test",
+            brightness_pct=100,
+            rgb_color=[255, 0, 0],
+            color_temp_kelvin=4000,
+        )
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.SUCCESS
+
+    def test_verify_light_exception(self, hass):
+        """Test verifying light when exception occurs."""
+        hass.states.get = MagicMock(side_effect=Exception("State error"))
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100)
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.ERROR
+
+    def test_verify_light_both_rgb_and_kelvin_both_wrong(self, hass):
+        """Test verifying light when both RGB and kelvin are set but both are wrong."""
+        from tests.conftest import create_light_state
+        # Light supports both RGB and color_temp, but actual values don't match
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            brightness=255,
+            rgb_color=(0, 0, 255),  # Blue (wrong)
+            color_temp_kelvin=6500,  # Cold (wrong)
+            supported_color_modes=["rgb", "color_temp"],
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget(
+            "light.test",
+            brightness_pct=100,
+            rgb_color=[255, 0, 0],  # Red (target)
+            color_temp_kelvin=2700,  # Warm (target)
+        )
+        tolerances = ColorTolerance(rgb=5, kelvin=100)
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.WRONG_COLOR
+
+    def test_verify_light_no_color_targets(self, hass):
+        """Test verifying light with no color targets (brightness only)."""
+        from tests.conftest import create_light_state
+        state = create_light_state(
+            "light.test",
+            STATE_ON,
+            brightness=255,
+        )
+        hass.states.get = MagicMock(return_value=state)
+
+        controller = LightController(hass)
+        target = LightTarget("light.test", brightness_pct=100)
+        tolerances = ColorTolerance()
+
+        result = controller._verify_light(target, TargetState.ON, tolerances)
+        assert result == VerificationResult.SUCCESS
+
+
+class TestLightControllerEnsureStateAdvanced:
+    """Advanced tests for ensure_state."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_fire_and_forget_with_log_success(self, hass, mock_light_states):
+        """Test fire-and-forget mode with log_success=True."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            skip_verification=True,
+            log_success=True,
+        )
+
+        assert result["success"] is True
+        # Verify logbook was called
+        assert hass.services.async_call.call_count >= 2  # turn_on + logbook
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_timeout(self, hass, mock_light_states):
+        """Test ensure_state timeout."""
+        # Make verification always fail
+        from tests.conftest import create_light_state
+        wrong_state = create_light_state("light.test_light_1", STATE_OFF)
+        hass.states.get = MagicMock(return_value=wrong_state)
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            max_retries=10,  # High retries so we hit timeout first
+            max_runtime_seconds=0.001,  # Very short timeout
+            delay_after_send=0.1,  # Long enough to exceed timeout
+        )
+
+        assert result["success"] is False
+        assert result["result"] == RESULT_CODE_TIMEOUT
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_timeout_with_notification(self, hass, mock_light_states):
+        """Test ensure_state timeout with notification."""
+        from tests.conftest import create_light_state
+        wrong_state = create_light_state("light.test_light_1", STATE_OFF)
+        hass.states.get = MagicMock(return_value=wrong_state)
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            max_retries=10,  # High retries so we hit timeout first
+            max_runtime_seconds=0.001,  # Very short timeout
+            delay_after_send=0.1,  # Long enough to exceed timeout
+            notify_on_failure="notify.mobile_app",
+        )
+
+        assert result["success"] is False
+        assert result["result"] == RESULT_CODE_TIMEOUT
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_failed_with_notification(self, hass, mock_light_states):
+        """Test ensure_state failure with notification."""
+        from tests.conftest import create_light_state
+        wrong_state = create_light_state("light.test_light_1", STATE_OFF)
+        hass.states.get = MagicMock(return_value=wrong_state)
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            max_retries=1,
+            max_runtime_seconds=60,  # Enough time to not timeout
+            delay_after_send=0.001,
+            notify_on_failure="notify.mobile_app",
+        )
+
+        assert result["success"] is False
+        assert result["result"] == RESULT_CODE_FAILED
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_success_with_skipped_and_log(self, hass, mock_light_states):
+        """Test success with skipped entities and log_success (fire-and-forget)."""
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1", "light.unavailable_light"],
+            state_target="on",
+            skip_verification=True,
+            log_success=True,
+        )
+
+        assert result["success"] is True
+        assert "light.unavailable_light" in result["skipped_lights"]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_verified_success_with_skipped_and_log(
+        self, hass, mock_light_states
+    ):
+        """Test verified success with skipped entities and log_success."""
+        from tests.conftest import create_light_state
+
+        # Light starts on and stays on - verification passes immediately
+        success_state = create_light_state("light.test_light_1", STATE_ON, brightness=255)
+        unavail_state = create_light_state("light.unavailable_light", STATE_UNAVAILABLE)
+
+        def get_state(entity_id):
+            if entity_id == "light.test_light_1":
+                return success_state
+            elif entity_id == "light.unavailable_light":
+                return unavail_state
+            return mock_light_states.get(entity_id)
+
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1", "light.unavailable_light"],
+            state_target="on",
+            default_brightness_pct=100,
+            skip_verification=False,
+            log_success=True,
+            max_retries=1,
+            delay_after_send=0.001,
+        )
+
+        assert result["success"] is True
+        assert "light.unavailable_light" in result["skipped_lights"]
+        # Message should include info about skipped entities
+        assert "Skipped" in result["message"] or "skipped" in result["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_with_transition_first_attempt(self, hass, mock_light_states):
+        """Test that transition is only used on first attempt."""
+        from tests.conftest import create_light_state
+
+        # First call fails verification, second succeeds
+        call_count = [0]
+        states = {
+            0: create_light_state("light.test_light_1", STATE_OFF),
+            1: create_light_state("light.test_light_1", STATE_ON, brightness=255),
+        }
+
+        def get_state(entity_id):
+            if entity_id == "light.test_light_1":
+                return states.get(min(call_count[0], 1))
+            return mock_light_states.get(entity_id)
+
+        async def mark_call(*args, **kwargs):
+            if args[1] == "turn_on":
+                call_count[0] += 1
+
+        hass.states.get = MagicMock(side_effect=get_state)
+        hass.services.async_call = AsyncMock(side_effect=mark_call)
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            default_brightness_pct=100,
+            transition=2.5,
+            max_retries=2,
+            delay_after_send=0.001,
+        )
+
+        assert result["success"] is True

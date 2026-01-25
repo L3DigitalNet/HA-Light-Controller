@@ -1,5 +1,8 @@
 # Custom
 HA-Light-Controller.code-workspace
+AGENTS.md
+CLAUDE.md
+.github/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

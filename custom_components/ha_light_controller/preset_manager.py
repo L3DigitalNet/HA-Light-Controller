@@ -11,10 +11,8 @@ import uuid
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import entity_registry as er
 
 from .const import (
-    DOMAIN,
     CONF_PRESETS,
     PRESET_ID,
     PRESET_NAME,
@@ -28,7 +26,6 @@ from .const import (
     PRESET_TRANSITION,
     PRESET_SKIP_VERIFICATION,
     PRESET_STATUS_IDLE,
-    PRESET_STATUS_ACTIVATING,
     PRESET_STATUS_SUCCESS,
     PRESET_STATUS_FAILED,
 )

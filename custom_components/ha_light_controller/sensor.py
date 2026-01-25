@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+if TYPE_CHECKING:
+    from . import LightControllerConfigEntry
 
 from .const import (
     DOMAIN,
@@ -33,12 +35,12 @@ STATUS_ICONS = {
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: LightControllerConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Light Controller sensors from a config entry."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    preset_manager: PresetManager = data["preset_manager"]
+    data = entry.runtime_data
+    preset_manager = data.preset_manager
 
     # Track entities we've added
     added_preset_ids: set[str] = set()
@@ -77,11 +79,19 @@ class PresetStatusSensor(SensorEntity):
     """Sensor entity showing the status of a Light Controller preset."""
 
     _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_translation_key = "preset_status"
+    _attr_options = [
+        PRESET_STATUS_IDLE,
+        PRESET_STATUS_ACTIVATING,
+        PRESET_STATUS_SUCCESS,
+        PRESET_STATUS_FAILED,
+    ]
 
     def __init__(
         self,
         hass: HomeAssistant,
-        entry: ConfigEntry,
+        entry: LightControllerConfigEntry,
         preset_manager: PresetManager,
         preset_id: str,
         preset: PresetConfig,
@@ -95,7 +105,7 @@ class PresetStatusSensor(SensorEntity):
 
         # Entity attributes
         self._attr_unique_id = f"{entry.entry_id}_preset_{preset_id}_status"
-        self._attr_name = f"{preset.name} Status"
+        self._attr_translation_placeholders = {"name": preset.name}
         self._attr_icon = STATUS_ICONS.get(PRESET_STATUS_IDLE, "mdi:lightbulb-outline")
 
     @property
@@ -166,7 +176,7 @@ class PresetStatusSensor(SensorEntity):
         preset = self._preset_manager.get_preset(self._preset_id)
         if preset:
             self._preset = preset
-            self._attr_name = f"{preset.name} Status"
+            self._attr_translation_placeholders = {"name": preset.name}
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

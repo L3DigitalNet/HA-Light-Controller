@@ -18,8 +18,6 @@ from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
-    CONF_NAME,
-    CONF_PRESETS,
     CONF_DEFAULT_BRIGHTNESS_PCT,
     CONF_DEFAULT_TRANSITION,
     CONF_BRIGHTNESS_TOLERANCE,

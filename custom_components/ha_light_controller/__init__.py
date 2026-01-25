@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 import voluptuous as vol
@@ -76,6 +77,17 @@ from .controller import LightController
 from .preset_manager import PresetManager
 
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass
+class LightControllerData:
+    """Runtime data for the Light Controller integration."""
+
+    controller: LightController
+    preset_manager: PresetManager
+
+
+type LightControllerConfigEntry = ConfigEntry[LightControllerData]
 
 # Service schema for ensure_state
 SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(
@@ -203,7 +215,9 @@ SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(
+    hass: HomeAssistant, entry: LightControllerConfigEntry
+) -> bool:
     """Set up Light Controller from a config entry."""
     _LOGGER.info("Setting up Light Controller integration")
 
@@ -211,13 +225,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     controller = LightController(hass)
     preset_manager = PresetManager(hass, entry)
 
-    # Store instances
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN][entry.entry_id] = {
-        "controller": controller,
-        "preset_manager": preset_manager,
-        "entry": entry,
-    }
+    # Store instances using runtime_data (HA 2024.4+ pattern)
+    entry.runtime_data = LightControllerData(
+        controller=controller,
+        preset_manager=preset_manager,
+    )
 
     # Get configured options (defaults)
     options = entry.options
@@ -513,7 +525,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             }
 
     # =========================================================================
-    # Register services
+    # Register services with cleanup via async_on_unload
     # =========================================================================
 
     hass.services.async_register(
@@ -523,6 +535,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=SERVICE_ENSURE_STATE_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
+    entry.async_on_unload(
+        lambda: hass.services.async_remove(DOMAIN, SERVICE_ENSURE_STATE)
+    )
 
     hass.services.async_register(
         DOMAIN,
@@ -530,6 +545,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_handle_activate_preset,
         schema=SERVICE_ACTIVATE_PRESET_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    entry.async_on_unload(
+        lambda: hass.services.async_remove(DOMAIN, SERVICE_ACTIVATE_PRESET)
     )
 
     hass.services.async_register(
@@ -539,6 +557,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=SERVICE_CREATE_PRESET_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
+    entry.async_on_unload(
+        lambda: hass.services.async_remove(DOMAIN, SERVICE_CREATE_PRESET)
+    )
 
     hass.services.async_register(
         DOMAIN,
@@ -547,6 +568,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=SERVICE_DELETE_PRESET_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
+    entry.async_on_unload(
+        lambda: hass.services.async_remove(DOMAIN, SERVICE_DELETE_PRESET)
+    )
 
     hass.services.async_register(
         DOMAIN,
@@ -554,6 +578,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async_handle_create_preset_from_current,
         schema=SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
+    )
+    entry.async_on_unload(
+        lambda: hass.services.async_remove(DOMAIN, SERVICE_CREATE_PRESET_FROM_CURRENT)
     )
 
     # =========================================================================
@@ -569,30 +596,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: LightControllerConfigEntry
+) -> bool:
     """Unload a config entry."""
     _LOGGER.info("Unloading Light Controller integration")
 
     # Unload platforms
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    if unload_ok:
-        # Unregister services
-        hass.services.async_remove(DOMAIN, SERVICE_ENSURE_STATE)
-        hass.services.async_remove(DOMAIN, SERVICE_ACTIVATE_PRESET)
-        hass.services.async_remove(DOMAIN, SERVICE_CREATE_PRESET)
-        hass.services.async_remove(DOMAIN, SERVICE_DELETE_PRESET)
-        hass.services.async_remove(DOMAIN, SERVICE_CREATE_PRESET_FROM_CURRENT)
-
-        # Remove data
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-        if not hass.data[DOMAIN]:
-            hass.data.pop(DOMAIN, None)
+    # Services are cleaned up via async_on_unload registered during setup
 
     return unload_ok
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_reload_entry(
+    hass: HomeAssistant, entry: LightControllerConfigEntry
+) -> None:
     """Reload config entry when options change."""
     _LOGGER.info("Reloading Light Controller due to options change")
     await hass.config_entries.async_reload(entry.entry_id)

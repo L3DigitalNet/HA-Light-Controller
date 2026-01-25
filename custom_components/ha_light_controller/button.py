@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.button import ButtonEntity, ButtonDeviceClass
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+
+if TYPE_CHECKING:
+    from . import LightControllerConfigEntry
 
 from .const import (
     DOMAIN,
@@ -43,17 +45,16 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: LightControllerConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Light Controller buttons from a config entry."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    preset_manager: PresetManager = data["preset_manager"]
-    controller = data["controller"]
+    data = entry.runtime_data
+    preset_manager = data.preset_manager
+    controller = data.controller
 
     # Track entities we've added
     added_preset_ids: set[str] = set()
-    entities: list[PresetButton] = []
 
     @callback
     def async_add_preset_buttons() -> None:
@@ -91,11 +92,12 @@ class PresetButton(ButtonEntity):
 
     _attr_has_entity_name = True
     _attr_device_class = ButtonDeviceClass.IDENTIFY
+    _attr_translation_key = "preset"
 
     def __init__(
         self,
         hass: HomeAssistant,
-        entry: ConfigEntry,
+        entry: LightControllerConfigEntry,
         preset_manager: PresetManager,
         controller: Any,
         preset_id: str,
@@ -111,7 +113,7 @@ class PresetButton(ButtonEntity):
 
         # Entity attributes
         self._attr_unique_id = f"{entry.entry_id}_preset_{preset_id}_button"
-        self._attr_name = f"{preset.name}"
+        self._attr_translation_placeholders = {"name": preset.name}
         self._attr_icon = "mdi:lightbulb-group"
 
     @property
@@ -224,7 +226,7 @@ class PresetButton(ButtonEntity):
         preset = self._preset_manager.get_preset(self._preset_id)
         if preset:
             self._preset = preset
-            self._attr_name = f"{preset.name}"
+            self._attr_translation_placeholders = {"name": preset.name}
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
