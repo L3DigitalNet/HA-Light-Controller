@@ -148,7 +148,9 @@ class PresetManager:
 
     async def _notify_listeners(self) -> None:
         """Notify all registered listeners of preset changes."""
-        for listener in self._listeners:
+        # Create a snapshot to avoid issues if listeners modify the list during iteration
+        listeners_snapshot = list(self._listeners)
+        for listener in listeners_snapshot:
             try:
                 listener()
             except Exception as e:
@@ -276,22 +278,25 @@ class PresetManager:
         await self._save_presets()
 
         # Remove associated entities from the entity registry
-        ent_reg = er.async_get(self.hass)
-        entry_id = self.entry.entry_id
+        try:
+            ent_reg = er.async_get(self.hass)
+            entry_id = self.entry.entry_id
 
-        # Remove button entity
-        button_unique_id = f"{entry_id}_preset_{preset_id}_button"
-        button_entity = ent_reg.async_get_entity_id("button", "ha_light_controller", button_unique_id)
-        if button_entity:
-            ent_reg.async_remove(button_entity)
-            _LOGGER.debug("Removed button entity: %s", button_entity)
+            # Remove button entity
+            button_unique_id = f"{entry_id}_preset_{preset_id}_button"
+            button_entity = ent_reg.async_get_entity_id("button", "ha_light_controller", button_unique_id)
+            if button_entity:
+                ent_reg.async_remove(button_entity)
+                _LOGGER.debug("Removed button entity: %s", button_entity)
 
-        # Remove sensor entity
-        sensor_unique_id = f"{entry_id}_preset_{preset_id}_status"
-        sensor_entity = ent_reg.async_get_entity_id("sensor", "ha_light_controller", sensor_unique_id)
-        if sensor_entity:
-            ent_reg.async_remove(sensor_entity)
-            _LOGGER.debug("Removed sensor entity: %s", sensor_entity)
+            # Remove sensor entity
+            sensor_unique_id = f"{entry_id}_preset_{preset_id}_status"
+            sensor_entity = ent_reg.async_get_entity_id("sensor", "ha_light_controller", sensor_unique_id)
+            if sensor_entity:
+                ent_reg.async_remove(sensor_entity)
+                _LOGGER.debug("Removed sensor entity: %s", sensor_entity)
+        except Exception as e:
+            _LOGGER.warning("Error removing entities for preset %s: %s", preset_id, e)
 
         _LOGGER.info("Deleted preset: %s (%s)", preset.name, preset_id)
         return True
