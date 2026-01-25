@@ -144,7 +144,8 @@ class TestPresetButton:
         assert button_entity._preset == mock_preset
         assert button_entity._attr_translation_placeholders == {"name": "Test Preset"}
         assert button_entity._attr_translation_key == "preset"
-        assert button_entity._attr_icon == "mdi:lightbulb-group"
+        # Icon is now a dynamic property based on preset state
+        assert button_entity.icon == "mdi:lightbulb-group"
 
     def test_unique_id(self, button_entity, config_entry):
         """Test unique ID generation."""

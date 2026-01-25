@@ -217,8 +217,57 @@ data:
 
 Each preset creates two entities:
 
-- `button.ha_light_controller_<preset_name>` - Activates the preset
-- `sensor.ha_light_controller_<preset_name>_status` - Shows `idle`, `activating`, `success`, or `failed`
+- `button.ha_light_controller_<preset_name>` - Activates the preset when pressed
+- `sensor.ha_light_controller_<preset_name>_status` - Shows activation status
+
+### Preset Button
+
+The button entity displays a dynamic icon based on the preset's target state:
+
+- `mdi:lightbulb-group` for presets that turn lights **on**
+- `mdi:lightbulb-group-off` for presets that turn lights **off**
+
+**Attributes:**
+
+| Attribute | Description |
+| --------- | ----------- |
+| `preset_id` | Unique identifier for the preset |
+| `entities` | List of target light entities |
+| `state` | Target state (`on` or `off`) |
+| `brightness_pct` | Target brightness percentage |
+| `rgb_color` | RGB color (if set) |
+| `color_temp_kelvin` | Color temperature (if set) |
+| `last_result` | Result of the last activation (`success` or `failed`) |
+| `last_activated` | Timestamp of last activation |
+
+### Preset Status Sensor
+
+Shows the current activation status with dynamic icons:
+
+| State | Icon | Description |
+| ----- | ---- | ----------- |
+| Idle | `mdi:lightbulb-outline` | Preset is ready to activate |
+| Activating... | `mdi:lightbulb-on` | Preset is currently being applied |
+| Success | `mdi:lightbulb-on-outline` | All lights reached target state |
+| Failed | `mdi:lightbulb-alert` | Some lights failed verification |
+
+**Attributes:**
+
+| Attribute | Description |
+| --------- | ----------- |
+| `preset_id` | Unique identifier for the preset |
+| `preset_name` | Display name of the preset |
+| `target_state` | Target state (`on` or `off`) |
+| `entity_count` | Number of lights in the preset |
+| `last_activated` | Timestamp of last activation |
+| `last_success` | Whether last activation succeeded |
+| `last_message` | Status message from last activation |
+| `last_attempts` | Number of retry attempts used |
+| `last_elapsed` | Time taken (e.g., `"1.2s"`) |
+| `failed_lights` | List of lights that failed (if any) |
+| `failed_count` | Count of failed lights |
+| `skipped_lights` | List of skipped lights (if any) |
+| `skipped_count` | Count of skipped lights |
 
 ### Creating Presets via UI
 

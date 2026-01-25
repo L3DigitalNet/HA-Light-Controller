@@ -24,43 +24,43 @@
         "title": "Light Controller Options",
         "description": "Select a category to configure",
         "menu_options": {
-          "defaults": "Default Settings",
-          "tolerances": "Verification Tolerances",
-          "retry": "Retry & Timing",
-          "notifications": "Logging & Notifications",
-          "add_preset": "Add New Preset",
-          "manage_presets": "Manage Presets"
+          "defaults": "Brightness & transition defaults for all commands",
+          "tolerances": "How strictly to verify lights reached target state",
+          "retry": "Max retries, delays, and timeout behavior",
+          "notifications": "Logbook entries and failure notifications",
+          "add_preset": "Create a new light preset",
+          "manage_presets": "View or delete existing presets"
         }
       },
       "defaults": {
         "title": "Default Settings",
-        "description": "Configure default brightness and transition settings",
+        "description": "These values are used when not specified in service calls",
         "data": {
           "default_brightness_pct": "Default Brightness",
           "default_transition": "Default Transition Time"
         },
         "data_description": {
-          "default_brightness_pct": "Default brightness percentage (1-100%) when not specified in service calls",
-          "default_transition": "Default transition time in seconds for smooth light changes"
+          "default_brightness_pct": "Brightness percentage (1-100%) applied to lights without explicit brightness",
+          "default_transition": "Transition time in seconds for smooth light changes"
         }
       },
       "tolerances": {
         "title": "Verification Tolerances",
-        "description": "Configure how strictly lights are verified. Higher tolerances are more forgiving of minor differences.",
+        "description": "Higher tolerances are more forgiving of minor differences between target and actual state",
         "data": {
           "brightness_tolerance": "Brightness Tolerance",
           "rgb_tolerance": "RGB Color Tolerance",
           "kelvin_tolerance": "Color Temperature Tolerance"
         },
         "data_description": {
-          "brightness_tolerance": "Allowed ± deviation in brightness percentage (e.g., 3 means 47-53% passes for target 50%)",
-          "rgb_tolerance": "Allowed ± deviation per RGB color channel (0-255 scale)",
-          "kelvin_tolerance": "Allowed ± deviation in color temperature (Kelvin)"
+          "brightness_tolerance": "Allowed deviation in brightness (e.g., 3 means 47-53% passes for target 50%)",
+          "rgb_tolerance": "Allowed deviation per RGB channel (0-255 scale)",
+          "kelvin_tolerance": "Allowed deviation in color temperature"
         }
       },
       "retry": {
         "title": "Retry & Timing Settings",
-        "description": "Configure retry behavior when lights don't immediately reach target state",
+        "description": "Controls behavior when lights don't immediately reach target state",
         "data": {
           "delay_after_send": "Delay After Send",
           "max_retries": "Maximum Retries",
@@ -69,28 +69,28 @@
           "max_backoff_seconds": "Maximum Backoff Delay"
         },
         "data_description": {
-          "delay_after_send": "Seconds to wait after sending commands before checking state",
-          "max_retries": "Maximum number of retry attempts before giving up",
-          "max_runtime_seconds": "Hard timeout - abort after this many seconds regardless of retries",
-          "use_exponential_backoff": "Double the delay after each failed retry (2s → 4s → 8s → ...)",
+          "delay_after_send": "Wait time after sending commands before checking state",
+          "max_retries": "Number of retry attempts before giving up",
+          "max_runtime_seconds": "Hard timeout - abort after this time regardless of retries",
+          "use_exponential_backoff": "Double the delay after each failed retry (2s, 4s, 8s...)",
           "max_backoff_seconds": "Cap on delay when using exponential backoff"
         }
       },
       "notifications": {
         "title": "Logging & Notifications",
-        "description": "Configure logging and failure notifications",
+        "description": "Configure success logging and failure alerts",
         "data": {
           "log_success": "Log Success to Logbook",
           "notify_on_failure": "Notification Service for Failures"
         },
         "data_description": {
-          "log_success": "Write a message to the Home Assistant logbook when lights successfully reach target state",
-          "notify_on_failure": "Service to call when lights fail (e.g., notify.mobile_app_phone). Leave empty to disable."
+          "log_success": "Write to the Home Assistant logbook when lights reach target state",
+          "notify_on_failure": "Service to call on failure (e.g., notify.mobile_app_phone)"
         }
       },
       "add_preset": {
         "title": "Add New Preset",
-        "description": "Create a new light preset. Presets store light settings and can be activated via service call or button entity.",
+        "description": "Presets store light settings and can be activated via service call or button entity",
         "data": {
           "name": "Preset Name",
           "entities": "Light Entities",
@@ -101,23 +101,23 @@
           "skip_verification": "Fire-and-Forget Mode"
         },
         "data_description": {
-          "name": "A unique name for this preset",
+          "name": "A unique name for this preset (e.g., Evening Ambiance)",
           "entities": "Select the lights to include in this preset",
           "state": "Whether lights should be turned on or off",
           "brightness_pct": "Brightness percentage (1-100%)",
-          "color_temp_kelvin": "Color temperature in Kelvin (leave empty for current)",
+          "color_temp_kelvin": "Color temperature (leave empty for current or RGB color)",
           "transition": "Transition time in seconds when activating",
           "skip_verification": "Skip state verification (faster but won't retry on failure)"
         }
       },
       "manage_presets": {
         "title": "Manage Presets",
-        "description": "You have {preset_count} preset(s) configured. Select a preset to delete it.",
+        "description": "You have {preset_count} preset(s) configured",
         "data": {
           "preset_to_delete": "Select Preset to Delete"
         },
         "data_description": {
-          "preset_to_delete": "Warning: This action cannot be undone"
+          "preset_to_delete": "This action cannot be undone"
         }
       }
     },
@@ -150,27 +150,27 @@
         },
         "color_temp_kelvin": {
           "name": "Color Temperature",
-          "description": "Default color temperature in Kelvin"
+          "description": "Default color temperature (2000K warm - 6500K cool)"
         },
         "effect": {
           "name": "Effect",
-          "description": "Default effect to apply"
+          "description": "Effect to apply (e.g., colorloop, rainbow)"
         },
         "targets": {
           "name": "Per-Light Overrides",
-          "description": "List of per-light overrides with entity_id and settings"
+          "description": "Per-light settings (e.g., [{\"entity_id\": \"light.desk\", \"brightness_pct\": 80}])"
         },
         "brightness_tolerance": {
           "name": "Brightness Tolerance",
-          "description": "Allowed ± deviation when verifying brightness"
+          "description": "Allowed deviation when verifying brightness"
         },
         "rgb_tolerance": {
           "name": "RGB Tolerance",
-          "description": "Allowed ± deviation per RGB channel"
+          "description": "Allowed deviation per RGB channel (0-255)"
         },
         "kelvin_tolerance": {
           "name": "Kelvin Tolerance",
-          "description": "Allowed ± deviation for color temperature"
+          "description": "Allowed deviation for color temperature"
         },
         "transition": {
           "name": "Transition",
@@ -178,7 +178,7 @@
         },
         "delay_after_send": {
           "name": "Delay After Send",
-          "description": "Seconds to wait after commands before verification"
+          "description": "Wait time after commands before verification"
         },
         "max_retries": {
           "name": "Max Retries",
@@ -190,7 +190,7 @@
         },
         "use_exponential_backoff": {
           "name": "Exponential Backoff",
-          "description": "Double delay after each retry"
+          "description": "Double delay after each retry (2s, 4s, 8s...)"
         },
         "max_backoff_seconds": {
           "name": "Max Backoff",
@@ -206,7 +206,7 @@
         },
         "notify_on_failure": {
           "name": "Notify on Failure",
-          "description": "Notification service for failures"
+          "description": "Notification service (e.g., notify.mobile_app_phone)"
         }
       }
     },
@@ -216,7 +216,7 @@
       "fields": {
         "preset": {
           "name": "Preset",
-          "description": "The name or ID of the preset to activate"
+          "description": "Name or ID of the preset (e.g., Evening Ambiance)"
         }
       }
     },
@@ -246,7 +246,7 @@
         },
         "color_temp_kelvin": {
           "name": "Color Temperature",
-          "description": "Color temperature in Kelvin"
+          "description": "Color temperature (2000K warm - 6500K cool)"
         },
         "effect": {
           "name": "Effect",
@@ -272,7 +272,7 @@
       "fields": {
         "preset_id": {
           "name": "Preset ID",
-          "description": "The ID of the preset to delete"
+          "description": "ID of the preset (visible in button attributes)"
         }
       }
     },
@@ -302,7 +302,7 @@
         "name": "{name} Status",
         "state": {
           "idle": "Idle",
-          "activating": "Activating",
+          "activating": "Activating...",
           "success": "Success",
           "failed": "Failed"
         }

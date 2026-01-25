@@ -5,6 +5,7 @@ ensure_state:
     Expands light groups, filters unavailable entities, batches commands, and
     verifies lights reached the target state.
   fields:
+    # === Target Selection ===
     entities:
       name: Entities
       description: Light entities, light groups, or helper groups to control
@@ -28,6 +29,7 @@ ensure_state:
             - label: "Off"
               value: "off"
 
+    # === Lighting Settings ===
     brightness_pct:
       name: Brightness
       description: Default brightness percentage (1-100). Overridden by integration settings if not specified.
@@ -47,7 +49,7 @@ ensure_state:
 
     color_temp_kelvin:
       name: Color Temperature
-      description: Default color temperature in Kelvin
+      description: Default color temperature in Kelvin (2000K warm - 6500K cool)
       selector:
         color_temp:
           unit: kelvin
@@ -56,21 +58,33 @@ ensure_state:
 
     effect:
       name: Effect
-      description: Default effect to apply (e.g., "colorloop", "rainbow")
+      description: "Default effect to apply (e.g., colorloop, rainbow, candle)"
       selector:
         text:
+
+    transition:
+      name: Transition
+      description: Transition time in seconds (first attempt only, ON state only)
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 0.5
+          unit_of_measurement: "s"
+          mode: slider
 
     targets:
       name: Per-Light Overrides
       description: >-
-        List of per-light overrides. Each item should have entity_id and optional
-        brightness_pct, rgb_color, color_temp_kelvin, effect.
+        List of per-light overrides. Example: [{"entity_id": "light.desk",
+        "brightness_pct": 80}, {"entity_id": "light.lamp", "rgb_color": [255, 0, 0]}]
       selector:
         object:
 
+    # === Verification Tolerances ===
     brightness_tolerance:
       name: Brightness Tolerance
-      description: Allowed ± deviation when verifying brightness percentage
+      description: "Allowed ± deviation when verifying brightness (e.g., 3 means 47-53% passes for 50%)"
       selector:
         number:
           min: 0
@@ -81,7 +95,7 @@ ensure_state:
 
     rgb_tolerance:
       name: RGB Tolerance
-      description: Allowed ± deviation per RGB channel when verifying color
+      description: Allowed ± deviation per RGB channel (0-255 scale)
       selector:
         number:
           min: 0
@@ -100,17 +114,16 @@ ensure_state:
           unit_of_measurement: "K"
           mode: slider
 
-    transition:
-      name: Transition
-      description: Transition time in seconds (first attempt only, ON state only)
+    skip_verification:
+      name: Skip Verification
+      description: >-
+        Fire-and-forget mode. Send commands without verifying lights reached
+        the target state. Faster but no retry on failure.
+      default: false
       selector:
-        number:
-          min: 0
-          max: 60
-          step: 0.5
-          unit_of_measurement: "s"
-          mode: slider
+        boolean:
 
+    # === Retry & Timing ===
     delay_after_send:
       name: Delay After Send
       description: Seconds to wait after sending commands before verification
@@ -145,7 +158,7 @@ ensure_state:
 
     use_exponential_backoff:
       name: Exponential Backoff
-      description: Double the delay after each retry attempt
+      description: "Double the delay after each retry attempt (e.g., 2s → 4s → 8s)"
       selector:
         boolean:
 
@@ -160,15 +173,7 @@ ensure_state:
           unit_of_measurement: "s"
           mode: slider
 
-    skip_verification:
-      name: Skip Verification
-      description: >-
-        Fire-and-forget mode. Send commands without verifying lights reached
-        the target state. Faster but no retry on failure.
-      default: false
-      selector:
-        boolean:
-
+    # === Logging & Notifications ===
     log_success:
       name: Log Success
       description: Write a message to the logbook on successful completion
@@ -178,8 +183,8 @@ ensure_state:
     notify_on_failure:
       name: Notify on Failure
       description: >-
-        Notification service to call if lights fail to reach target state
-        (e.g., "notify.mobile_app_phone"). Leave empty to use integration default.
+        Notification service to call if lights fail (e.g., notify.mobile_app_phone).
+        Leave empty to use integration default.
       selector:
         text:
 
@@ -191,7 +196,7 @@ activate_preset:
   fields:
     preset:
       name: Preset
-      description: The name or ID of the preset to activate
+      description: "The name or ID of the preset to activate (e.g., Evening Ambiance)"
       required: true
       selector:
         text:
@@ -252,7 +257,7 @@ create_preset:
 
     color_temp_kelvin:
       name: Color Temperature
-      description: Color temperature for the preset
+      description: Color temperature for the preset (2000K warm - 6500K cool)
       selector:
         color_temp:
           unit: kelvin
@@ -261,13 +266,14 @@ create_preset:
 
     effect:
       name: Effect
-      description: Effect to apply
+      description: "Effect to apply (e.g., colorloop, rainbow)"
       selector:
         text:
 
     targets:
       name: Per-Light Overrides
-      description: Optional per-light settings
+      description: >-
+        Optional per-light settings. Example: [{"entity_id": "light.desk", "brightness_pct": 50}]
       selector:
         object:
 
@@ -295,7 +301,7 @@ delete_preset:
   fields:
     preset_id:
       name: Preset ID
-      description: The ID of the preset to delete
+      description: "The ID of the preset to delete (visible in preset button attributes)"
       required: true
       selector:
         text:

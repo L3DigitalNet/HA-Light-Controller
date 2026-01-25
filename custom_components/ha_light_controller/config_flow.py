@@ -379,6 +379,7 @@ class LightControllerOptionsFlow(OptionsFlow):
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,
+                            suffix=".mobile_app_phone",
                         )
                     ),
                 }

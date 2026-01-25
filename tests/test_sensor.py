@@ -245,7 +245,7 @@ class TestPresetStatusSensorAttributes:
         assert attrs["last_success"] is True
         assert attrs["last_message"] == "All lights set"
         assert attrs["last_attempts"] == 2
-        assert attrs["last_elapsed_seconds"] == 3.5
+        assert attrs["last_elapsed"] == "3.5s"
 
     def test_attributes_with_failed_lights(self, sensor_entity, mock_preset_manager):
         """Test attributes include failed lights."""

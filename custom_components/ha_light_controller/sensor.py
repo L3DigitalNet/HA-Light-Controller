@@ -152,15 +152,21 @@ class PresetStatusSensor(SensorEntity):
             attrs["last_success"] = status.last_result.get("success", False)
             attrs["last_message"] = status.last_result.get("message", "")
             attrs["last_attempts"] = status.last_result.get("attempts", 0)
-            attrs["last_elapsed_seconds"] = status.last_result.get("elapsed_seconds", 0)
+
+            # Format elapsed time for readability (e.g., "1.2s")
+            elapsed = status.last_result.get("elapsed_seconds", 0)
+            if elapsed:
+                attrs["last_elapsed"] = f"{elapsed:.1f}s"
 
             failed_lights = status.last_result.get("failed_lights", [])
             if failed_lights:
                 attrs["failed_lights"] = failed_lights
+                attrs["failed_count"] = len(failed_lights)
 
             skipped_lights = status.last_result.get("skipped_lights", [])
             if skipped_lights:
                 attrs["skipped_lights"] = skipped_lights
+                attrs["skipped_count"] = len(skipped_lights)
 
         return attrs
 
