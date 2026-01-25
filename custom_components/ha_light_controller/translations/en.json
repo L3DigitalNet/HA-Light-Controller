@@ -22,92 +22,111 @@
     "step": {
       "init": {
         "title": "Light Controller Options",
-        "description": "Select a category to configure",
+        "description": "Select an option",
         "menu_options": {
-          "defaults": "Brightness & transition defaults for all commands",
-          "tolerances": "How strictly to verify lights reached target state",
-          "retry": "Max retries, delays, and timeout behavior",
-          "notifications": "Logbook entries and failure notifications",
+          "settings": "Configure defaults, tolerances, retries, and notifications",
           "add_preset": "Create a new light preset",
           "manage_presets": "View or delete existing presets"
         }
       },
-      "defaults": {
-        "title": "Default Settings",
-        "description": "These values are used when not specified in service calls",
+      "settings": {
+        "title": "Settings",
+        "description": "Configure all Light Controller settings",
         "data": {
           "default_brightness_pct": "Default Brightness",
-          "default_transition": "Default Transition Time"
-        },
-        "data_description": {
-          "default_brightness_pct": "Brightness percentage (1-100%) applied to lights without explicit brightness",
-          "default_transition": "Transition time in seconds for smooth light changes"
-        }
-      },
-      "tolerances": {
-        "title": "Verification Tolerances",
-        "description": "Higher tolerances are more forgiving of minor differences between target and actual state",
-        "data": {
+          "default_transition": "Default Transition Time",
           "brightness_tolerance": "Brightness Tolerance",
           "rgb_tolerance": "RGB Color Tolerance",
-          "kelvin_tolerance": "Color Temperature Tolerance"
-        },
-        "data_description": {
-          "brightness_tolerance": "Allowed deviation in brightness (e.g., 3 means 47-53% passes for target 50%)",
-          "rgb_tolerance": "Allowed deviation per RGB channel (0-255 scale)",
-          "kelvin_tolerance": "Allowed deviation in color temperature"
-        }
-      },
-      "retry": {
-        "title": "Retry & Timing Settings",
-        "description": "Controls behavior when lights don't immediately reach target state",
-        "data": {
+          "kelvin_tolerance": "Color Temperature Tolerance",
           "delay_after_send": "Delay After Send",
           "max_retries": "Maximum Retries",
           "max_runtime_seconds": "Maximum Runtime",
           "use_exponential_backoff": "Use Exponential Backoff",
-          "max_backoff_seconds": "Maximum Backoff Delay"
-        },
-        "data_description": {
-          "delay_after_send": "Wait time after sending commands before checking state",
-          "max_retries": "Number of retry attempts before giving up",
-          "max_runtime_seconds": "Hard timeout - abort after this time regardless of retries",
-          "use_exponential_backoff": "Double the delay after each failed retry (2s, 4s, 8s...)",
-          "max_backoff_seconds": "Cap on delay when using exponential backoff"
-        }
-      },
-      "notifications": {
-        "title": "Logging & Notifications",
-        "description": "Configure success logging and failure alerts",
-        "data": {
+          "max_backoff_seconds": "Maximum Backoff Delay",
           "log_success": "Log Success to Logbook",
           "notify_on_failure": "Notification Service for Failures"
         },
         "data_description": {
+          "default_brightness_pct": "Brightness percentage (1-100%) applied to lights without explicit brightness",
+          "default_transition": "Transition time in seconds for smooth light changes",
+          "brightness_tolerance": "Allowed deviation in brightness (e.g., 3 means 47-53% passes for target 50%)",
+          "rgb_tolerance": "Allowed deviation per RGB channel (0-255 scale)",
+          "kelvin_tolerance": "Allowed deviation in color temperature",
+          "delay_after_send": "Wait time after sending commands before checking state",
+          "max_retries": "Number of retry attempts before giving up",
+          "max_runtime_seconds": "Hard timeout - abort after this time regardless of retries",
+          "use_exponential_backoff": "Double the delay after each failed retry (2s, 4s, 8s...)",
+          "max_backoff_seconds": "Cap on delay when using exponential backoff",
           "log_success": "Write to the Home Assistant logbook when lights reach target state",
           "notify_on_failure": "Service to call on failure (e.g., notify.mobile_app_phone)"
         }
       },
       "add_preset": {
         "title": "Add New Preset",
-        "description": "Presets store light settings and can be activated via service call or button entity",
+        "description": "Presets store light settings and can be activated via service call or button entity. After this step, you will configure each light individually.",
         "data": {
           "name": "Preset Name",
           "entities": "Light Entities",
-          "state": "Target State",
-          "brightness_pct": "Brightness",
-          "color_temp_kelvin": "Color Temperature",
-          "transition": "Transition Time",
           "skip_verification": "Fire-and-Forget Mode"
         },
         "data_description": {
           "name": "A unique name for this preset (e.g., Evening Ambiance)",
           "entities": "Select the lights to include in this preset",
-          "state": "Whether lights should be turned on or off",
-          "brightness_pct": "Brightness percentage (1-100%)",
-          "color_temp_kelvin": "Color temperature (leave empty for current or RGB color)",
-          "transition": "Transition time in seconds when activating",
           "skip_verification": "Skip state verification (faster but won't retry on failure)"
+        }
+      },
+      "preset_entity_menu": {
+        "title": "Manage Entities: {preset_name}",
+        "description": "**{entity_count} entities in this preset:**\n\n{entity_summary}\n\nSelect an action:",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "select_entity_to_configure": {
+        "title": "Select Entity to Configure",
+        "description": "Choose an entity to configure. ✓ = configured, ○ = not yet configured.",
+        "data": {
+          "entity_to_configure": "Entity"
+        }
+      },
+      "configure_entity": {
+        "title": "Configure: {entity_name}",
+        "description": "Set state, transition, brightness and color for this light. Brightness and color fields are only used when state is On.",
+        "data": {
+          "state": "Target State",
+          "transition": "Transition Time",
+          "brightness_pct": "Brightness",
+          "color_mode": "Color Mode",
+          "color_temp_kelvin": "Color Temperature",
+          "rgb_color": "Color Picker",
+          "rgb_red": "Red (0-255)",
+          "rgb_green": "Green (0-255)",
+          "rgb_blue": "Blue (0-255)"
+        },
+        "data_description": {
+          "state": "Whether this light should be on or off",
+          "transition": "Transition time in seconds for this light",
+          "brightness_pct": "Brightness percentage (1-100%)",
+          "color_mode": "Select how to set this light's color",
+          "color_temp_kelvin": "2000K (warm/orange) to 6500K (cool/blue-white)",
+          "rgb_color": "Click to select a color visually",
+          "rgb_red": "Red channel value (0-255)",
+          "rgb_green": "Green channel value (0-255)",
+          "rgb_blue": "Blue channel value (0-255)"
+        }
+      },
+      "add_more_entities": {
+        "title": "Add More Entities",
+        "description": "Currently {current_count} entities in preset. Select additional lights or groups to add.",
+        "data": {
+          "new_entities": "Additional Entities"
+        }
+      },
+      "remove_entity": {
+        "title": "Remove Entity",
+        "description": "Select an entity to remove from the preset.",
+        "data": {
+          "entity_to_remove": "Entity to Remove"
         }
       },
       "manage_presets": {
@@ -124,7 +143,9 @@
     "error": {
       "name_required": "Preset name is required",
       "entities_required": "At least one entity is required",
-      "no_presets": "No presets configured. Use 'Add New Preset' to create one."
+      "no_presets": "No presets configured. Use 'Add New Preset' to create one.",
+      "cannot_remove_last": "Cannot remove the last entity. A preset must have at least one entity.",
+      "configure_at_least_one": "Please configure at least one entity before saving."
     }
   },
   "services": {

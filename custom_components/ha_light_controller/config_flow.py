@@ -45,10 +45,14 @@ from .const import (
     PRESET_ENTITIES,
     PRESET_STATE,
     PRESET_BRIGHTNESS_PCT,
+    PRESET_COLOR_MODE,
     PRESET_RGB_COLOR,
     PRESET_COLOR_TEMP_KELVIN,
     PRESET_TRANSITION,
     PRESET_SKIP_VERIFICATION,
+    COLOR_MODE_NONE,
+    COLOR_MODE_RGB,
+    COLOR_MODE_COLOR_TEMP,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -163,29 +167,30 @@ class LightControllerOptionsFlow(OptionsFlow):
         return self.async_show_menu(
             step_id="init",
             menu_options=[
-                "defaults",
-                "tolerances",
-                "retry",
-                "notifications",
+                "settings",
                 "add_preset",
                 "manage_presets",
             ],
         )
 
-    async def async_step_defaults(
+    async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle default brightness and transition settings."""
+        """Handle all configuration settings in one page."""
         if user_input is not None:
+            # Handle empty notify service
+            if not user_input.get(CONF_NOTIFY_ON_FAILURE):
+                user_input[CONF_NOTIFY_ON_FAILURE] = ""
             new_options = {**self.config_entry.options, **user_input}
             return self.async_create_entry(title="", data=new_options)
 
         options = self.config_entry.options
 
         return self.async_show_form(
-            step_id="defaults",
+            step_id="settings",
             data_schema=vol.Schema(
                 {
+                    # Defaults section
                     vol.Optional(
                         CONF_DEFAULT_BRIGHTNESS_PCT,
                         default=options.get(
@@ -214,24 +219,7 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
                     ),
-                }
-            ),
-        )
-
-    async def async_step_tolerances(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Handle tolerance settings."""
-        if user_input is not None:
-            new_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=new_options)
-
-        options = self.config_entry.options
-
-        return self.async_show_form(
-            step_id="tolerances",
-            data_schema=vol.Schema(
-                {
+                    # Tolerances section
                     vol.Optional(
                         CONF_BRIGHTNESS_TOLERANCE,
                         default=options.get(
@@ -271,24 +259,7 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
                     ),
-                }
-            ),
-        )
-
-    async def async_step_retry(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Handle retry and timing settings."""
-        if user_input is not None:
-            new_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=new_options)
-
-        options = self.config_entry.options
-
-        return self.async_show_form(
-            step_id="retry",
-            data_schema=vol.Schema(
-                {
+                    # Retry section
                     vol.Optional(
                         CONF_DELAY_AFTER_SEND,
                         default=options.get(
@@ -348,27 +319,7 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
                     ),
-                }
-            ),
-        )
-
-    async def async_step_notifications(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Handle notification settings."""
-        if user_input is not None:
-            # Handle empty notify service
-            if not user_input.get(CONF_NOTIFY_ON_FAILURE):
-                user_input[CONF_NOTIFY_ON_FAILURE] = ""
-            new_options = {**self.config_entry.options, **user_input}
-            return self.async_create_entry(title="", data=new_options)
-
-        options = self.config_entry.options
-
-        return self.async_show_form(
-            step_id="notifications",
-            data_schema=vol.Schema(
-                {
+                    # Notifications section
                     vol.Optional(
                         CONF_LOG_SUCCESS,
                         default=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
@@ -379,7 +330,6 @@ class LightControllerOptionsFlow(OptionsFlow):
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             type=selector.TextSelectorType.TEXT,
-                            suffix=".mobile_app_phone",
                         )
                     ),
                 }
@@ -389,7 +339,7 @@ class LightControllerOptionsFlow(OptionsFlow):
     async def async_step_add_preset(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle adding a new preset."""
+        """Handle adding a new preset - step 1: basic settings and initial entities."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -402,26 +352,16 @@ class LightControllerOptionsFlow(OptionsFlow):
             elif not entities:
                 errors["base"] = "entities_required"
             else:
-                # Get preset manager from runtime_data and create preset
-                if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
-                    preset_manager = self.config_entry.runtime_data.preset_manager
-                    if preset_manager:
-                        # Create the preset
-                        await preset_manager.create_preset(
-                            name=name,
-                            entities=entities,
-                            state=user_input.get(PRESET_STATE, "on"),
-                            brightness_pct=int(user_input.get(PRESET_BRIGHTNESS_PCT, 100)),
-                            rgb_color=user_input.get(PRESET_RGB_COLOR),
-                            color_temp_kelvin=user_input.get(PRESET_COLOR_TEMP_KELVIN),
-                            transition=float(user_input.get(PRESET_TRANSITION, 0)),
-                            skip_verification=user_input.get(PRESET_SKIP_VERIFICATION, False),
-                        )
+                # Store data for the hub - initialize per-entity configuration as dict
+                self._preset_data = {
+                    PRESET_NAME: name,
+                    PRESET_ENTITIES: list(entities),
+                    PRESET_SKIP_VERIFICATION: user_input.get(PRESET_SKIP_VERIFICATION, False),
+                    "targets": {},  # Dict keyed by entity_id for easy lookup/update
+                }
 
-                        _LOGGER.info("Created preset: %s", name)
-
-                        # Return to menu
-                        return self.async_create_entry(title="", data=self.config_entry.options)
+                # Go to entity management hub
+                return await self.async_step_preset_entity_menu()
 
         return self.async_show_form(
             step_id="add_preset",
@@ -436,7 +376,229 @@ class LightControllerOptionsFlow(OptionsFlow):
                             multiple=True,
                         )
                     ),
-                    vol.Optional(PRESET_STATE, default="on"): selector.SelectSelector(
+                    vol.Optional(PRESET_SKIP_VERIFICATION, default=False): selector.BooleanSelector(),
+                }
+            ),
+            errors=errors,
+        )
+
+    def _get_entity_friendly_name(self, entity_id: str) -> str:
+        """Get friendly name for an entity."""
+        entity_state = self.hass.states.get(entity_id)
+        if entity_state:
+            return entity_state.attributes.get("friendly_name", entity_id)
+        return entity_id
+
+    def _build_entity_status_summary(self) -> str:
+        """Build a summary of entities and their configuration status."""
+        entities = self._preset_data.get(PRESET_ENTITIES, [])
+        targets = self._preset_data.get("targets", {})
+
+        lines = []
+        for entity_id in entities:
+            friendly_name = self._get_entity_friendly_name(entity_id)
+            if entity_id in targets:
+                config = targets[entity_id]
+                # Build config summary
+                parts = []
+                # State
+                state = config.get("state", "on")
+                parts.append(state.upper())
+                # Brightness (only if on)
+                if state == "on" and "brightness_pct" in config:
+                    parts.append(f"{config['brightness_pct']}%")
+                # Color
+                if state == "on":
+                    if "color_temp_kelvin" in config:
+                        parts.append(f"{config['color_temp_kelvin']}K")
+                    if "rgb_color" in config:
+                        rgb = config["rgb_color"]
+                        parts.append(f"RGB({rgb[0]},{rgb[1]},{rgb[2]})")
+                # Transition
+                if "transition" in config and config["transition"] > 0:
+                    parts.append(f"{config['transition']}s")
+                config_str = ", ".join(parts)
+                lines.append(f"• {friendly_name}: {config_str}")
+            else:
+                lines.append(f"• {friendly_name}: (not configured)")
+
+        return "\n".join(lines) if lines else "No entities selected"
+
+    async def async_step_preset_entity_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Hub step for managing preset entities - configure, add, remove, or save."""
+        entities = self._preset_data.get(PRESET_ENTITIES, [])
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            action = user_input.get("action", "")
+
+            if action == "configure":
+                # Go to entity selection for configuration
+                return await self.async_step_select_entity_to_configure()
+            elif action == "add":
+                # Go to add more entities
+                return await self.async_step_add_more_entities()
+            elif action == "remove":
+                if len(entities) <= 1:
+                    errors["base"] = "cannot_remove_last"
+                else:
+                    return await self.async_step_remove_entity()
+            elif action == "save":
+                # Check if at least one entity is configured
+                targets = self._preset_data.get("targets", {})
+                if not targets:
+                    errors["base"] = "configure_at_least_one"
+                else:
+                    return await self._create_preset_from_data()
+
+        # Build action options
+        action_options = [
+            selector.SelectOptionDict(value="configure", label="Configure an entity"),
+            selector.SelectOptionDict(value="add", label="Add more entities"),
+            selector.SelectOptionDict(value="remove", label="Remove an entity"),
+            selector.SelectOptionDict(value="save", label="Save preset"),
+        ]
+
+        return self.async_show_form(
+            step_id="preset_entity_menu",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("action"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=action_options,
+                            mode=selector.SelectSelectorMode.LIST,
+                        )
+                    ),
+                }
+            ),
+            description_placeholders={
+                "preset_name": self._preset_data.get(PRESET_NAME, ""),
+                "entity_count": str(len(entities)),
+                "entity_summary": self._build_entity_status_summary(),
+            },
+            errors=errors,
+        )
+
+    async def async_step_select_entity_to_configure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select which entity to configure."""
+        entities = self._preset_data.get(PRESET_ENTITIES, [])
+        targets = self._preset_data.get("targets", {})
+
+        if user_input is not None:
+            entity_id = user_input.get("entity_to_configure")
+            if entity_id:
+                self._configuring_entity = entity_id
+                return await self.async_step_configure_entity()
+            # If no entity selected, return to menu
+            return await self.async_step_preset_entity_menu()
+
+        # Build entity options with status
+        entity_options = []
+        for entity_id in entities:
+            friendly_name = self._get_entity_friendly_name(entity_id)
+            status = "✓" if entity_id in targets else "○"
+            entity_options.append(
+                selector.SelectOptionDict(
+                    value=entity_id,
+                    label=f"{status} {friendly_name}"
+                )
+            )
+
+        return self.async_show_form(
+            step_id="select_entity_to_configure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("entity_to_configure"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=entity_options,
+                            mode=selector.SelectSelectorMode.LIST,
+                        )
+                    ),
+                }
+            ),
+        )
+
+    async def async_step_configure_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Configure a specific entity's settings."""
+        entity_id = getattr(self, "_configuring_entity", None)
+        if not entity_id:
+            return await self.async_step_preset_entity_menu()
+
+        friendly_name = self._get_entity_friendly_name(entity_id)
+        targets = self._preset_data.get("targets", {})
+
+        # Get existing config for defaults
+        existing = targets.get(entity_id, {})
+
+        if user_input is not None:
+            # Store this entity's configuration
+            target: dict[str, Any] = {"entity_id": entity_id}
+
+            # Add state
+            state = user_input.get(PRESET_STATE, "on")
+            target["state"] = state
+
+            # Add transition
+            transition = user_input.get(PRESET_TRANSITION, 0)
+            if transition > 0:
+                target["transition"] = float(transition)
+
+            # Only add brightness and color settings if state is "on"
+            if state == "on":
+                # Add brightness
+                brightness = user_input.get(PRESET_BRIGHTNESS_PCT)
+                if brightness is not None:
+                    target["brightness_pct"] = int(brightness)
+
+                # Add color based on mode
+                color_mode = user_input.get(PRESET_COLOR_MODE, COLOR_MODE_NONE)
+                if color_mode == COLOR_MODE_COLOR_TEMP:
+                    color_temp = user_input.get(PRESET_COLOR_TEMP_KELVIN)
+                    if color_temp is not None:
+                        target["color_temp_kelvin"] = int(color_temp)
+                elif color_mode == COLOR_MODE_RGB:
+                    rgb_color = user_input.get(PRESET_RGB_COLOR)
+                    if rgb_color:
+                        target["rgb_color"] = list(rgb_color)
+                    else:
+                        # Manual RGB input
+                        r = int(user_input.get("rgb_red", 255))
+                        g = int(user_input.get("rgb_green", 255))
+                        b = int(user_input.get("rgb_blue", 255))
+                        target["rgb_color"] = [r, g, b]
+
+            # Store the target configuration
+            self._preset_data["targets"][entity_id] = target
+
+            # Clear configuring entity and return to menu
+            self._configuring_entity = None
+            return await self.async_step_preset_entity_menu()
+
+        # Determine defaults from existing config
+        default_state = existing.get("state", "on")
+        default_transition = existing.get("transition", 0)
+        default_brightness = existing.get("brightness_pct", 100)
+        default_color_mode = COLOR_MODE_NONE
+        default_color_temp = existing.get("color_temp_kelvin", 4000)
+        default_rgb = existing.get("rgb_color", [255, 255, 255])
+
+        if "color_temp_kelvin" in existing:
+            default_color_mode = COLOR_MODE_COLOR_TEMP
+        elif "rgb_color" in existing:
+            default_color_mode = COLOR_MODE_RGB
+
+        # Show form for this entity
+        return self.async_show_form(
+            step_id="configure_entity",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(PRESET_STATE, default=default_state): selector.SelectSelector(
                         selector.SelectSelectorConfig(
                             options=[
                                 selector.SelectOptionDict(value="on", label="On"),
@@ -445,25 +607,7 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
-                    vol.Optional(PRESET_BRIGHTNESS_PCT, default=100): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=1,
-                            max=100,
-                            step=1,
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    vol.Optional(PRESET_COLOR_TEMP_KELVIN): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=2000,
-                            max=6500,
-                            step=100,
-                            unit_of_measurement="K",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    vol.Optional(PRESET_TRANSITION, default=0): selector.NumberSelector(
+                    vol.Optional(PRESET_TRANSITION, default=default_transition): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=0,
                             max=60,
@@ -472,11 +616,177 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
                     ),
-                    vol.Optional(PRESET_SKIP_VERIFICATION, default=False): selector.BooleanSelector(),
+                    vol.Optional(PRESET_BRIGHTNESS_PCT, default=default_brightness): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=1,
+                            max=100,
+                            step=1,
+                            unit_of_measurement="%",
+                            mode=selector.NumberSelectorMode.SLIDER,
+                        )
+                    ),
+                    vol.Optional(PRESET_COLOR_MODE, default=default_color_mode): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=[
+                                selector.SelectOptionDict(value=COLOR_MODE_NONE, label="No Color"),
+                                selector.SelectOptionDict(value=COLOR_MODE_COLOR_TEMP, label="Color Temperature"),
+                                selector.SelectOptionDict(value=COLOR_MODE_RGB, label="RGB Color"),
+                            ],
+                            mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Optional(PRESET_COLOR_TEMP_KELVIN, default=default_color_temp): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=2000,
+                            max=6500,
+                            step=100,
+                            unit_of_measurement="K",
+                            mode=selector.NumberSelectorMode.SLIDER,
+                        )
+                    ),
+                    vol.Optional(PRESET_RGB_COLOR): selector.ColorRGBSelector(),
+                    vol.Optional("rgb_red", default=default_rgb[0]): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=255,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional("rgb_green", default=default_rgb[1]): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=255,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Optional("rgb_blue", default=default_rgb[2]): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=0,
+                            max=255,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
                 }
             ),
-            errors=errors,
+            description_placeholders={
+                "entity_name": friendly_name,
+            },
         )
+
+    async def async_step_add_more_entities(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Add more entities to the preset."""
+        if user_input is not None:
+            new_entities = user_input.get("new_entities", [])
+            if new_entities:
+                # Add new entities to the list (avoid duplicates)
+                current_entities = self._preset_data.get(PRESET_ENTITIES, [])
+                for entity_id in new_entities:
+                    if entity_id not in current_entities:
+                        current_entities.append(entity_id)
+                self._preset_data[PRESET_ENTITIES] = current_entities
+
+            return await self.async_step_preset_entity_menu()
+
+        # Get current entities to exclude from selection
+        current_entities = self._preset_data.get(PRESET_ENTITIES, [])
+
+        return self.async_show_form(
+            step_id="add_more_entities",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional("new_entities"): selector.EntitySelector(
+                        selector.EntitySelectorConfig(
+                            domain=["light", "group"],
+                            multiple=True,
+                        )
+                    ),
+                }
+            ),
+            description_placeholders={
+                "current_count": str(len(current_entities)),
+            },
+        )
+
+    async def async_step_remove_entity(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Remove an entity from the preset."""
+        entities = self._preset_data.get(PRESET_ENTITIES, [])
+
+        if user_input is not None:
+            entity_to_remove = user_input.get("entity_to_remove")
+            if entity_to_remove and entity_to_remove in entities:
+                # Remove from entities list
+                entities.remove(entity_to_remove)
+                self._preset_data[PRESET_ENTITIES] = entities
+                # Also remove from targets if configured
+                targets = self._preset_data.get("targets", {})
+                if entity_to_remove in targets:
+                    del targets[entity_to_remove]
+
+            return await self.async_step_preset_entity_menu()
+
+        # Build entity options
+        entity_options = []
+        for entity_id in entities:
+            friendly_name = self._get_entity_friendly_name(entity_id)
+            entity_options.append(
+                selector.SelectOptionDict(value=entity_id, label=friendly_name)
+            )
+
+        return self.async_show_form(
+            step_id="remove_entity",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("entity_to_remove"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=entity_options,
+                            mode=selector.SelectSelectorMode.LIST,
+                        )
+                    ),
+                }
+            ),
+        )
+
+    async def _create_preset_from_data(self) -> ConfigFlowResult:
+        """Create the preset from collected data with per-entity targets."""
+        data = self._preset_data
+        name = data.get(PRESET_NAME, "").strip()
+        entities = data.get(PRESET_ENTITIES, [])
+        targets_dict = data.get("targets", {})
+
+        # Convert targets dict to list format expected by preset_manager
+        targets = list(targets_dict.values())
+
+        # Get preset manager from runtime_data and create preset
+        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+            preset_manager = self.config_entry.runtime_data.preset_manager
+            if preset_manager:
+                # Create the preset with per-entity targets
+                # State and transition are now per-entity in targets,
+                # use defaults for backward compatibility
+                await preset_manager.create_preset(
+                    name=name,
+                    entities=entities,
+                    state="on",  # Default, per-entity targets override this
+                    targets=targets,
+                    transition=0.0,  # Default, per-entity targets override this
+                    skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
+                )
+
+                _LOGGER.info("Created preset: %s with %d entity configs", name, len(targets))
+
+        # Clear stored data
+        self._preset_data = {}
+        self._configuring_entity = None
+
+        # Return to menu
+        return self.async_create_entry(title="", data=self.config_entry.options)
 
     async def async_step_manage_presets(
         self, user_input: dict[str, Any] | None = None
