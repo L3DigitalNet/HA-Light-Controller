@@ -3,7 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/releases)
 [![License](https://img.shields.io/github/license/L3DigitalNet/HA-Light-Controller.svg)](LICENSE)
-[![Issues](https://img.shields.io/github/issues/L3DigitalNet/HA-Light-Controller.svg)](
+[![Issues](https://img.shields.io/github/issues/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
 
 HA Light Controller adds state verification and automatic retries to light commands. When you call `light.turn_on`, Home Assistant sends the command once and assumes success. This integration verifies that entities actually reached the target state and retries if they didn't.
 
