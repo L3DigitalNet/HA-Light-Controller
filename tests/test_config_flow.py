@@ -269,17 +269,13 @@ class TestOptionsFlowAddPreset:
         flow._config_entry = config_entry
         flow.hass = hass
 
-        # Set up mock preset manager
+        # Set up mock preset manager in runtime_data
         preset_manager = MagicMock()
         preset_manager.create_preset = AsyncMock()
 
-        hass.data = {
-            DOMAIN: {
-                config_entry.entry_id: {
-                    "preset_manager": preset_manager,
-                }
-            }
-        }
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry.runtime_data = runtime_data
 
         return flow, preset_manager
 
@@ -369,13 +365,9 @@ class TestOptionsFlowManagePresets:
         }
         preset_manager.delete_preset = AsyncMock()
 
-        hass.data = {
-            DOMAIN: {
-                config_entry_with_presets.entry_id: {
-                    "preset_manager": preset_manager,
-                }
-            }
-        }
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry_with_presets.runtime_data = runtime_data
 
         return flow, preset_manager
 
@@ -389,13 +381,9 @@ class TestOptionsFlowManagePresets:
         preset_manager = MagicMock()
         preset_manager.presets = {}
 
-        hass.data = {
-            DOMAIN: {
-                config_entry.entry_id: {
-                    "preset_manager": preset_manager,
-                }
-            }
-        }
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry.runtime_data = runtime_data
 
         return flow
 

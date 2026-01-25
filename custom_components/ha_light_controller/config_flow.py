@@ -401,9 +401,9 @@ class LightControllerOptionsFlow(OptionsFlow):
             elif not entities:
                 errors["base"] = "entities_required"
             else:
-                # Get preset manager and create preset
-                if DOMAIN in self.hass.data and self.config_entry.entry_id in self.hass.data[DOMAIN]:
-                    preset_manager = self.hass.data[DOMAIN][self.config_entry.entry_id].get("preset_manager")
+                # Get preset manager from runtime_data and create preset
+                if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+                    preset_manager = self.config_entry.runtime_data.preset_manager
                     if preset_manager:
                         # Create the preset
                         await preset_manager.create_preset(
@@ -481,10 +481,10 @@ class LightControllerOptionsFlow(OptionsFlow):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle managing existing presets."""
-        # Get preset manager
+        # Get preset manager from runtime_data
         preset_manager = None
-        if DOMAIN in self.hass.data and self.config_entry.entry_id in self.hass.data[DOMAIN]:
-            preset_manager = self.hass.data[DOMAIN][self.config_entry.entry_id].get("preset_manager")
+        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+            preset_manager = self.config_entry.runtime_data.preset_manager
 
         if not preset_manager or not preset_manager.presets:
             # No presets to manage
