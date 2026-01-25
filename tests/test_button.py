@@ -7,8 +7,6 @@ from dataclasses import dataclass
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from homeassistant.components.button import ButtonDeviceClass
-
 from custom_components.ha_light_controller.button import (
     async_setup_entry,
     PresetButton,
@@ -154,8 +152,8 @@ class TestPresetButton:
         assert button_entity._attr_unique_id == expected_id
 
     def test_device_class(self, button_entity):
-        """Test device class."""
-        assert button_entity._attr_device_class == ButtonDeviceClass.IDENTIFY
+        """Test device class is not set (None)."""
+        assert not hasattr(button_entity, '_attr_device_class') or button_entity._attr_device_class is None
 
     def test_has_entity_name(self, button_entity):
         """Test has_entity_name flag."""

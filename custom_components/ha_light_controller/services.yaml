@@ -322,3 +322,4 @@ create_preset_from_current:
           multiple: true
           filter:
             - domain: light
+            - domain: group

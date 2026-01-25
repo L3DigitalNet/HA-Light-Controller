@@ -116,7 +116,6 @@ class PresetStatusSensor(SensorEntity):
             name="Light Controller",
             manufacturer="Light Controller",
             model="Preset Manager",
-            sw_version="1.0.0",
         )
 
     @property

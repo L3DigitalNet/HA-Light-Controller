@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.button import ButtonEntity, ButtonDeviceClass
+from homeassistant.components.button import ButtonEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -91,7 +91,6 @@ class PresetButton(ButtonEntity):
     """Button entity to activate a Light Controller preset."""
 
     _attr_has_entity_name = True
-    _attr_device_class = ButtonDeviceClass.IDENTIFY
     _attr_translation_key = "preset"
 
     def __init__(
@@ -124,7 +123,6 @@ class PresetButton(ButtonEntity):
             name="Light Controller",
             manufacturer="Light Controller",
             model="Preset Manager",
-            sw_version="1.0.0",
         )
 
     @property

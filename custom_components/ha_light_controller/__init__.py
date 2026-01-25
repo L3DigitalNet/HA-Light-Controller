@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from typing import TypeAlias
 
 import voluptuous as vol
 
@@ -87,7 +90,10 @@ class LightControllerData:
     preset_manager: PresetManager
 
 
-type LightControllerConfigEntry = ConfigEntry[LightControllerData]
+if TYPE_CHECKING:
+    LightControllerConfigEntry: TypeAlias = ConfigEntry[LightControllerData]
+else:
+    LightControllerConfigEntry = ConfigEntry
 
 # Service schema for ensure_state
 SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
+from time import monotonic
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -637,7 +637,7 @@ class LightController:
 
         This is the main entry point for the controller.
         """
-        script_start = time.time()
+        script_start = monotonic()
 
         _LOGGER.info(
             "Starting ensure_state with %d entities", len(entities) if entities else 0
@@ -722,7 +722,7 @@ class LightController:
             use_transition = transition if target_state == TargetState.ON else None
             await self._send_commands(groups, target_state, use_transition)
 
-            elapsed = time.time() - script_start
+            elapsed = monotonic() - script_start
 
             if log_success:
                 await self._log_to_logbook(
@@ -743,7 +743,7 @@ class LightController:
         attempt = 0
 
         while pending_targets and attempt < retry_config.max_retries:
-            elapsed = time.time() - script_start
+            elapsed = monotonic() - script_start
             if elapsed >= retry_config.max_runtime_seconds:
                 _LOGGER.warning("Timeout reached after %.1fs", elapsed)
                 break
@@ -784,7 +784,7 @@ class LightController:
             attempt += 1
 
         # Handle results
-        elapsed = time.time() - script_start
+        elapsed = monotonic() - script_start
         failed_entities = [t.entity_id for t in pending_targets]
 
         # Timeout

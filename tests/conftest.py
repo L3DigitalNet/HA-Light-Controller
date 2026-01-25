@@ -44,8 +44,15 @@ class MockConfigFlow:
 
 class MockOptionsFlow:
     """Mock OptionsFlow base class."""
+    _config_entry = None
+
     def __init_subclass__(cls, **kwargs):
         pass
+
+    @property
+    def config_entry(self):
+        """Return the config entry."""
+        return self._config_entry
 
     def async_show_form(self, **kwargs):
         return {"type": "form", **kwargs}
