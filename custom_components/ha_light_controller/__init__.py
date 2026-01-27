@@ -82,6 +82,31 @@ from .preset_manager import PresetManager
 _LOGGER = logging.getLogger(__name__)
 
 
+def _get_param(
+    call_data: dict, options: dict, attr: str, conf: str, default: Any
+) -> Any:
+    """Get parameter from call data, falling back to options then default."""
+    return call_data.get(attr, options.get(conf, default))
+
+
+def _get_optional_str(
+    call_data: dict, options: dict, attr: str, conf: str
+) -> str | None:
+    """Get optional string parameter, treating empty as None."""
+    val = call_data.get(attr) or options.get(conf) or None
+    return val if val else None
+
+
+# Reusable RGB color validation schema
+RGB_COLOR_SCHEMA = vol.All(
+    vol.ExactSequence([
+        vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+        vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+        vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+    ])
+)
+
+
 @dataclass
 class LightControllerData:
     """Runtime data for the Light Controller integration."""
@@ -103,13 +128,7 @@ SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(
         vol.Optional(ATTR_DEFAULT_BRIGHTNESS_PCT): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=100)
         ),
-        vol.Optional(ATTR_DEFAULT_RGB_COLOR): vol.All(
-            vol.ExactSequence([
-                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-            ])
-        ),
+        vol.Optional(ATTR_DEFAULT_RGB_COLOR): RGB_COLOR_SCHEMA,
         vol.Optional(ATTR_DEFAULT_COLOR_TEMP_KELVIN): vol.All(
             vol.Coerce(int), vol.Range(min=1000, max=10000)
         ),
@@ -123,13 +142,7 @@ SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(
                         vol.Optional("brightness_pct"): vol.All(
                             vol.Coerce(int), vol.Range(min=1, max=100)
                         ),
-                        vol.Optional("rgb_color"): vol.All(
-                            vol.ExactSequence([
-                                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                            ])
-                        ),
+                        vol.Optional("rgb_color"): RGB_COLOR_SCHEMA,
                         vol.Optional("color_temp_kelvin"): vol.All(
                             vol.Coerce(int), vol.Range(min=1000, max=10000)
                         ),
@@ -186,13 +199,7 @@ SERVICE_CREATE_PRESET_SCHEMA = vol.Schema(
         vol.Optional(ATTR_DEFAULT_BRIGHTNESS_PCT, default=100): vol.All(
             vol.Coerce(int), vol.Range(min=1, max=100)
         ),
-        vol.Optional(ATTR_DEFAULT_RGB_COLOR): vol.All(
-            vol.ExactSequence([
-                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-                vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-            ])
-        ),
+        vol.Optional(ATTR_DEFAULT_RGB_COLOR): RGB_COLOR_SCHEMA,
         vol.Optional(ATTR_DEFAULT_COLOR_TEMP_KELVIN): vol.All(
             vol.Coerce(int), vol.Range(min=1000, max=10000)
         ),
@@ -246,89 +253,34 @@ async def async_setup_entry(
 
     async def async_handle_ensure_state(call: ServiceCall) -> dict[str, Any]:
         """Handle the ensure_state service call."""
-        entities = call.data.get(ATTR_ENTITIES, [])
-        state_target = call.data.get(ATTR_STATE_TARGET, "on")
+        data = call.data
 
-        brightness_pct = call.data.get(
-            ATTR_DEFAULT_BRIGHTNESS_PCT,
-            options.get(CONF_DEFAULT_BRIGHTNESS_PCT, DEFAULT_BRIGHTNESS_PCT),
-        )
+        # Helper for getting parameters with fallback chain
+        def get(attr: str, conf: str, default: Any) -> Any:
+            return _get_param(data, options, attr, conf, default)
 
-        rgb_color = call.data.get(ATTR_DEFAULT_RGB_COLOR)
-        color_temp_kelvin = call.data.get(ATTR_DEFAULT_COLOR_TEMP_KELVIN)
-        effect = call.data.get(ATTR_DEFAULT_EFFECT)
-        targets = call.data.get(ATTR_TARGETS)
-
-        brightness_tolerance = call.data.get(
-            ATTR_BRIGHTNESS_TOLERANCE,
-            options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
-        )
-        rgb_tolerance = call.data.get(
-            ATTR_RGB_TOLERANCE,
-            options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-        )
-        kelvin_tolerance = call.data.get(
-            ATTR_KELVIN_TOLERANCE,
-            options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
-        )
-
-        transition = call.data.get(
-            ATTR_TRANSITION,
-            options.get(CONF_DEFAULT_TRANSITION, DEFAULT_TRANSITION),
-        )
-        delay_after_send = call.data.get(
-            ATTR_DELAY_AFTER_SEND,
-            options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
-        )
-        max_retries = call.data.get(
-            ATTR_MAX_RETRIES,
-            options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-        )
-        max_runtime_seconds = call.data.get(
-            ATTR_MAX_RUNTIME_SECONDS,
-            options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
-        )
-        use_exponential_backoff = call.data.get(
-            ATTR_USE_EXPONENTIAL_BACKOFF,
-            options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
-        )
-        max_backoff_seconds = call.data.get(
-            ATTR_MAX_BACKOFF_SECONDS,
-            options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
-        )
-
-        skip_verification = call.data.get(ATTR_SKIP_VERIFICATION, False)
-        log_success = call.data.get(
-            ATTR_LOG_SUCCESS,
-            options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-        )
-
-        notify_on_failure = call.data.get(ATTR_NOTIFY_ON_FAILURE)
-        if notify_on_failure is None:
-            config_notify = options.get(CONF_NOTIFY_ON_FAILURE, "")
-            if config_notify:
-                notify_on_failure = config_notify
+        notify_on_failure = _get_optional_str(data, options, ATTR_NOTIFY_ON_FAILURE, CONF_NOTIFY_ON_FAILURE)
 
         try:
             result = await controller.ensure_state(
-                entities=entities,
-                state_target=state_target,
-                default_brightness_pct=brightness_pct,
-                default_rgb_color=rgb_color,
-                default_color_temp_kelvin=color_temp_kelvin,
-                default_effect=effect,
-                targets=targets,
-                brightness_tolerance=brightness_tolerance,
-                rgb_tolerance=rgb_tolerance,
-                kelvin_tolerance=kelvin_tolerance,
-                transition=transition,
-                delay_after_send=delay_after_send,
-                max_retries=max_retries,
-                max_runtime_seconds=max_runtime_seconds,
-                use_exponential_backoff=use_exponential_backoff,
-                max_backoff_seconds=max_backoff_seconds,
-                skip_verification=skip_verification,
-                log_success=log_success,
+                entities=data.get(ATTR_ENTITIES, []),
+                state_target=data.get(ATTR_STATE_TARGET, "on"),
+                default_brightness_pct=get(ATTR_DEFAULT_BRIGHTNESS_PCT, CONF_DEFAULT_BRIGHTNESS_PCT, DEFAULT_BRIGHTNESS_PCT),
+                default_rgb_color=data.get(ATTR_DEFAULT_RGB_COLOR),
+                default_color_temp_kelvin=data.get(ATTR_DEFAULT_COLOR_TEMP_KELVIN),
+                default_effect=data.get(ATTR_DEFAULT_EFFECT),
+                targets=data.get(ATTR_TARGETS),
+                brightness_tolerance=get(ATTR_BRIGHTNESS_TOLERANCE, CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
+                rgb_tolerance=get(ATTR_RGB_TOLERANCE, CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
+                kelvin_tolerance=get(ATTR_KELVIN_TOLERANCE, CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
+                transition=get(ATTR_TRANSITION, CONF_DEFAULT_TRANSITION, DEFAULT_TRANSITION),
+                delay_after_send=get(ATTR_DELAY_AFTER_SEND, CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
+                max_retries=get(ATTR_MAX_RETRIES, CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
+                max_runtime_seconds=get(ATTR_MAX_RUNTIME_SECONDS, CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
+                use_exponential_backoff=get(ATTR_USE_EXPONENTIAL_BACKOFF, CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
+                max_backoff_seconds=get(ATTR_MAX_BACKOFF_SECONDS, CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
+                skip_verification=data.get(ATTR_SKIP_VERIFICATION, False),
+                log_success=get(ATTR_LOG_SUCCESS, CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
                 notify_on_failure=notify_on_failure,
             )
             return result
@@ -348,11 +300,7 @@ async def async_setup_entry(
         """Handle the activate_preset service call."""
         preset_name_or_id = call.data.get(ATTR_PRESET, "")
 
-        # Find preset by name or ID
-        preset = preset_manager.get_preset(preset_name_or_id)
-        if not preset:
-            preset = preset_manager.get_preset_by_name(preset_name_or_id)
-
+        preset = preset_manager.find_preset(preset_name_or_id)
         if not preset:
             _LOGGER.error("Preset not found: %s", preset_name_or_id)
             return {
@@ -362,35 +310,13 @@ async def async_setup_entry(
             }
 
         _LOGGER.info("Activating preset: %s", preset.name)
-
-        # Update status
         await preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
 
-        # Execute
         try:
-            result = await controller.ensure_state(
-                entities=preset.entities,
-                state_target=preset.state,
-                default_brightness_pct=preset.brightness_pct,
-                default_rgb_color=preset.rgb_color,
-                default_color_temp_kelvin=preset.color_temp_kelvin,
-                default_effect=preset.effect,
-                targets=preset.targets if preset.targets else None,
-                transition=preset.transition,
-                skip_verification=preset.skip_verification,
-                brightness_tolerance=options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
-                rgb_tolerance=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-                kelvin_tolerance=options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
-                delay_after_send=options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
-                max_retries=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-                max_runtime_seconds=options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
-                use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
-                max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
-                log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-                notify_on_failure=options.get(CONF_NOTIFY_ON_FAILURE),
+            result = await preset_manager.activate_preset_with_options(
+                preset, controller, options
             )
 
-            # Update status
             status = PRESET_STATUS_SUCCESS if result.get("success") else PRESET_STATUS_FAILED
             await preset_manager.set_status(preset.id, status, result)
 
@@ -534,60 +460,22 @@ async def async_setup_entry(
     # Register services with cleanup via async_on_unload
     # =========================================================================
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_ENSURE_STATE,
-        async_handle_ensure_state,
-        schema=SERVICE_ENSURE_STATE_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    entry.async_on_unload(
-        lambda: hass.services.async_remove(DOMAIN, SERVICE_ENSURE_STATE)
-    )
+    services = [
+        (SERVICE_ENSURE_STATE, async_handle_ensure_state, SERVICE_ENSURE_STATE_SCHEMA),
+        (SERVICE_ACTIVATE_PRESET, async_handle_activate_preset, SERVICE_ACTIVATE_PRESET_SCHEMA),
+        (SERVICE_CREATE_PRESET, async_handle_create_preset, SERVICE_CREATE_PRESET_SCHEMA),
+        (SERVICE_DELETE_PRESET, async_handle_delete_preset, SERVICE_DELETE_PRESET_SCHEMA),
+        (SERVICE_CREATE_PRESET_FROM_CURRENT, async_handle_create_preset_from_current, SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA),
+    ]
 
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_ACTIVATE_PRESET,
-        async_handle_activate_preset,
-        schema=SERVICE_ACTIVATE_PRESET_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    entry.async_on_unload(
-        lambda: hass.services.async_remove(DOMAIN, SERVICE_ACTIVATE_PRESET)
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_CREATE_PRESET,
-        async_handle_create_preset,
-        schema=SERVICE_CREATE_PRESET_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    entry.async_on_unload(
-        lambda: hass.services.async_remove(DOMAIN, SERVICE_CREATE_PRESET)
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_DELETE_PRESET,
-        async_handle_delete_preset,
-        schema=SERVICE_DELETE_PRESET_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    entry.async_on_unload(
-        lambda: hass.services.async_remove(DOMAIN, SERVICE_DELETE_PRESET)
-    )
-
-    hass.services.async_register(
-        DOMAIN,
-        SERVICE_CREATE_PRESET_FROM_CURRENT,
-        async_handle_create_preset_from_current,
-        schema=SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA,
-        supports_response=SupportsResponse.OPTIONAL,
-    )
-    entry.async_on_unload(
-        lambda: hass.services.async_remove(DOMAIN, SERVICE_CREATE_PRESET_FROM_CURRENT)
-    )
+    for service_name, handler, schema in services:
+        hass.services.async_register(
+            DOMAIN, service_name, handler,
+            schema=schema, supports_response=SupportsResponse.OPTIONAL,
+        )
+        entry.async_on_unload(
+            lambda svc=service_name: hass.services.async_remove(DOMAIN, svc)
+        )
 
     # =========================================================================
     # Forward setup to platforms

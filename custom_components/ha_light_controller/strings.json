@@ -24,41 +24,76 @@
         "title": "Light Controller Options",
         "description": "Select an option",
         "menu_options": {
-          "settings": "Configure defaults, tolerances, retries, and notifications",
-          "add_preset": "Create a new light preset",
-          "manage_presets": "View or delete existing presets"
+          "settings": "Settings",
+          "add_preset": "Add Preset",
+          "manage_presets": "Manage Presets"
+        },
+        "menu_option_descriptions": {
+          "settings": "Configure default brightness, tolerances, retry behavior, and notifications",
+          "add_preset": "Create a new lighting preset with per-light configuration",
+          "manage_presets": "Edit or delete existing presets"
         }
       },
       "settings": {
         "title": "Settings",
-        "description": "Configure all Light Controller settings",
-        "data": {
-          "default_brightness_pct": "Default Brightness",
-          "default_transition": "Default Transition Time",
-          "brightness_tolerance": "Brightness Tolerance",
-          "rgb_tolerance": "RGB Color Tolerance",
-          "kelvin_tolerance": "Color Temperature Tolerance",
-          "delay_after_send": "Delay After Send",
-          "max_retries": "Maximum Retries",
-          "max_runtime_seconds": "Maximum Runtime",
-          "use_exponential_backoff": "Use Exponential Backoff",
-          "max_backoff_seconds": "Maximum Backoff Delay",
-          "log_success": "Log Success to Logbook",
-          "notify_on_failure": "Notification Service for Failures"
-        },
-        "data_description": {
-          "default_brightness_pct": "Brightness percentage (1-100%) applied to lights without explicit brightness",
-          "default_transition": "Transition time in seconds for smooth light changes",
-          "brightness_tolerance": "Allowed deviation in brightness (e.g., 3 means 47-53% passes for target 50%)",
-          "rgb_tolerance": "Allowed deviation per RGB channel (0-255 scale)",
-          "kelvin_tolerance": "Allowed deviation in color temperature",
-          "delay_after_send": "Wait time after sending commands before checking state",
-          "max_retries": "Number of retry attempts before giving up",
-          "max_runtime_seconds": "Hard timeout - abort after this time regardless of retries",
-          "use_exponential_backoff": "Double the delay after each failed retry (2s, 4s, 8s...)",
-          "max_backoff_seconds": "Cap on delay when using exponential backoff",
-          "log_success": "Write to the Home Assistant logbook when lights reach target state",
-          "notify_on_failure": "Service to call on failure (e.g., notify.mobile_app_phone)"
+        "description": "Configure Light Controller settings. Click section headers to expand.",
+        "sections": {
+          "defaults": {
+            "name": "Defaults",
+            "description": "Default values when not specified in service calls",
+            "data": {
+              "default_brightness_pct": "Default Brightness",
+              "default_transition": "Default Transition Time"
+            },
+            "data_description": {
+              "default_brightness_pct": "Brightness percentage (1-100%) applied to lights without explicit brightness",
+              "default_transition": "Transition time in seconds for smooth light changes"
+            }
+          },
+          "tolerances": {
+            "name": "Tolerances",
+            "description": "Allowed deviation when verifying light state after commands",
+            "data": {
+              "brightness_tolerance": "Brightness Tolerance",
+              "rgb_tolerance": "RGB Color Tolerance",
+              "kelvin_tolerance": "Color Temperature Tolerance"
+            },
+            "data_description": {
+              "brightness_tolerance": "Allowed deviation in brightness (e.g., 3 means 47-53% passes for target 50%)",
+              "rgb_tolerance": "Allowed deviation per RGB channel (0-255 scale)",
+              "kelvin_tolerance": "Allowed deviation in color temperature"
+            }
+          },
+          "retry_settings": {
+            "name": "Retry Settings",
+            "description": "Control retry behavior when lights don't reach target state",
+            "data": {
+              "delay_after_send": "Delay After Send",
+              "max_retries": "Maximum Retries",
+              "max_runtime_seconds": "Maximum Runtime",
+              "use_exponential_backoff": "Use Exponential Backoff",
+              "max_backoff_seconds": "Maximum Backoff Delay"
+            },
+            "data_description": {
+              "delay_after_send": "Wait time after sending commands before checking state",
+              "max_retries": "Number of retry attempts before giving up",
+              "max_runtime_seconds": "Hard timeout - abort after this time regardless of retries",
+              "use_exponential_backoff": "Double the delay after each failed retry (2s, 4s, 8s...)",
+              "max_backoff_seconds": "Cap on delay when using exponential backoff"
+            }
+          },
+          "notifications": {
+            "name": "Logging & Notifications",
+            "description": "Configure success logging and failure notifications",
+            "data": {
+              "log_success": "Log Success to Logbook",
+              "notify_on_failure": "Notification Service"
+            },
+            "data_description": {
+              "log_success": "Write to the Home Assistant logbook when lights reach target state",
+              "notify_on_failure": "Service to call on failure (e.g., notify.mobile_app_phone)"
+            }
+          }
         }
       },
       "add_preset": {
@@ -131,12 +166,35 @@
       },
       "manage_presets": {
         "title": "Manage Presets",
-        "description": "You have {preset_count} preset(s) configured",
-        "data": {
-          "preset_to_delete": "Select Preset to Delete"
+        "description": "You have {preset_count} preset(s) configured. Select an action:",
+        "menu_options": {
+          "edit_preset": "Edit Preset",
+          "delete_preset": "Delete Preset"
         },
-        "data_description": {
-          "preset_to_delete": "This action cannot be undone"
+        "menu_option_descriptions": {
+          "edit_preset": "Modify an existing preset's lights and settings",
+          "delete_preset": "Permanently remove a preset"
+        }
+      },
+      "edit_preset": {
+        "title": "Edit Preset",
+        "description": "Select a preset to edit. You can modify its entities and settings.",
+        "data": {
+          "preset_to_edit": "Preset"
+        }
+      },
+      "delete_preset": {
+        "title": "Delete Preset",
+        "description": "Select a preset to delete. You will be asked to confirm.",
+        "data": {
+          "preset_to_delete": "Preset"
+        }
+      },
+      "confirm_delete": {
+        "title": "Confirm Delete",
+        "description": "Are you sure you want to delete **{preset_name}**?\n\nThis preset controls {entity_count} entities. This action cannot be undone.",
+        "data": {
+          "confirm_delete": "Yes, delete this preset"
         }
       }
     },

@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
     OptionsFlow,
 )
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
@@ -176,12 +177,22 @@ class LightControllerOptionsFlow(OptionsFlow):
     async def async_step_settings(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle all configuration settings in one page."""
+        """Handle all configuration settings with collapsible sections."""
         if user_input is not None:
+            # Flatten nested section data into a single dict
+            flat_options = {}
+            for key, value in user_input.items():
+                if isinstance(value, dict):
+                    # This is a section - merge its contents
+                    flat_options.update(value)
+                else:
+                    flat_options[key] = value
+
             # Handle empty notify service
-            if not user_input.get(CONF_NOTIFY_ON_FAILURE):
-                user_input[CONF_NOTIFY_ON_FAILURE] = ""
-            new_options = {**self.config_entry.options, **user_input}
+            if not flat_options.get(CONF_NOTIFY_ON_FAILURE):
+                flat_options[CONF_NOTIFY_ON_FAILURE] = ""
+
+            new_options = {**self.config_entry.options, **flat_options}
             return self.async_create_entry(title="", data=new_options)
 
         options = self.config_entry.options
@@ -190,147 +201,175 @@ class LightControllerOptionsFlow(OptionsFlow):
             step_id="settings",
             data_schema=vol.Schema(
                 {
-                    # Defaults section
-                    vol.Optional(
-                        CONF_DEFAULT_BRIGHTNESS_PCT,
-                        default=options.get(
-                            CONF_DEFAULT_BRIGHTNESS_PCT, DEFAULT_BRIGHTNESS_PCT
+                    # Defaults section - expanded by default (most common settings)
+                    vol.Required("defaults"): section(
+                        vol.Schema(
+                            {
+                                vol.Optional(
+                                    CONF_DEFAULT_BRIGHTNESS_PCT,
+                                    default=options.get(
+                                        CONF_DEFAULT_BRIGHTNESS_PCT, DEFAULT_BRIGHTNESS_PCT
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=1,
+                                        max=100,
+                                        step=1,
+                                        unit_of_measurement="%",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                                vol.Optional(
+                                    CONF_DEFAULT_TRANSITION,
+                                    default=options.get(
+                                        CONF_DEFAULT_TRANSITION, DEFAULT_TRANSITION
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=0,
+                                        max=60,
+                                        step=0.5,
+                                        unit_of_measurement="s",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                            }
                         ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=1,
-                            max=100,
-                            step=1,
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
+                        {"collapsed": False},
                     ),
-                    vol.Optional(
-                        CONF_DEFAULT_TRANSITION,
-                        default=options.get(
-                            CONF_DEFAULT_TRANSITION, DEFAULT_TRANSITION
+                    # Tolerances section - collapsed (advanced)
+                    vol.Required("tolerances"): section(
+                        vol.Schema(
+                            {
+                                vol.Optional(
+                                    CONF_BRIGHTNESS_TOLERANCE,
+                                    default=options.get(
+                                        CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=0,
+                                        max=20,
+                                        step=1,
+                                        unit_of_measurement="%",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                                vol.Optional(
+                                    CONF_RGB_TOLERANCE,
+                                    default=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=0,
+                                        max=50,
+                                        step=1,
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                                vol.Optional(
+                                    CONF_KELVIN_TOLERANCE,
+                                    default=options.get(
+                                        CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=0,
+                                        max=500,
+                                        step=10,
+                                        unit_of_measurement="K",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                            }
                         ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=60,
-                            step=0.5,
-                            unit_of_measurement="s",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
+                        {"collapsed": True},
                     ),
-                    # Tolerances section
-                    vol.Optional(
-                        CONF_BRIGHTNESS_TOLERANCE,
-                        default=options.get(
-                            CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE
+                    # Retry settings section - collapsed (advanced)
+                    vol.Required("retry_settings"): section(
+                        vol.Schema(
+                            {
+                                vol.Optional(
+                                    CONF_DELAY_AFTER_SEND,
+                                    default=options.get(
+                                        CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=0.5,
+                                        max=30,
+                                        step=0.5,
+                                        unit_of_measurement="s",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                                vol.Optional(
+                                    CONF_MAX_RETRIES,
+                                    default=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=1,
+                                        max=10,
+                                        step=1,
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                                vol.Optional(
+                                    CONF_MAX_RUNTIME_SECONDS,
+                                    default=options.get(
+                                        CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=10,
+                                        max=300,
+                                        step=10,
+                                        unit_of_measurement="s",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                                vol.Optional(
+                                    CONF_USE_EXPONENTIAL_BACKOFF,
+                                    default=options.get(
+                                        CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF
+                                    ),
+                                ): selector.BooleanSelector(),
+                                vol.Optional(
+                                    CONF_MAX_BACKOFF_SECONDS,
+                                    default=options.get(
+                                        CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS
+                                    ),
+                                ): selector.NumberSelector(
+                                    selector.NumberSelectorConfig(
+                                        min=5,
+                                        max=120,
+                                        step=5,
+                                        unit_of_measurement="s",
+                                        mode=selector.NumberSelectorMode.SLIDER,
+                                    )
+                                ),
+                            }
                         ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=20,
-                            step=1,
-                            unit_of_measurement="%",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
+                        {"collapsed": True},
                     ),
-                    vol.Optional(
-                        CONF_RGB_TOLERANCE,
-                        default=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=50,
-                            step=1,
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_KELVIN_TOLERANCE,
-                        default=options.get(
-                            CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE
+                    # Notifications section - collapsed (advanced)
+                    vol.Required("notifications"): section(
+                        vol.Schema(
+                            {
+                                vol.Optional(
+                                    CONF_LOG_SUCCESS,
+                                    default=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
+                                ): selector.BooleanSelector(),
+                                vol.Optional(
+                                    CONF_NOTIFY_ON_FAILURE,
+                                    default=options.get(CONF_NOTIFY_ON_FAILURE, ""),
+                                ): selector.TextSelector(
+                                    selector.TextSelectorConfig(
+                                        type=selector.TextSelectorType.TEXT,
+                                    )
+                                ),
+                            }
                         ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=500,
-                            step=10,
-                            unit_of_measurement="K",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    # Retry section
-                    vol.Optional(
-                        CONF_DELAY_AFTER_SEND,
-                        default=options.get(
-                            CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND
-                        ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0.5,
-                            max=30,
-                            step=0.5,
-                            unit_of_measurement="s",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_MAX_RETRIES,
-                        default=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=1,
-                            max=10,
-                            step=1,
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_MAX_RUNTIME_SECONDS,
-                        default=options.get(
-                            CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS
-                        ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=10,
-                            max=300,
-                            step=10,
-                            unit_of_measurement="s",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    vol.Optional(
-                        CONF_USE_EXPONENTIAL_BACKOFF,
-                        default=options.get(
-                            CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF
-                        ),
-                    ): selector.BooleanSelector(),
-                    vol.Optional(
-                        CONF_MAX_BACKOFF_SECONDS,
-                        default=options.get(
-                            CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS
-                        ),
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=5,
-                            max=120,
-                            step=5,
-                            unit_of_measurement="s",
-                            mode=selector.NumberSelectorMode.SLIDER,
-                        )
-                    ),
-                    # Notifications section
-                    vol.Optional(
-                        CONF_LOG_SUCCESS,
-                        default=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-                    ): selector.BooleanSelector(),
-                    vol.Optional(
-                        CONF_NOTIFY_ON_FAILURE,
-                        default=options.get(CONF_NOTIFY_ON_FAILURE, ""),
-                    ): selector.TextSelector(
-                        selector.TextSelectorConfig(
-                            type=selector.TextSelectorType.TEXT,
-                        )
+                        {"collapsed": True},
                     ),
                 }
             ),
@@ -566,12 +605,6 @@ class LightControllerOptionsFlow(OptionsFlow):
                     rgb_color = user_input.get(PRESET_RGB_COLOR)
                     if rgb_color:
                         target["rgb_color"] = list(rgb_color)
-                    else:
-                        # Manual RGB input
-                        r = int(user_input.get("rgb_red", 255))
-                        g = int(user_input.get("rgb_green", 255))
-                        b = int(user_input.get("rgb_blue", 255))
-                        target["rgb_color"] = [r, g, b]
 
             # Store the target configuration
             self._preset_data["targets"][entity_id] = target
@@ -586,7 +619,6 @@ class LightControllerOptionsFlow(OptionsFlow):
         default_brightness = existing.get("brightness_pct", 100)
         default_color_mode = COLOR_MODE_NONE
         default_color_temp = existing.get("color_temp_kelvin", 4000)
-        default_rgb = existing.get("rgb_color", [255, 255, 255])
 
         if "color_temp_kelvin" in existing:
             default_color_mode = COLOR_MODE_COLOR_TEMP
@@ -645,30 +677,6 @@ class LightControllerOptionsFlow(OptionsFlow):
                         )
                     ),
                     vol.Optional(PRESET_RGB_COLOR): selector.ColorRGBSelector(),
-                    vol.Optional("rgb_red", default=default_rgb[0]): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=255,
-                            step=1,
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-                    vol.Optional("rgb_green", default=default_rgb[1]): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=255,
-                            step=1,
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
-                    vol.Optional("rgb_blue", default=default_rgb[2]): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=0,
-                            max=255,
-                            step=1,
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
                 }
             ),
             description_placeholders={
@@ -754,7 +762,7 @@ class LightControllerOptionsFlow(OptionsFlow):
         )
 
     async def _create_preset_from_data(self) -> ConfigFlowResult:
-        """Create the preset from collected data with per-entity targets."""
+        """Create or update the preset from collected data with per-entity targets."""
         data = self._preset_data
         name = data.get(PRESET_NAME, "").strip()
         entities = data.get(PRESET_ENTITIES, [])
@@ -763,27 +771,41 @@ class LightControllerOptionsFlow(OptionsFlow):
         # Convert targets dict to list format expected by preset_manager
         targets = list(targets_dict.values())
 
-        # Get preset manager from runtime_data and create preset
+        # Check if we're editing an existing preset
+        editing_preset_id = getattr(self, "_editing_preset_id", None)
+
+        # Get preset manager from runtime_data
         if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
             preset_manager = self.config_entry.runtime_data.preset_manager
             if preset_manager:
-                # Create the preset with per-entity targets
-                # State and transition are now per-entity in targets,
-                # use defaults for backward compatibility
-                await preset_manager.create_preset(
-                    name=name,
-                    entities=entities,
-                    state="on",  # Default, per-entity targets override this
-                    targets=targets,
-                    transition=0.0,  # Default, per-entity targets override this
-                    skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
-                )
-
-                _LOGGER.info("Created preset: %s with %d entity configs", name, len(targets))
+                if editing_preset_id and editing_preset_id in preset_manager.presets:
+                    # Delete old preset and create new one with same ID
+                    await preset_manager.delete_preset(editing_preset_id)
+                    await preset_manager.create_preset(
+                        name=name,
+                        entities=entities,
+                        state="on",
+                        targets=targets,
+                        transition=0.0,
+                        skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
+                    )
+                    _LOGGER.info("Updated preset: %s with %d entity configs", name, len(targets))
+                else:
+                    # Create new preset
+                    await preset_manager.create_preset(
+                        name=name,
+                        entities=entities,
+                        state="on",
+                        targets=targets,
+                        transition=0.0,
+                        skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
+                    )
+                    _LOGGER.info("Created preset: %s with %d entity configs", name, len(targets))
 
         # Clear stored data
         self._preset_data = {}
         self._configuring_entity = None
+        self._editing_preset_id = None
 
         # Return to menu
         return self.async_create_entry(title="", data=self.config_entry.options)
@@ -791,7 +813,7 @@ class LightControllerOptionsFlow(OptionsFlow):
     async def async_step_manage_presets(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle managing existing presets."""
+        """Handle managing existing presets - show menu with edit/delete options."""
         # Get preset manager from runtime_data
         preset_manager = None
         if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
@@ -806,13 +828,47 @@ class LightControllerOptionsFlow(OptionsFlow):
                 errors={"base": "no_presets"},
             )
 
-        if user_input is not None:
-            preset_id = user_input.get("preset_to_delete")
-            if preset_id:
-                await preset_manager.delete_preset(preset_id)
-                _LOGGER.info("Deleted preset: %s", preset_id)
+        return self.async_show_menu(
+            step_id="manage_presets",
+            menu_options=["edit_preset", "delete_preset"],
+            description_placeholders={"preset_count": str(len(preset_manager.presets))},
+        )
 
-            return self.async_create_entry(title="", data=self.config_entry.options)
+    async def async_step_edit_preset(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select a preset to edit."""
+        preset_manager = None
+        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+            preset_manager = self.config_entry.runtime_data.preset_manager
+
+        if not preset_manager or not preset_manager.presets:
+            return await self.async_step_manage_presets()
+
+        if user_input is not None:
+            preset_id = user_input.get("preset_to_edit")
+            if preset_id and preset_id in preset_manager.presets:
+                # Load preset data into editing state
+                preset = preset_manager.presets[preset_id]
+                self._editing_preset_id = preset_id
+
+                # Convert preset to _preset_data format for reuse of entity menu
+                self._preset_data = {
+                    PRESET_NAME: preset.name,
+                    PRESET_ENTITIES: list(preset.entities),
+                    PRESET_SKIP_VERIFICATION: preset.skip_verification,
+                    "targets": {},
+                }
+
+                # Convert targets list to dict keyed by entity_id
+                for target in preset.targets:
+                    entity_id = target.get("entity_id")
+                    if entity_id:
+                        self._preset_data["targets"][entity_id] = target.copy()
+
+                return await self.async_step_preset_entity_menu()
+
+            return await self.async_step_manage_presets()
 
         # Build preset options
         preset_options = [
@@ -821,16 +877,97 @@ class LightControllerOptionsFlow(OptionsFlow):
         ]
 
         return self.async_show_form(
-            step_id="manage_presets",
+            step_id="edit_preset",
             data_schema=vol.Schema(
                 {
-                    vol.Optional("preset_to_delete"): selector.SelectSelector(
+                    vol.Required("preset_to_edit"): selector.SelectSelector(
                         selector.SelectSelectorConfig(
                             options=preset_options,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            mode=selector.SelectSelectorMode.LIST,
                         )
                     ),
                 }
             ),
-            description_placeholders={"preset_count": str(len(preset_manager.presets))},
+        )
+
+    async def async_step_delete_preset(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select a preset to delete."""
+        preset_manager = None
+        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+            preset_manager = self.config_entry.runtime_data.preset_manager
+
+        if not preset_manager or not preset_manager.presets:
+            return await self.async_step_manage_presets()
+
+        if user_input is not None:
+            preset_id = user_input.get("preset_to_delete")
+            if preset_id and preset_id in preset_manager.presets:
+                # Store for confirmation step
+                self._deleting_preset_id = preset_id
+                return await self.async_step_confirm_delete()
+
+            return await self.async_step_manage_presets()
+
+        # Build preset options with entity count
+        preset_options = []
+        for pid, preset in preset_manager.presets.items():
+            entity_count = len(preset.entities)
+            label = f"{preset.name} ({entity_count} {'entity' if entity_count == 1 else 'entities'})"
+            preset_options.append(selector.SelectOptionDict(value=pid, label=label))
+
+        return self.async_show_form(
+            step_id="delete_preset",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("preset_to_delete"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(
+                            options=preset_options,
+                            mode=selector.SelectSelectorMode.LIST,
+                        )
+                    ),
+                }
+            ),
+        )
+
+    async def async_step_confirm_delete(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm preset deletion."""
+        preset_id = getattr(self, "_deleting_preset_id", None)
+        if not preset_id:
+            return await self.async_step_manage_presets()
+
+        preset_manager = None
+        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+            preset_manager = self.config_entry.runtime_data.preset_manager
+
+        if not preset_manager or preset_id not in preset_manager.presets:
+            return await self.async_step_manage_presets()
+
+        preset = preset_manager.presets[preset_id]
+
+        if user_input is not None:
+            if user_input.get("confirm_delete"):
+                await preset_manager.delete_preset(preset_id)
+                _LOGGER.info("Deleted preset: %s", preset_id)
+                self._deleting_preset_id = None
+                return self.async_create_entry(title="", data=self.config_entry.options)
+            else:
+                # User didn't confirm, return to manage presets
+                self._deleting_preset_id = None
+                return await self.async_step_manage_presets()
+
+        return self.async_show_form(
+            step_id="confirm_delete",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("confirm_delete", default=False): selector.BooleanSelector(),
+                }
+            ),
+            description_placeholders={
+                "preset_name": preset.name,
+                "entity_count": str(len(preset.entities)),
+            },
         )

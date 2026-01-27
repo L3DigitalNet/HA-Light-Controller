@@ -53,15 +53,16 @@ To develop locally:
 ## Architecture (Key Files)
 
 - `custom_components/ha_light_controller/__init__.py`
-  - Integration entry point. Registers services, sets up `LightController` and `PresetManager`, and applies `entry.options` defaults.
+  - Integration entry point. Registers services via loop, uses `_get_param()` helper for call/options merging.
 - `custom_components/ha_light_controller/controller.py`
   - `LightController` implements light control, entity expansion, target grouping, verification, and retry logic.
+  - `LightSettingsMixin` provides shared `to_service_data()` for `LightTarget` and `LightGroup`.
 - `custom_components/ha_light_controller/preset_manager.py`
-  - `PresetManager` handles preset CRUD, storage, and status tracking.
+  - `PresetManager` handles preset CRUD, storage, status tracking, and `activate_preset_with_options()` for centralized preset activation.
 - `custom_components/ha_light_controller/config_flow.py`
-  - Config flow and options flow for UI setup.
+  - Config flow and options flow for UI setup. Uses collapsible sections for settings, supports preset editing and delete confirmation.
 - `custom_components/ha_light_controller/button.py`
-  - Preset button entities.
+  - Preset button entities. Uses `preset_manager.activate_preset_with_options()`.
 - `custom_components/ha_light_controller/sensor.py`
   - Preset status sensor entities.
 - `custom_components/ha_light_controller/const.py`
@@ -79,6 +80,7 @@ To develop locally:
 - Follow Home Assistant async patterns (`async_` methods, `await` service calls, and non-blocking I/O).
 - Keep user-facing configuration in `const.py` and surfaces in `config_flow.py`.
 - Prefer small, focused changes. Update tests or examples if behavior changes.
+- See `CLAUDE.md` "Code Principles" section for readability and simplicity requirements.
 
 ## Tests
 

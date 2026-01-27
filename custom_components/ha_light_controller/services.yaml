@@ -183,8 +183,10 @@ ensure_state:
     notify_on_failure:
       name: Notify on Failure
       description: >-
-        Notification service to call if lights fail (e.g., notify.mobile_app_phone).
-        Leave empty to use integration default.
+        Notification service to call if lights fail to reach target state.
+        Leave empty to use integration default, or specify a service like
+        notify.mobile_app_phone or notify.persistent_notification.
+      example: "notify.mobile_app_phone"
       selector:
         text:
 

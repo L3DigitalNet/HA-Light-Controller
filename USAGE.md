@@ -22,7 +22,7 @@ Complete reference for services, configuration options, and examples.
 
 Access configuration options by going to **Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Settings**.
 
-All configuration options are available on a single settings page.
+Settings are organized into collapsible sections. The **Defaults** section is expanded by default; click other section headers to expand them.
 
 ### Default Settings
 
@@ -273,7 +273,7 @@ Shows the current activation status with dynamic icons:
 
 ### Creating Presets via UI
 
-**Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Add New Preset**
+**Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Add Preset**
 
 The preset creation flow supports per-entity configuration:
 
@@ -285,6 +285,18 @@ The preset creation flow supports per-entity configuration:
    - **Save preset** - Finalize once at least one entity is configured
 
 This allows presets where different lights have different settings (e.g., ceiling at 100% warm white, accent at 30% RGB red).
+
+### Editing Presets via UI
+
+**Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Manage Presets** → **Edit Preset**
+
+Select an existing preset to modify. You'll enter the same Entity Hub used for creation, with all settings pre-populated. Make changes and save to update the preset.
+
+### Deleting Presets via UI
+
+**Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Manage Presets** → **Delete Preset**
+
+Select a preset to delete. A confirmation step shows the preset name and entity count before deletion. Check the confirmation box to proceed.
 
 ### Dashboard Cards
 

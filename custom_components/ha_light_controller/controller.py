@@ -99,8 +99,34 @@ class RetryConfig:
         return self.delay_after_send
 
 
+class LightSettingsMixin:
+    """Mixin providing shared to_service_data() for light settings."""
+
+    brightness_pct: int
+    rgb_color: list[int] | None
+    color_temp_kelvin: int | None
+    effect: str | None
+
+    def to_service_data(self, include_transition: float | None = None) -> dict[str, Any]:
+        """Convert to service call data."""
+        data: dict[str, Any] = {"brightness_pct": self.brightness_pct}
+
+        if self.rgb_color is not None:
+            data["rgb_color"] = self.rgb_color
+        elif self.color_temp_kelvin is not None:
+            data["color_temp_kelvin"] = self.color_temp_kelvin
+
+        if self.effect is not None:
+            data["effect"] = self.effect
+
+        if include_transition is not None and include_transition > 0:
+            data["transition"] = include_transition
+
+        return data
+
+
 @dataclass
-class LightTarget:
+class LightTarget(LightSettingsMixin):
     """Target settings for a single light."""
 
     entity_id: str
@@ -109,26 +135,9 @@ class LightTarget:
     color_temp_kelvin: int | None = None
     effect: str | None = None
 
-    def to_service_data(self, include_transition: float | None = None) -> dict[str, Any]:
-        """Convert to service call data."""
-        data: dict[str, Any] = {"brightness_pct": self.brightness_pct}
-
-        if self.rgb_color is not None:
-            data["rgb_color"] = self.rgb_color
-        elif self.color_temp_kelvin is not None:
-            data["color_temp_kelvin"] = self.color_temp_kelvin
-
-        if self.effect is not None:
-            data["effect"] = self.effect
-
-        if include_transition is not None and include_transition > 0:
-            data["transition"] = include_transition
-
-        return data
-
 
 @dataclass
-class LightGroup:
+class LightGroup(LightSettingsMixin):
     """A group of lights with identical settings for batched commands."""
 
     entities: list[str]
@@ -136,23 +145,6 @@ class LightGroup:
     rgb_color: list[int] | None = None
     color_temp_kelvin: int | None = None
     effect: str | None = None
-
-    def to_service_data(self, include_transition: float | None = None) -> dict[str, Any]:
-        """Convert to service call data."""
-        data: dict[str, Any] = {"brightness_pct": self.brightness_pct}
-
-        if self.rgb_color is not None:
-            data["rgb_color"] = self.rgb_color
-        elif self.color_temp_kelvin is not None:
-            data["color_temp_kelvin"] = self.color_temp_kelvin
-
-        if self.effect is not None:
-            data["effect"] = self.effect
-
-        if include_transition is not None and include_transition > 0:
-            data["transition"] = include_transition
-
-        return data
 
 
 @dataclass
@@ -202,20 +194,10 @@ class LightController:
         """Get entity state object."""
         return self.hass.states.get(entity_id)
 
-    def _get_state_value(self, entity_id: str) -> str | None:
-        """Get entity state string value."""
-        state = self._get_state(entity_id)
-        return state.state if state else None
-
-    def _get_attributes(self, entity_id: str) -> dict[str, Any]:
-        """Get entity attributes."""
-        state = self._get_state(entity_id)
-        return dict(state.attributes) if state else {}
-
     def _is_available(self, entity_id: str) -> bool:
         """Check if entity is available."""
-        state_value = self._get_state_value(entity_id)
-        return state_value is not None and state_value not in [
+        state = self._get_state(entity_id)
+        return state is not None and state.state not in [
             STATE_UNAVAILABLE,
             STATE_UNKNOWN,
         ]
@@ -237,19 +219,14 @@ class LightController:
             _LOGGER.warning("Invalid entity_id type: %s", type(entity_id))
             return valid, skipped
 
-        attrs = self._get_attributes(entity_id)
-        member_entities = attrs.get("entity_id")
+        state = self._get_state(entity_id)
+        attrs = dict(state.attributes) if state else {}
+        members = attrs.get("entity_id", [])
 
-        # Case 1: Entity has member entities (light group)
-        if (
-            member_entities
-            and isinstance(member_entities, (list, tuple))
-            and len(member_entities) > 0
-        ):
-            _LOGGER.debug(
-                "Expanding group %s with %d members", entity_id, len(member_entities)
-            )
-            for member in member_entities:
+        # Case 1: Entity has member entities (light group or group.* helper)
+        if isinstance(members, (list, tuple)) and members:
+            _LOGGER.debug("Expanding group %s with %d members", entity_id, len(members))
+            for member in members:
                 if not member.startswith(f"{LIGHT_DOMAIN}."):
                     continue
                 if self._is_available(member):
@@ -257,20 +234,7 @@ class LightController:
                 else:
                     skipped.append(member)
 
-        # Case 2: Traditional group.* domain
-        elif entity_id.startswith(f"{GROUP_DOMAIN}."):
-            _LOGGER.debug("Expanding group domain entity: %s", entity_id)
-            group_members = attrs.get("entity_id", [])
-            if group_members:
-                for member in group_members:
-                    if not member.startswith(f"{LIGHT_DOMAIN}."):
-                        continue
-                    if self._is_available(member):
-                        valid.append(member)
-                    else:
-                        skipped.append(member)
-
-        # Case 3: Individual light
+        # Case 2: Individual light
         elif entity_id.startswith(f"{LIGHT_DOMAIN}."):
             if self._is_available(entity_id):
                 valid.append(entity_id)
@@ -377,7 +341,8 @@ class LightController:
         self, entity_id: str, expected_pct: int, tolerance: int
     ) -> bool:
         """Verify brightness is within tolerance."""
-        attrs = self._get_attributes(entity_id)
+        state = self._get_state(entity_id)
+        attrs = dict(state.attributes) if state else {}
         raw_brightness = attrs.get("brightness") or 0
         actual_pct = round((raw_brightness / 255) * 100)
 
@@ -403,7 +368,8 @@ class LightController:
         if expected_rgb is None:
             return None
 
-        attrs = self._get_attributes(entity_id)
+        state = self._get_state(entity_id)
+        attrs = dict(state.attributes) if state else {}
         supported_modes = attrs.get("supported_color_modes", []) or []
         supports_rgb = COLOR_MODE_RGB in supported_modes or COLOR_MODE_HS in supported_modes
 
@@ -434,7 +400,8 @@ class LightController:
         if expected_kelvin is None:
             return None
 
-        attrs = self._get_attributes(entity_id)
+        state = self._get_state(entity_id)
+        attrs = dict(state.attributes) if state else {}
         supported_modes = attrs.get("supported_color_modes", []) or []
 
         if COLOR_MODE_COLOR_TEMP not in supported_modes:
@@ -463,7 +430,8 @@ class LightController:
         entity_id = target.entity_id
 
         try:
-            current_state = self._get_state_value(entity_id)
+            state = self._get_state(entity_id)
+            current_state = state.state if state else None
 
             if current_state in [None, STATE_UNAVAILABLE, STATE_UNKNOWN]:
                 return VerificationResult.UNAVAILABLE
@@ -484,42 +452,26 @@ class LightController:
             ):
                 return VerificationResult.WRONG_BRIGHTNESS
 
-            # Verify color
-            rgb_result = self._verify_rgb(entity_id, target.rgb_color, tolerances.rgb)
-            kelvin_result = self._verify_kelvin(
-                entity_id, target.color_temp_kelvin, tolerances.kelvin
-            )
-
+            # Verify color - success if either specified color matches or is unsupported
             has_rgb = target.rgb_color is not None
             has_kelvin = target.color_temp_kelvin is not None
 
             if not has_rgb and not has_kelvin:
                 return VerificationResult.SUCCESS
 
-            if has_rgb and has_kelvin:
-                if rgb_result is True or kelvin_result is True:
-                    return VerificationResult.SUCCESS
-                if rgb_result is None and kelvin_result is None:
-                    return VerificationResult.SUCCESS
-                return VerificationResult.WRONG_COLOR
+            rgb_result = self._verify_rgb(entity_id, target.rgb_color, tolerances.rgb)
+            kelvin_result = self._verify_kelvin(
+                entity_id, target.color_temp_kelvin, tolerances.kelvin
+            )
 
-            if has_rgb:
-                return (
-                    VerificationResult.SUCCESS
-                    if rgb_result in [True, None]
-                    else VerificationResult.WRONG_COLOR
-                )
+            # OK if matches (True) or unsupported (None); only False is a failure
+            rgb_ok = rgb_result is not False if has_rgb else True
+            kelvin_ok = kelvin_result is not False if has_kelvin else True
 
-            if has_kelvin:
-                return (
-                    VerificationResult.SUCCESS
-                    if kelvin_result in [True, None]
-                    else VerificationResult.WRONG_COLOR
-                )
-
-            # Defensive fallback - all (has_rgb, has_kelvin) combinations are
-            # handled above, so this is unreachable but kept for type safety
-            return VerificationResult.SUCCESS  # pragma: no cover
+            # Success if either color mode is satisfied
+            if rgb_ok or kelvin_ok:
+                return VerificationResult.SUCCESS
+            return VerificationResult.WRONG_COLOR
 
         except Exception as e:
             _LOGGER.error("Error verifying %s: %s", entity_id, e)
@@ -759,6 +711,7 @@ class LightController:
                 len(pending_targets),
             )
 
+            # Transition only on first attempt - retries should be instant for quick recovery
             use_transition = None
             if target_state == TargetState.ON and attempt == 0 and transition > 0:
                 use_transition = transition

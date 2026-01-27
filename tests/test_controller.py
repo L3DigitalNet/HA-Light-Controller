@@ -336,19 +336,6 @@ class TestLightControllerHelpers:
         state = controller._get_state("light.nonexistent")
         assert state is None
 
-    def test_get_state_value(self, hass, mock_light_states):
-        """Test getting entity state value."""
-        controller = LightController(hass)
-        assert controller._get_state_value("light.test_light_1") == STATE_ON
-        assert controller._get_state_value("light.test_light_3") == STATE_OFF
-
-    def test_get_attributes(self, hass, mock_light_states):
-        """Test getting entity attributes."""
-        controller = LightController(hass)
-        attrs = controller._get_attributes("light.test_light_1")
-        assert "brightness" in attrs
-        assert attrs["brightness"] == 255
-
     def test_is_available_true(self, hass, mock_light_states):
         """Test checking if entity is available."""
         controller = LightController(hass)

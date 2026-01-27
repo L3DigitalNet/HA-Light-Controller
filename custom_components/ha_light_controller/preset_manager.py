@@ -15,6 +15,25 @@ from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_PRESETS,
+    CONF_BRIGHTNESS_TOLERANCE,
+    CONF_RGB_TOLERANCE,
+    CONF_KELVIN_TOLERANCE,
+    CONF_DELAY_AFTER_SEND,
+    CONF_MAX_RETRIES,
+    CONF_MAX_RUNTIME_SECONDS,
+    CONF_USE_EXPONENTIAL_BACKOFF,
+    CONF_MAX_BACKOFF_SECONDS,
+    CONF_LOG_SUCCESS,
+    CONF_NOTIFY_ON_FAILURE,
+    DEFAULT_BRIGHTNESS_TOLERANCE,
+    DEFAULT_RGB_TOLERANCE,
+    DEFAULT_KELVIN_TOLERANCE,
+    DEFAULT_DELAY_AFTER_SEND,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MAX_RUNTIME_SECONDS,
+    DEFAULT_USE_EXPONENTIAL_BACKOFF,
+    DEFAULT_MAX_BACKOFF_SECONDS,
+    DEFAULT_LOG_SUCCESS,
     PRESET_ID,
     PRESET_NAME,
     PRESET_ENTITIES,
@@ -183,6 +202,10 @@ class PresetManager:
             if preset.name.lower() == name_lower:
                 return preset
         return None
+
+    def find_preset(self, name_or_id: str) -> PresetConfig | None:
+        """Find preset by ID or name."""
+        return self.get_preset(name_or_id) or self.get_preset_by_name(name_or_id)
 
     def get_status(self, preset_id: str) -> PresetStatus:
         """Get the status of a preset."""
@@ -361,3 +384,41 @@ class PresetManager:
         )
 
         return preset
+
+    async def activate_preset_with_options(
+        self,
+        preset: PresetConfig,
+        controller: Any,
+        options: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Activate a preset using configured options.
+
+        Args:
+            preset: The preset to activate
+            controller: LightController instance
+            options: ConfigEntry options dict for tolerance/retry defaults
+
+        Returns:
+            Result dict from controller.ensure_state()
+        """
+        return await controller.ensure_state(
+            entities=preset.entities,
+            state_target=preset.state,
+            default_brightness_pct=preset.brightness_pct,
+            default_rgb_color=preset.rgb_color,
+            default_color_temp_kelvin=preset.color_temp_kelvin,
+            default_effect=preset.effect,
+            targets=preset.targets if preset.targets else None,
+            transition=preset.transition,
+            skip_verification=preset.skip_verification,
+            brightness_tolerance=options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
+            rgb_tolerance=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
+            kelvin_tolerance=options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
+            delay_after_send=options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
+            max_retries=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
+            max_runtime_seconds=options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
+            use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
+            max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
+            log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
+            notify_on_failure=options.get(CONF_NOTIFY_ON_FAILURE),
+        )

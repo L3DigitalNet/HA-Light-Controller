@@ -88,7 +88,7 @@ data:
 
 ### Presets
 
-Create presets via the integration options UI or programmatically. The UI supports per-entity configuration - set different brightness, color, and state for each light in the preset.
+Create and edit presets via the integration options UI or programmatically. The UI supports per-entity configuration - set different brightness, color, and state for each light in the preset. Preset deletion includes a confirmation step.
 
 ```yaml
 service: ha_light_controller.create_preset

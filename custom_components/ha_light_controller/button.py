@@ -18,25 +18,6 @@ from .const import (
     PRESET_STATUS_ACTIVATING,
     PRESET_STATUS_SUCCESS,
     PRESET_STATUS_FAILED,
-    CONF_BRIGHTNESS_TOLERANCE,
-    CONF_RGB_TOLERANCE,
-    CONF_KELVIN_TOLERANCE,
-    CONF_DELAY_AFTER_SEND,
-    CONF_MAX_RETRIES,
-    CONF_MAX_RUNTIME_SECONDS,
-    CONF_USE_EXPONENTIAL_BACKOFF,
-    CONF_MAX_BACKOFF_SECONDS,
-    CONF_LOG_SUCCESS,
-    CONF_NOTIFY_ON_FAILURE,
-    DEFAULT_BRIGHTNESS_TOLERANCE,
-    DEFAULT_RGB_TOLERANCE,
-    DEFAULT_KELVIN_TOLERANCE,
-    DEFAULT_DELAY_AFTER_SEND,
-    DEFAULT_MAX_RETRIES,
-    DEFAULT_MAX_RUNTIME_SECONDS,
-    DEFAULT_USE_EXPONENTIAL_BACKOFF,
-    DEFAULT_MAX_BACKOFF_SECONDS,
-    DEFAULT_LOG_SUCCESS,
 )
 from .preset_manager import PresetManager, PresetConfig
 
@@ -177,39 +158,12 @@ class PresetButton(ButtonEntity):
             return
 
         _LOGGER.info("Activating preset: %s", preset.name)
-
-        # Update status to activating
         await self._preset_manager.set_status(self._preset_id, PRESET_STATUS_ACTIVATING)
 
-        # Get configured defaults from options
-        options = self._entry.options
-
-        # Build service call parameters
-        # Preset values override defaults
-        result = await self._controller.ensure_state(
-            entities=preset.entities,
-            state_target=preset.state,
-            default_brightness_pct=preset.brightness_pct,
-            default_rgb_color=preset.rgb_color,
-            default_color_temp_kelvin=preset.color_temp_kelvin,
-            default_effect=preset.effect,
-            targets=preset.targets if preset.targets else None,
-            transition=preset.transition,
-            skip_verification=preset.skip_verification,
-            # Use configured defaults for tolerances and retry
-            brightness_tolerance=options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
-            rgb_tolerance=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-            kelvin_tolerance=options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
-            delay_after_send=options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
-            max_retries=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-            max_runtime_seconds=options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
-            use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
-            max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
-            log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-            notify_on_failure=options.get(CONF_NOTIFY_ON_FAILURE),
+        result = await self._preset_manager.activate_preset_with_options(
+            preset, self._controller, self._entry.options
         )
 
-        # Update status based on result
         if result.get("success", False):
             await self._preset_manager.set_status(
                 self._preset_id, PRESET_STATUS_SUCCESS, result

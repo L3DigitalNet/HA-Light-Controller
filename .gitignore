@@ -1,6 +1,6 @@
 # Custom
 HA-Light-Controller.code-workspace
-CLAUDE.md
+.github/copilot-instructions.md
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
