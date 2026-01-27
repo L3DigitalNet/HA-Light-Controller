@@ -593,14 +593,16 @@ class TestOptionsFlowManagePresets:
         return flow
 
     @pytest.mark.asyncio
-    async def test_step_manage_presets_form(self, options_flow_with_presets):
-        """Test manage_presets shows form with presets."""
+    async def test_step_manage_presets_shows_menu(self, options_flow_with_presets):
+        """Test manage_presets shows menu with edit/delete options."""
         flow, _ = options_flow_with_presets
 
         result = await flow.async_step_manage_presets()
 
-        assert result["type"] == FlowResultType.FORM
+        assert result["type"] == FlowResultType.MENU
         assert result["step_id"] == "manage_presets"
+        assert "edit_preset" in result["menu_options"]
+        assert "delete_preset" in result["menu_options"]
         assert "preset_count" in result["description_placeholders"]
         assert result["description_placeholders"]["preset_count"] == "2"
 
@@ -615,23 +617,305 @@ class TestOptionsFlowManagePresets:
         assert result["errors"]["base"] == "no_presets"
 
     @pytest.mark.asyncio
-    async def test_step_manage_presets_deletes(self, options_flow_with_presets):
-        """Test manage_presets can delete preset."""
+    async def test_step_delete_preset_shows_selection(self, options_flow_with_presets):
+        """Test delete_preset shows preset selection form."""
         flow, preset_manager = options_flow_with_presets
 
-        result = await flow.async_step_manage_presets(
+        result = await flow.async_step_delete_preset()
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "delete_preset"
+
+    @pytest.mark.asyncio
+    async def test_step_delete_preset_goes_to_confirmation(self, options_flow_with_presets):
+        """Test delete_preset selection goes to confirm step."""
+        flow, preset_manager = options_flow_with_presets
+
+        result = await flow.async_step_delete_preset(
             user_input={"preset_to_delete": "preset_1"}
+        )
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "confirm_delete"
+
+    @pytest.mark.asyncio
+    async def test_step_confirm_delete_deletes_preset(self, options_flow_with_presets):
+        """Test confirm_delete actually deletes preset."""
+        flow, preset_manager = options_flow_with_presets
+
+        # First select preset to delete
+        await flow.async_step_delete_preset(
+            user_input={"preset_to_delete": "preset_1"}
+        )
+
+        # Then confirm deletion
+        result = await flow.async_step_confirm_delete(
+            user_input={"confirm_delete": True}
         )
 
         assert result["type"] == FlowResultType.CREATE_ENTRY
         preset_manager.delete_preset.assert_called_once_with("preset_1")
 
     @pytest.mark.asyncio
-    async def test_step_manage_presets_no_delete(self, options_flow_with_presets):
-        """Test manage_presets with no delete selection."""
+    async def test_step_confirm_delete_cancelled(self, options_flow_with_presets):
+        """Test confirm_delete cancellation returns to menu."""
         flow, preset_manager = options_flow_with_presets
 
-        result = await flow.async_step_manage_presets(user_input={})
+        # First select preset to delete
+        await flow.async_step_delete_preset(
+            user_input={"preset_to_delete": "preset_1"}
+        )
 
-        assert result["type"] == FlowResultType.CREATE_ENTRY
+        # Cancel the deletion
+        result = await flow.async_step_confirm_delete(
+            user_input={"confirm_delete": False}
+        )
+
+        # Should return to menu
+        assert result["type"] == FlowResultType.MENU
         preset_manager.delete_preset.assert_not_called()
+
+
+class TestOptionsFlowEditPreset:
+    """Tests for edit_preset flow."""
+
+    @pytest.fixture
+    def options_flow_with_presets(self, config_entry, hass):
+        """Create options flow with preset manager containing presets."""
+        from custom_components.ha_light_controller.preset_manager import PresetConfig
+
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+
+        preset_1 = PresetConfig(
+            id="preset_1",
+            name="Preset One",
+            entities=["light.test_1"],
+            brightness_pct=75,
+            targets=[{"entity_id": "light.test_1", "brightness_pct": 80}],
+        )
+
+        preset_manager = MagicMock()
+        preset_manager.presets = {"preset_1": preset_1}
+        preset_manager.delete_preset = AsyncMock()
+        preset_manager.create_preset = AsyncMock()
+
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry.runtime_data = runtime_data
+
+        return flow, preset_manager
+
+    @pytest.mark.asyncio
+    async def test_step_edit_preset_shows_form(self, options_flow_with_presets):
+        """Test edit_preset shows selection form."""
+        flow, _ = options_flow_with_presets
+
+        result = await flow.async_step_edit_preset()
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "edit_preset"
+
+    @pytest.mark.asyncio
+    async def test_step_edit_preset_selects_preset(self, options_flow_with_presets):
+        """Test selecting a preset to edit loads its data."""
+        flow, _ = options_flow_with_presets
+
+        result = await flow.async_step_edit_preset(
+            user_input={"preset_to_edit": "preset_1"}
+        )
+
+        # Should go to entity menu (shown as form with action selector)
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "preset_entity_menu"
+
+        # Check that preset data was loaded
+        assert flow._editing_preset_id == "preset_1"
+        assert flow._preset_data["name"] == "Preset One"
+
+    @pytest.mark.asyncio
+    async def test_step_edit_preset_invalid_selection(self, options_flow_with_presets):
+        """Test invalid preset selection returns to menu."""
+        flow, _ = options_flow_with_presets
+
+        result = await flow.async_step_edit_preset(
+            user_input={"preset_to_edit": "nonexistent"}
+        )
+
+        # Should return to manage presets menu
+        assert result["type"] == FlowResultType.MENU
+        assert result["step_id"] == "manage_presets"
+
+    @pytest.mark.asyncio
+    async def test_step_edit_preset_no_presets(self, config_entry, hass):
+        """Test edit_preset with no presets returns to manage_presets."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+
+        preset_manager = MagicMock()
+        preset_manager.presets = {}
+
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry.runtime_data = runtime_data
+
+        result = await flow.async_step_edit_preset()
+
+        # Should return to manage presets (which shows "no_presets" error form when empty)
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"]["base"] == "no_presets"
+
+
+class TestOptionsFlowConfirmDeleteEdgeCases:
+    """Tests for confirm_delete edge cases."""
+
+    @pytest.mark.asyncio
+    async def test_step_confirm_delete_no_preset_id(self, config_entry, hass):
+        """Test confirm_delete returns to menu when no preset_id set."""
+        from custom_components.ha_light_controller.preset_manager import PresetConfig
+
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+        # Don't set _deleting_preset_id
+
+        preset_manager = MagicMock()
+        preset_manager.presets = {"preset_1": MagicMock()}
+
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry.runtime_data = runtime_data
+
+        result = await flow.async_step_confirm_delete()
+
+        assert result["type"] == FlowResultType.MENU
+        assert result["step_id"] == "manage_presets"
+
+    @pytest.mark.asyncio
+    async def test_step_confirm_delete_preset_not_found(self, config_entry, hass):
+        """Test confirm_delete returns to manage_presets when preset no longer exists."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+        flow._deleting_preset_id = "nonexistent"
+
+        preset_manager = MagicMock()
+        preset_manager.presets = {}  # Preset doesn't exist
+
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = preset_manager
+        config_entry.runtime_data = runtime_data
+
+        result = await flow.async_step_confirm_delete()
+
+        # With no presets, manage_presets shows "no_presets" error form
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"]["base"] == "no_presets"
+
+
+class TestOptionsFlowRemoveEntity:
+    """Tests for remove_entity flow."""
+
+    @pytest.fixture
+    def flow_with_preset_data(self, config_entry, hass):
+        """Create flow with preset data."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+        flow._preset_data = {
+            "name": "Test Preset",
+            "entities": ["light.test_1", "light.test_2"],
+            "targets": {
+                "light.test_1": {"entity_id": "light.test_1", "brightness_pct": 50},
+                "light.test_2": {"entity_id": "light.test_2", "brightness_pct": 75},
+            },
+        }
+        return flow
+
+    @pytest.mark.asyncio
+    async def test_step_remove_entity_shows_form(self, flow_with_preset_data, hass):
+        """Test remove_entity shows selection form."""
+        flow = flow_with_preset_data
+        # Mock entity state for friendly name lookup
+        hass.states.get = MagicMock(return_value=None)
+
+        result = await flow.async_step_remove_entity()
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "remove_entity"
+
+    @pytest.mark.asyncio
+    async def test_step_remove_entity_removes_entity(self, flow_with_preset_data):
+        """Test removing an entity updates preset data."""
+        flow = flow_with_preset_data
+
+        result = await flow.async_step_remove_entity(
+            user_input={"entity_to_remove": "light.test_1"}
+        )
+
+        # Should go back to entity menu (shown as form)
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "preset_entity_menu"
+
+        # Entity should be removed from list and targets
+        assert "light.test_1" not in flow._preset_data["entities"]
+        assert "light.test_1" not in flow._preset_data["targets"]
+        assert "light.test_2" in flow._preset_data["entities"]
+
+
+class TestOptionsFlowAddMoreEntities:
+    """Tests for add_more_entities flow."""
+
+    @pytest.fixture
+    def flow_with_preset_data(self, config_entry, hass):
+        """Create flow with preset data."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+        flow._preset_data = {
+            "name": "Test Preset",
+            "entities": ["light.test_1"],
+            "targets": {},
+        }
+        return flow
+
+    @pytest.mark.asyncio
+    async def test_step_add_more_entities_shows_form(self, flow_with_preset_data):
+        """Test add_more_entities shows form."""
+        flow = flow_with_preset_data
+
+        result = await flow.async_step_add_more_entities()
+
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "add_more_entities"
+        assert result["description_placeholders"]["current_count"] == "1"
+
+    @pytest.mark.asyncio
+    async def test_step_add_more_entities_adds_entities(self, flow_with_preset_data):
+        """Test adding entities updates preset data."""
+        flow = flow_with_preset_data
+
+        result = await flow.async_step_add_more_entities(
+            user_input={"new_entities": ["light.test_2", "light.test_3"]}
+        )
+
+        # Should go to entity menu (shown as form)
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "preset_entity_menu"
+
+        # New entities should be added
+        assert "light.test_2" in flow._preset_data["entities"]
+        assert "light.test_3" in flow._preset_data["entities"]
+
+    @pytest.mark.asyncio
+    async def test_step_add_more_entities_empty_returns_to_menu(self, flow_with_preset_data):
+        """Test submitting empty selection returns to entity menu."""
+        flow = flow_with_preset_data
+
+        result = await flow.async_step_add_more_entities(user_input={})
+
+        # Returns to entity menu (shown as form)
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "preset_entity_menu"

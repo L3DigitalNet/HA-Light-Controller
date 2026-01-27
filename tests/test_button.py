@@ -63,6 +63,9 @@ def mock_preset_manager(mock_preset):
     manager.get_status = MagicMock(return_value=PresetStatus())
     manager.set_status = AsyncMock()
     manager.register_listener = MagicMock(return_value=MagicMock())
+    manager.activate_preset_with_options = AsyncMock(
+        return_value={"success": True, "result": "success"}
+    )
     return manager
 
 
@@ -323,16 +326,15 @@ class TestPresetButtonPress:
 
     @pytest.mark.asyncio
     async def test_press_activates_preset(
-        self, button_entity, mock_controller, mock_preset_manager
+        self, button_entity, mock_controller, mock_preset_manager, mock_preset
     ):
         """Test that pressing the button activates the preset."""
         await button_entity.async_press()
 
-        mock_controller.ensure_state.assert_called_once()
-        call_kwargs = mock_controller.ensure_state.call_args[1]
-        assert call_kwargs["entities"] == ["light.test_1", "light.test_2"]
-        assert call_kwargs["state_target"] == "on"
-        assert call_kwargs["default_brightness_pct"] == 75
+        mock_preset_manager.activate_preset_with_options.assert_called_once()
+        call_args = mock_preset_manager.activate_preset_with_options.call_args[0]
+        assert call_args[0] == mock_preset  # preset
+        assert call_args[1] == mock_controller  # controller
 
     @pytest.mark.asyncio
     async def test_press_sets_status_activating(
@@ -351,7 +353,9 @@ class TestPresetButtonPress:
         self, button_entity, mock_controller, mock_preset_manager
     ):
         """Test that successful activation sets status to success."""
-        mock_controller.ensure_state.return_value = {"success": True, "result": "success"}
+        mock_preset_manager.activate_preset_with_options.return_value = {
+            "success": True, "result": "success"
+        }
 
         await button_entity.async_press()
 
@@ -365,7 +369,7 @@ class TestPresetButtonPress:
         self, button_entity, mock_controller, mock_preset_manager
     ):
         """Test that failed activation sets status to failed."""
-        mock_controller.ensure_state.return_value = {
+        mock_preset_manager.activate_preset_with_options.return_value = {
             "success": False,
             "result": "failed",
             "message": "Lights unreachable",
@@ -392,29 +396,31 @@ class TestPresetButtonPress:
 
     @pytest.mark.asyncio
     async def test_press_uses_preset_rgb_color(
-        self, button_entity, mock_controller
+        self, button_entity, mock_preset_manager, mock_preset
     ):
-        """Test that RGB color from preset is used."""
+        """Test that preset with RGB color is passed to activate."""
         await button_entity.async_press()
 
-        call_kwargs = mock_controller.ensure_state.call_args[1]
-        assert call_kwargs["default_rgb_color"] == [255, 200, 100]
+        # Verify the preset with RGB color was passed
+        call_args = mock_preset_manager.activate_preset_with_options.call_args[0]
+        assert call_args[0].rgb_color == [255, 200, 100]
 
     @pytest.mark.asyncio
     async def test_press_uses_preset_transition(
-        self, button_entity, mock_controller
+        self, button_entity, mock_preset_manager, mock_preset
     ):
-        """Test that transition from preset is used."""
+        """Test that preset with transition is passed to activate."""
         await button_entity.async_press()
 
-        call_kwargs = mock_controller.ensure_state.call_args[1]
-        assert call_kwargs["transition"] == 1.5
+        # Verify the preset with transition was passed
+        call_args = mock_preset_manager.activate_preset_with_options.call_args[0]
+        assert call_args[0].transition == 1.5
 
     @pytest.mark.asyncio
     async def test_press_uses_configured_options(
         self, hass, mock_preset_manager, mock_controller, mock_preset
     ):
-        """Test that configured options are used."""
+        """Test that configured options are passed to activate."""
         config_entry = MagicMock()
         config_entry.entry_id = "test_entry"
         config_entry.options = {
@@ -433,9 +439,9 @@ class TestPresetButtonPress:
 
         await button.async_press()
 
-        call_kwargs = mock_controller.ensure_state.call_args[1]
-        assert call_kwargs["brightness_tolerance"] == 10
-        assert call_kwargs["max_retries"] == 5
+        # Verify options were passed
+        call_args = mock_preset_manager.activate_preset_with_options.call_args[0]
+        assert call_args[2] == config_entry.options
 
 
 class TestPresetButtonLifecycle:

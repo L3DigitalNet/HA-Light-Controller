@@ -53,10 +53,14 @@ def mock_preset_manager():
     manager.presets = {}
     manager.get_preset = MagicMock(return_value=None)
     manager.get_preset_by_name = MagicMock(return_value=None)
+    manager.find_preset = MagicMock(return_value=None)
     manager.set_status = AsyncMock()
     manager.create_preset = AsyncMock()
     manager.delete_preset = AsyncMock()
     manager.create_preset_from_current = AsyncMock()
+    manager.activate_preset_with_options = AsyncMock(
+        return_value={"success": True, "result": "success", "message": "Done"}
+    )
     return manager
 
 
@@ -545,7 +549,7 @@ class TestActivatePresetServiceAdvanced:
             entities=["light.test"],
             brightness_pct=75,
         )
-        mock_preset_manager.get_preset.return_value = preset
+        mock_preset_manager.find_preset.return_value = preset
 
         with patch(
             "custom_components.ha_light_controller.LightController",
@@ -570,7 +574,7 @@ class TestActivatePresetServiceAdvanced:
         result = await activate_handler(call)
 
         assert result["success"] is True
-        mock_controller.ensure_state.assert_called()
+        mock_preset_manager.activate_preset_with_options.assert_called()
         # Verify status was set
         assert mock_preset_manager.set_status.call_count >= 2  # activating + success
 
@@ -586,9 +590,8 @@ class TestActivatePresetServiceAdvanced:
             name="My Preset",
             entities=["light.test"],
         )
-        # get_preset returns None (ID doesn't match), but get_preset_by_name works
-        mock_preset_manager.get_preset.return_value = None
-        mock_preset_manager.get_preset_by_name.return_value = preset
+        # find_preset handles both ID and name lookup
+        mock_preset_manager.find_preset.return_value = preset
 
         with patch(
             "custom_components.ha_light_controller.LightController",
@@ -612,7 +615,7 @@ class TestActivatePresetServiceAdvanced:
         result = await activate_handler(call)
 
         assert result["success"] is True
-        mock_preset_manager.get_preset_by_name.assert_called_with("My Preset")
+        mock_preset_manager.find_preset.assert_called_with("My Preset")
 
     @pytest.mark.asyncio
     async def test_activate_preset_exception(
@@ -626,8 +629,10 @@ class TestActivatePresetServiceAdvanced:
             name="Test Preset",
             entities=["light.test"],
         )
-        mock_preset_manager.get_preset.return_value = preset
-        mock_controller.ensure_state = AsyncMock(side_effect=Exception("Controller error"))
+        mock_preset_manager.find_preset.return_value = preset
+        mock_preset_manager.activate_preset_with_options = AsyncMock(
+            side_effect=Exception("Controller error")
+        )
 
         with patch(
             "custom_components.ha_light_controller.LightController",
