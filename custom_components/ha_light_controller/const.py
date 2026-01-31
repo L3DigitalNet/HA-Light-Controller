@@ -29,7 +29,6 @@ CONF_MAX_RETRIES: Final = "max_retries"
 CONF_MAX_RUNTIME_SECONDS: Final = "max_runtime_seconds"
 CONF_USE_EXPONENTIAL_BACKOFF: Final = "use_exponential_backoff"
 CONF_MAX_BACKOFF_SECONDS: Final = "max_backoff_seconds"
-CONF_NOTIFY_ON_FAILURE: Final = "notify_on_failure"
 CONF_LOG_SUCCESS: Final = "log_success"
 
 # Default values
@@ -64,7 +63,6 @@ ATTR_USE_EXPONENTIAL_BACKOFF: Final = "use_exponential_backoff"
 ATTR_MAX_BACKOFF_SECONDS: Final = "max_backoff_seconds"
 ATTR_SKIP_VERIFICATION: Final = "skip_verification"
 ATTR_LOG_SUCCESS: Final = "log_success"
-ATTR_NOTIFY_ON_FAILURE: Final = "notify_on_failure"
 
 # Result keys
 RESULT_SUCCESS: Final = "success"
