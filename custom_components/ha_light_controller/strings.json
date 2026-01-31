@@ -86,12 +86,10 @@
             "name": "Logging & Notifications",
             "description": "Configure success logging and failure notifications",
             "data": {
-              "log_success": "Log Success to Logbook",
-              "notify_on_failure": "Notification Service"
+              "log_success": "Log Success to Logbook"
             },
             "data_description": {
-              "log_success": "Write to the Home Assistant logbook when lights reach target state",
-              "notify_on_failure": "Service to call on failure (e.g., notify.mobile_app_phone)"
+              "log_success": "Write to the Home Assistant logbook when lights reach target state"
             }
           }
         }
@@ -282,10 +280,6 @@
         "log_success": {
           "name": "Log Success",
           "description": "Write success message to logbook"
-        },
-        "notify_on_failure": {
-          "name": "Notify on Failure",
-          "description": "Notification service (e.g., notify.mobile_app_phone)"
         }
       }
     },
