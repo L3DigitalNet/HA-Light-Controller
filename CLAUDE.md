@@ -12,6 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 HA-Light-Controller is a Home Assistant custom integration providing reliable light control with state verification, automatic retries, and preset management. It ensures lights actually reach their target state after commands are sent. Distributed via HACS.
 
+**Scope**: Focused on core light control with verification/retry and preset management. Notification feature and blueprints removed in v0.2.0.
+
 ## Commands
 
 ```bash

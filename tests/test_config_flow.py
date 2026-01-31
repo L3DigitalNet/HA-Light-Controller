@@ -24,7 +24,6 @@ from custom_components.ha_light_controller.const import (
     CONF_MAX_RUNTIME_SECONDS,
     CONF_USE_EXPONENTIAL_BACKOFF,
     CONF_MAX_BACKOFF_SECONDS,
-    CONF_NOTIFY_ON_FAILURE,
     CONF_LOG_SUCCESS,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_TRANSITION,
@@ -166,7 +165,6 @@ class TestLightControllerOptionsFlow:
                 CONF_USE_EXPONENTIAL_BACKOFF: True,
                 CONF_MAX_BACKOFF_SECONDS: 60.0,
                 CONF_LOG_SUCCESS: True,
-                CONF_NOTIFY_ON_FAILURE: "notify.mobile_app",
             }
         )
 
@@ -180,25 +178,6 @@ class TestLightControllerOptionsFlow:
         assert result["data"][CONF_MAX_RETRIES] == 5
         assert result["data"][CONF_USE_EXPONENTIAL_BACKOFF] is True
         assert result["data"][CONF_LOG_SUCCESS] is True
-        assert result["data"][CONF_NOTIFY_ON_FAILURE] == "notify.mobile_app"
-
-    @pytest.mark.asyncio
-    async def test_step_settings_empty_notify(self, options_flow, hass):
-        """Test settings step handles empty notify service."""
-        options_flow.hass = hass
-
-        result = await options_flow.async_step_settings(
-            user_input={
-                CONF_DEFAULT_BRIGHTNESS_PCT: 100,
-                CONF_DEFAULT_TRANSITION: 1.0,
-                CONF_LOG_SUCCESS: False,
-                CONF_NOTIFY_ON_FAILURE: "",
-            }
-        )
-
-        assert result["type"] == FlowResultType.CREATE_ENTRY
-        assert result["data"][CONF_NOTIFY_ON_FAILURE] == ""
-
 
 class TestOptionsFlowAddPreset:
     """Tests for the add_preset options flow steps (multi-step flow)."""

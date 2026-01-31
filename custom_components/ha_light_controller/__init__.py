@@ -34,7 +34,6 @@ from .const import (
     CONF_MAX_RUNTIME_SECONDS,
     CONF_USE_EXPONENTIAL_BACKOFF,
     CONF_MAX_BACKOFF_SECONDS,
-    CONF_NOTIFY_ON_FAILURE,
     CONF_LOG_SUCCESS,
     # Defaults
     DEFAULT_BRIGHTNESS_PCT,
@@ -67,7 +66,6 @@ from .const import (
     ATTR_MAX_BACKOFF_SECONDS,
     ATTR_SKIP_VERIFICATION,
     ATTR_LOG_SUCCESS,
-    ATTR_NOTIFY_ON_FAILURE,
     # Preset attributes
     ATTR_PRESET,
     ATTR_PRESET_NAME,
@@ -179,7 +177,6 @@ SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(
         ),
         vol.Optional(ATTR_SKIP_VERIFICATION): cv.boolean,
         vol.Optional(ATTR_LOG_SUCCESS): cv.boolean,
-        vol.Optional(ATTR_NOTIFY_ON_FAILURE): cv.string,
     }
 )
 
@@ -259,8 +256,6 @@ async def async_setup_entry(
         def get(attr: str, conf: str, default: Any) -> Any:
             return _get_param(data, options, attr, conf, default)
 
-        notify_on_failure = _get_optional_str(data, options, ATTR_NOTIFY_ON_FAILURE, CONF_NOTIFY_ON_FAILURE)
-
         try:
             result = await controller.ensure_state(
                 entities=data.get(ATTR_ENTITIES, []),
@@ -281,7 +276,6 @@ async def async_setup_entry(
                 max_backoff_seconds=get(ATTR_MAX_BACKOFF_SECONDS, CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
                 skip_verification=data.get(ATTR_SKIP_VERIFICATION, False),
                 log_success=get(ATTR_LOG_SUCCESS, CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-                notify_on_failure=notify_on_failure,
             )
             return result
         except Exception as e:

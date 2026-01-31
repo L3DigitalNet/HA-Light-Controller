@@ -488,50 +488,6 @@ class TestEnsureStateServiceAdvanced:
         assert result["result"] == "error"
         assert "Service error" in result["message"]
 
-    @pytest.mark.asyncio
-    async def test_ensure_state_uses_config_notify_on_failure(
-        self, hass, mock_controller, mock_preset_manager
-    ):
-        """Test ensure_state uses notify_on_failure from config options."""
-        # Create config entry with notify_on_failure option
-        config_entry = MagicMock()
-        config_entry.entry_id = "test_entry"
-        config_entry.data = {CONF_PRESETS: {}}
-        config_entry.options = {"notify_on_failure": "notify.mobile_app"}
-        config_entry.async_on_unload = MagicMock()
-        config_entry.add_update_listener = MagicMock()
-
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        # Get the service handler
-        ensure_state_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ENSURE_STATE:
-                ensure_state_handler = call[0][2]
-                break
-
-        call = MagicMock(spec=ServiceCall)
-        call.data = {
-            ATTR_ENTITIES: ["light.test"],
-            ATTR_STATE_TARGET: "on",
-        }
-
-        await ensure_state_handler(call)
-
-        # Verify controller was called with notify_on_failure from config
-        mock_controller.ensure_state.assert_called()
-        call_kwargs = mock_controller.ensure_state.call_args[1]
-        assert call_kwargs["notify_on_failure"] == "notify.mobile_app"
-
-
 class TestActivatePresetServiceAdvanced:
     """Advanced tests for activate_preset service handler."""
 
