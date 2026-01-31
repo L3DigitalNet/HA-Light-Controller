@@ -24,7 +24,6 @@ from .const import (
     CONF_USE_EXPONENTIAL_BACKOFF,
     CONF_MAX_BACKOFF_SECONDS,
     CONF_LOG_SUCCESS,
-    CONF_NOTIFY_ON_FAILURE,
     DEFAULT_BRIGHTNESS_TOLERANCE,
     DEFAULT_RGB_TOLERANCE,
     DEFAULT_KELVIN_TOLERANCE,
@@ -420,5 +419,4 @@ class PresetManager:
             use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
             max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
             log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
-            notify_on_failure=options.get(CONF_NOTIFY_ON_FAILURE),
         )
