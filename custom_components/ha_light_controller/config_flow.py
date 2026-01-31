@@ -29,7 +29,6 @@ from .const import (
     CONF_MAX_RUNTIME_SECONDS,
     CONF_USE_EXPONENTIAL_BACKOFF,
     CONF_MAX_BACKOFF_SECONDS,
-    CONF_NOTIFY_ON_FAILURE,
     CONF_LOG_SUCCESS,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_TRANSITION,
@@ -112,7 +111,6 @@ class LightControllerConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_LOG_SUCCESS: user_input.get(
                         CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS
                     ),
-                    CONF_NOTIFY_ON_FAILURE: user_input.get(CONF_NOTIFY_ON_FAILURE, ""),
                 },
             )
 
@@ -187,10 +185,6 @@ class LightControllerOptionsFlow(OptionsFlow):
                     flat_options.update(value)
                 else:
                     flat_options[key] = value
-
-            # Handle empty notify service
-            if not flat_options.get(CONF_NOTIFY_ON_FAILURE):
-                flat_options[CONF_NOTIFY_ON_FAILURE] = ""
 
             new_options = {**self.config_entry.options, **flat_options}
             return self.async_create_entry(title="", data=new_options)
@@ -359,14 +353,6 @@ class LightControllerOptionsFlow(OptionsFlow):
                                     CONF_LOG_SUCCESS,
                                     default=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
                                 ): selector.BooleanSelector(),
-                                vol.Optional(
-                                    CONF_NOTIFY_ON_FAILURE,
-                                    default=options.get(CONF_NOTIFY_ON_FAILURE, ""),
-                                ): selector.TextSelector(
-                                    selector.TextSelectorConfig(
-                                        type=selector.TextSelectorType.TEXT,
-                                    )
-                                ),
                             }
                         ),
                         {"collapsed": True},
