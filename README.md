@@ -32,8 +32,6 @@ This solves the common problem of lights occasionally missing commands due to ne
 - **Group expansion** - Automatically expands `light.*` and `group.*` entities to individual lights
 - **Per-entity overrides** - Set different attributes for each light in a single service call via the `targets` parameter
 - **Presets** - Store light configurations as button entities for one-tap activation
-- **Failure notifications** - Send alerts via any `notify.*` service when verification fails
-- **Blueprints** - Pre-built automation templates for common patterns
 
 ## Installation
 
@@ -65,7 +63,6 @@ data:
     - light.living_room_ceiling
     - light.living_room_lamp
   state: "off"
-  notify_on_failure: "notify.mobile_app_phone"
 ```
 
 ### Per-Entity Overrides
@@ -102,17 +99,6 @@ data:
 ```
 
 Each preset creates a `button.*` entity for activation and a `sensor.*` entity for status tracking.
-
-## Blueprints
-
-Included automation blueprints (available in **Settings** → **Automations & Scenes** → **Blueprints**):
-
-| Blueprint | Description |
-| --------- | ----------- |
-| Motion-Activated Scene | Trigger lights on motion with configurable timeout |
-| Button Scene Controller | Map button events to up to 4 light scenes |
-| Scene Scheduler | Time-based scene activation with day/presence conditions |
-| Adaptive Lighting | Sun-position-based color temperature and brightness |
 
 ## Documentation
 
