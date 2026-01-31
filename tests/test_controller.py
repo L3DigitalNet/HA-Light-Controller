@@ -1298,7 +1298,6 @@ class TestLightControllerEnsureStateAdvanced:
             max_retries=10,  # High retries so we hit timeout first
             max_runtime_seconds=0.001,  # Very short timeout
             delay_after_send=0.1,  # Long enough to exceed timeout
-            notify_on_failure="notify.mobile_app",
         )
 
         assert result["success"] is False
@@ -1318,7 +1317,6 @@ class TestLightControllerEnsureStateAdvanced:
             max_retries=1,
             max_runtime_seconds=60,  # Enough time to not timeout
             delay_after_send=0.001,
-            notify_on_failure="notify.mobile_app",
         )
 
         assert result["success"] is False
