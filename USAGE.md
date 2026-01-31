@@ -12,7 +12,6 @@ Complete reference for services, configuration options, and examples.
   - [create_preset_from_current](#ha_light_controllercreate_preset_from_current)
   - [delete_preset](#ha_light_controllerdelete_preset)
 - [Working with Presets](#working-with-presets)
-- [Blueprints](#blueprints)
 - [Example Automations](#example-automations)
 - [Troubleshooting](#troubleshooting)
 
@@ -330,42 +329,6 @@ Via service:
 service: ha_light_controller.activate_preset
 data:
   preset: "Evening Mode"
-```
-
----
-
-## Blueprints
-
-Located in **Settings** → **Automations & Scenes** → **Blueprints**.
-
-### Motion-Activated Scene
-
-Triggers lights on motion detection with configurable timeout.
-
-**Inputs:** Motion sensor, target lights, brightness/color settings, timeout duration, time conditions
-
-### Button Scene Controller
-
-Maps button/remote events to up to 4 light scenes.
-
-**Inputs:** Button device, scene configurations per action (single press, double press, etc.)
-
-### Scene Scheduler
-
-Time-based scene activation with day-of-week and presence conditions.
-
-**Inputs:** Trigger time, target lights, scene settings, day/presence conditions
-
-### Adaptive Lighting
-
-Adjusts color temperature and brightness based on sun position.
-
-**Inputs:** Target lights, min/max color temperature, min/max brightness, update interval
-
-### Blueprint Location
-
-```text
-custom_components/ha_light_controller/blueprints/automation/ha_light_controller/
 ```
 
 ---
