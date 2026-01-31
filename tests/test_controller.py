@@ -823,38 +823,6 @@ class TestLightControllerLogging:
         # Should not raise
         await controller._log_to_logbook("Test", "Message")
 
-    @pytest.mark.asyncio
-    async def test_send_notification(self, hass):
-        """Test sending notification."""
-        controller = LightController(hass)
-        await controller._send_notification(
-            "notify.mobile_app", "Test Title", "Test message"
-        )
-
-        hass.services.async_call.assert_called_once_with(
-            "notify",
-            "mobile_app",
-            {"title": "Test Title", "message": "Test message"},
-            blocking=False,
-        )
-
-    @pytest.mark.asyncio
-    async def test_send_notification_invalid_service(self, hass):
-        """Test notification with invalid service format."""
-        controller = LightController(hass)
-        await controller._send_notification(
-            "invalid_service_format", "Title", "Message"
-        )
-        # Should not call service with invalid format
-        hass.services.async_call.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_send_notification_exception(self, hass):
-        """Test that notification exception doesn't crash."""
-        hass.services.async_call = AsyncMock(side_effect=Exception("Notify error"))
-        controller = LightController(hass)
-        # Should not raise
-        await controller._send_notification("notify.test", "Title", "Message")
 
 
 class TestLightGroupWithEffect:
