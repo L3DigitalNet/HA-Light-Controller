@@ -180,16 +180,6 @@ ensure_state:
       selector:
         boolean:
 
-    notify_on_failure:
-      name: Notify on Failure
-      description: >-
-        Notification service to call if lights fail to reach target state.
-        Leave empty to use integration default, or specify a service like
-        notify.mobile_app_phone or notify.persistent_notification.
-      example: "notify.mobile_app_phone"
-      selector:
-        text:
-
 activate_preset:
   name: Activate Preset
   description: >-
