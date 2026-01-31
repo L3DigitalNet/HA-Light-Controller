@@ -541,25 +541,6 @@ class LightController:
         except Exception as e:
             _LOGGER.error("Error writing to logbook: %s", e)
 
-    async def _send_notification(
-        self, service: str, title: str, message: str
-    ) -> None:
-        """Send a notification."""
-        try:
-            parts = service.split(".", 1)
-            if len(parts) != 2:
-                _LOGGER.error("Invalid notification service: %s", service)
-                return
-
-            await self.hass.services.async_call(
-                parts[0],
-                parts[1],
-                {"title": title, "message": message},
-                blocking=False,
-            )
-        except Exception as e:
-            _LOGGER.error("Error sending notification: %s", e)
-
     # =========================================================================
     # Main Entry Point
     # =========================================================================
@@ -584,7 +565,6 @@ class LightController:
         max_backoff_seconds: float = 30,
         skip_verification: bool = False,
         log_success: bool = False,
-        notify_on_failure: str | None = None,
     ) -> dict[str, Any]:
         """
         Ensure lights reach target state with verification and retries.
@@ -751,11 +731,6 @@ class LightController:
             _LOGGER.error(message)
             await self._log_to_logbook("Light Controller", message)
 
-            if notify_on_failure:
-                await self._send_notification(
-                    notify_on_failure, "Light Controller Timeout", message
-                )
-
             return OperationResult(
                 success=False,
                 result_code=RESULT_CODE_TIMEOUT,
@@ -774,11 +749,6 @@ class LightController:
             )
             _LOGGER.error(message)
             await self._log_to_logbook("Light Controller", message)
-
-            if notify_on_failure:
-                await self._send_notification(
-                    notify_on_failure, "Light Controller Failed", message
-                )
 
             return OperationResult(
                 success=False,
