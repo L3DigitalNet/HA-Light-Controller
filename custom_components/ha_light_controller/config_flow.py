@@ -757,6 +757,16 @@ class LightControllerOptionsFlow(OptionsFlow):
         # Convert targets dict to list format expected by preset_manager
         targets = list(targets_dict.values())
 
+        # Derive preset-level state from per-entity targets
+        # If all targets are "off", preset state is "off"; otherwise "on"
+        target_states = [t.get("state", "on") for t in targets]
+        preset_state = "off" if target_states and all(s == "off" for s in target_states) else "on"
+
+        # Derive preset-level transition from per-entity targets
+        # Use the maximum transition among targets (or 0.0 if none set)
+        target_transitions = [t.get("transition", 0) for t in targets]
+        preset_transition = float(max(target_transitions)) if target_transitions else 0.0
+
         # Check if we're editing an existing preset
         editing_preset_id = getattr(self, "_editing_preset_id", None)
 
@@ -770,9 +780,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                     await preset_manager.create_preset(
                         name=name,
                         entities=entities,
-                        state="on",
+                        state=preset_state,
                         targets=targets,
-                        transition=0.0,
+                        transition=preset_transition,
                         skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
                     )
                     _LOGGER.info("Updated preset: %s with %d entity configs", name, len(targets))
@@ -781,9 +791,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                     await preset_manager.create_preset(
                         name=name,
                         entities=entities,
-                        state="on",
+                        state=preset_state,
                         targets=targets,
-                        transition=0.0,
+                        transition=preset_transition,
                         skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
                     )
                     _LOGGER.info("Created preset: %s with %d entity configs", name, len(targets))
