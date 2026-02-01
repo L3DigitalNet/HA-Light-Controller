@@ -285,6 +285,45 @@ The preset creation flow supports per-entity configuration:
 
 This allows presets where different lights have different settings (e.g., ceiling at 100% warm white, accent at 30% RGB red).
 
+### Per-Entity Configuration in Presets
+
+When creating a preset via the UI, you can configure each light individually:
+
+- **State**: Set individual lights to "on" or "off" within the same preset
+- **Transition**: Set different transition times for each light
+- **Brightness/Color**: Set different brightness, color temperature, or RGB values per light
+
+This allows creating complex presets like "Movie Mode" where:
+
+- Main ceiling light is off
+- TV backlight is on at 20% with warm color
+- Accent lights are on at 10%
+
+All activated via a single button press.
+
+#### Service Call Example
+
+```yaml
+service: ha_light_controller.ensure_state
+data:
+  entities:
+    - light.ceiling
+    - light.tv_backlight
+    - light.accent
+  state: "on"  # Default state
+  targets:
+    - entity_id: light.ceiling
+      state: "off"
+    - entity_id: light.tv_backlight
+      state: "on"
+      brightness_pct: 20
+      color_temp_kelvin: 2700
+      transition: 2.0
+    - entity_id: light.accent
+      state: "on"
+      brightness_pct: 10
+```
+
 ### Editing Presets via UI
 
 **Settings** → **Devices & Services** → **Light Controller** → **Configure** → **Manage Presets** → **Edit Preset**
