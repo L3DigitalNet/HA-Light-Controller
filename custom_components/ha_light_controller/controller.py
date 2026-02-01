@@ -288,6 +288,8 @@ class LightController:
         default_rgb_color: list[int] | None,
         default_color_temp_kelvin: int | None,
         default_effect: str | None,
+        default_state: str = "on",
+        default_transition: float | None = None,
     ) -> list[LightTarget]:
         """Build LightTarget objects for each member."""
         targets: list[LightTarget] = []
@@ -304,6 +306,8 @@ class LightController:
                     override.get("color_temperature_kelvin", default_color_temp_kelvin),
                 ),
                 effect=override.get("effect", default_effect),
+                state=override.get("state", default_state),
+                transition=override.get("transition", default_transition),
             )
             targets.append(target)
 
@@ -649,6 +653,8 @@ class LightController:
             default_rgb_color,
             default_color_temp_kelvin,
             default_effect,
+            default_state=state_target,
+            default_transition=transition if transition > 0 else None,
         )
 
         # Fire-and-forget mode

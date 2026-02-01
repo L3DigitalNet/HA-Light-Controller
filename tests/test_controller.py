@@ -473,6 +473,50 @@ class TestLightControllerTargetBuilding:
         assert targets[1].brightness_pct == 100
         assert targets[1].rgb_color is None
 
+    def test_build_targets_with_state_override(self, hass, mock_light_states):
+        """Test building targets with per-entity state override."""
+        controller = LightController(hass)
+        overrides = {
+            "light.test_light_1": {
+                "entity_id": "light.test_light_1",
+                "state": "off",
+            }
+        }
+        targets = controller._build_targets(
+            members=["light.test_light_1", "light.test_light_2"],
+            overrides=overrides,
+            default_brightness_pct=100,
+            default_rgb_color=None,
+            default_color_temp_kelvin=None,
+            default_effect=None,
+        )
+        # First light has state override
+        assert targets[0].state == "off"
+        # Second light uses default
+        assert targets[1].state == "on"
+
+    def test_build_targets_with_transition_override(self, hass, mock_light_states):
+        """Test building targets with per-entity transition override."""
+        controller = LightController(hass)
+        overrides = {
+            "light.test_light_1": {
+                "entity_id": "light.test_light_1",
+                "transition": 3.0,
+            }
+        }
+        targets = controller._build_targets(
+            members=["light.test_light_1", "light.test_light_2"],
+            overrides=overrides,
+            default_brightness_pct=100,
+            default_rgb_color=None,
+            default_color_temp_kelvin=None,
+            default_effect=None,
+        )
+        # First light has transition override
+        assert targets[0].transition == 3.0
+        # Second light uses default
+        assert targets[1].transition is None
+
     def test_group_by_settings(self, hass, mock_light_states):
         """Test grouping targets by identical settings."""
         controller = LightController(hass)
