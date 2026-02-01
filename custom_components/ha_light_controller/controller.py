@@ -531,6 +531,62 @@ class LightController:
             tasks = [self._send_turn_on(group, transition) for group in groups]
             await asyncio.gather(*tasks)
 
+    async def _send_commands_per_target(
+        self,
+        targets: list[LightTarget],
+        global_transition: float | None = None,
+    ) -> None:
+        """Send commands to targets, respecting per-entity state and transition.
+
+        This method splits targets by state (on/off) and sends appropriate commands.
+        Per-entity transition takes precedence over global_transition.
+        """
+        on_targets = [t for t in targets if t.state == "on"]
+        off_targets = [t for t in targets if t.state == "off"]
+
+        if off_targets:
+            off_entities = [t.entity_id for t in off_targets]
+            await self._send_turn_off(off_entities)
+
+        if on_targets:
+            groups = self._group_by_settings_with_transition(on_targets, global_transition)
+            tasks = [self._send_turn_on(group, transition) for group, transition in groups]
+            await asyncio.gather(*tasks)
+
+    def _group_by_settings_with_transition(
+        self,
+        targets: list[LightTarget],
+        global_transition: float | None,
+    ) -> list[tuple[LightGroup, float | None]]:
+        """Group targets by settings, returning groups with their transition values."""
+        groups: dict[tuple, tuple[LightGroup, float | None]] = {}
+
+        for target in targets:
+            transition = target.transition if target.transition is not None else global_transition
+
+            rgb_key = tuple(target.rgb_color) if target.rgb_color else None
+            key = (
+                target.brightness_pct,
+                rgb_key,
+                target.color_temp_kelvin,
+                target.effect,
+                transition,
+            )
+
+            if key not in groups:
+                group = LightGroup(
+                    entities=[target.entity_id],
+                    brightness_pct=target.brightness_pct,
+                    rgb_color=target.rgb_color,
+                    color_temp_kelvin=target.color_temp_kelvin,
+                    effect=target.effect,
+                )
+                groups[key] = (group, transition)
+            else:
+                groups[key][0].entities.append(target.entity_id)
+
+        return list(groups.values())
+
     # =========================================================================
     # Logging and Notifications
     # =========================================================================
