@@ -50,12 +50,11 @@ These settings control how precisely lights must match the target values to be c
 | Exponential backoff | Gradually increase delay between retries (recommended for congested networks) |
 | Max backoff | Maximum delay between retries when using exponential backoff |
 
-### Logging & Notifications
+### Logging
 
 | Setting | Description |
 | ------- | ----------- |
 | Log success | Write successful operations to the Home Assistant logbook |
-| Failure notification | Notification service to call when lights fail to respond (e.g., `notify.mobile_app_phone`) |
 
 ---
 
@@ -101,7 +100,6 @@ data:
 | `use_exponential_backoff` | bool | No | Override configured backoff setting |
 | `max_backoff_seconds` | float | No | Override configured maximum backoff delay |
 | `log_success` | bool | No | Log success to logbook |
-| `notify_on_failure` | string | No | Notification service to call on failure |
 
 #### Per-Light Overrides
 
@@ -397,7 +395,7 @@ script:
               brightness_pct: 30
 ```
 
-### Automation with Failure Notification
+### Automation with Success Logging
 
 ```yaml
 automation:
@@ -411,7 +409,6 @@ automation:
           entities:
             - group.all_lights
           state: "off"
-          notify_on_failure: "notify.mobile_app_phone"
           log_success: true
 ```
 
