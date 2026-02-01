@@ -76,8 +76,9 @@ ensure_state:
     targets:
       name: Per-Light Overrides
       description: >-
-        List of per-light overrides. Example: [{"entity_id": "light.desk",
-        "brightness_pct": 80}, {"entity_id": "light.lamp", "rgb_color": [255, 0, 0]}]
+        List of per-light overrides. Supports: entity_id (required), state, brightness_pct,
+        rgb_color, color_temp_kelvin, effect, transition. Example: [{"entity_id": "light.desk",
+        "state": "on", "brightness_pct": 80, "transition": 2}, {"entity_id": "light.lamp", "state": "off"}]
       selector:
         object:
 
@@ -265,7 +266,9 @@ create_preset:
     targets:
       name: Per-Light Overrides
       description: >-
-        Optional per-light settings. Example: [{"entity_id": "light.desk", "brightness_pct": 50}]
+        Optional per-light settings. Supports: entity_id (required), state, brightness_pct,
+        rgb_color, color_temp_kelvin, effect, transition. Example: [{"entity_id": "light.desk",
+        "state": "on", "brightness_pct": 50, "transition": 2}]
       selector:
         object:
 

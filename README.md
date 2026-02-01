@@ -23,7 +23,7 @@ This solves the common problem of lights occasionally missing commands due to ne
 2. Waits a configurable delay for the state to update
 3. Verifies entity attributes match target values within tolerance
 4. Retries with exponential backoff if verification fails
-5. Optionally logs success or sends failure notifications
+5. Optionally logs success to the Home Assistant logbook
 
 ## Key Features
 
@@ -50,7 +50,7 @@ This solves the common problem of lights occasionally missing commands due to ne
 
 Add the integration via **Settings** → **Devices & Services** → **Add Integration** → "Light Controller".
 
-Configuration options include default brightness, transition time, verification tolerances (brightness, RGB, Kelvin), retry settings, and notification services.
+Configuration options include default brightness, transition time, verification tolerances (brightness, RGB, Kelvin), retry settings, and success logging.
 
 ## Usage
 

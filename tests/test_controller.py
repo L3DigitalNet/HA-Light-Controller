@@ -206,6 +206,30 @@ class TestLightTarget:
         assert "transition" not in data
 
 
+class TestLightTargetStateAndTransition:
+    """Tests for LightTarget state and transition fields."""
+
+    def test_light_target_default_state_on(self):
+        """Test LightTarget defaults to state='on'."""
+        target = LightTarget(entity_id="light.test")
+        assert target.state == "on"
+
+    def test_light_target_custom_state_off(self):
+        """Test LightTarget with state='off'."""
+        target = LightTarget(entity_id="light.test", state="off")
+        assert target.state == "off"
+
+    def test_light_target_default_transition_none(self):
+        """Test LightTarget defaults to transition=None."""
+        target = LightTarget(entity_id="light.test")
+        assert target.transition is None
+
+    def test_light_target_custom_transition(self):
+        """Test LightTarget with custom transition."""
+        target = LightTarget(entity_id="light.test", transition=2.5)
+        assert target.transition == 2.5
+
+
 # =============================================================================
 # LightGroup Tests
 # =============================================================================
@@ -448,6 +472,50 @@ class TestLightControllerTargetBuilding:
         # Second light uses defaults
         assert targets[1].brightness_pct == 100
         assert targets[1].rgb_color is None
+
+    def test_build_targets_with_state_override(self, hass, mock_light_states):
+        """Test building targets with per-entity state override."""
+        controller = LightController(hass)
+        overrides = {
+            "light.test_light_1": {
+                "entity_id": "light.test_light_1",
+                "state": "off",
+            }
+        }
+        targets = controller._build_targets(
+            members=["light.test_light_1", "light.test_light_2"],
+            overrides=overrides,
+            default_brightness_pct=100,
+            default_rgb_color=None,
+            default_color_temp_kelvin=None,
+            default_effect=None,
+        )
+        # First light has state override
+        assert targets[0].state == "off"
+        # Second light uses default
+        assert targets[1].state == "on"
+
+    def test_build_targets_with_transition_override(self, hass, mock_light_states):
+        """Test building targets with per-entity transition override."""
+        controller = LightController(hass)
+        overrides = {
+            "light.test_light_1": {
+                "entity_id": "light.test_light_1",
+                "transition": 3.0,
+            }
+        }
+        targets = controller._build_targets(
+            members=["light.test_light_1", "light.test_light_2"],
+            overrides=overrides,
+            default_brightness_pct=100,
+            default_rgb_color=None,
+            default_color_temp_kelvin=None,
+            default_effect=None,
+        )
+        # First light has transition override
+        assert targets[0].transition == 3.0
+        # Second light uses default
+        assert targets[1].transition is None
 
     def test_group_by_settings(self, hass, mock_light_states):
         """Test grouping targets by identical settings."""
@@ -1375,3 +1443,255 @@ class TestLightControllerEnsureStateAdvanced:
         )
 
         assert result["success"] is True
+
+
+class TestMixedStateHandling:
+    """Tests for handling presets with mixed on/off states."""
+
+    @pytest.mark.asyncio
+    async def test_send_commands_splits_by_state(self, hass, mock_light_states):
+        """Test that _send_commands_per_target handles mixed per-entity states."""
+        controller = LightController(hass)
+
+        # Create targets with mixed states
+        targets = [
+            LightTarget("light.on_1", brightness_pct=100, state="on"),
+            LightTarget("light.on_2", brightness_pct=100, state="on"),
+            LightTarget("light.off_1", brightness_pct=100, state="off"),
+        ]
+
+        # Track which entities get which commands
+        turn_on_calls = []
+        turn_off_calls = []
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                turn_on_calls.append(data.get("entity_id", []))
+            elif service == "turn_off":
+                turn_off_calls.append(data.get("entity_id", []))
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        # Call the method that handles state splitting
+        await controller._send_commands_per_target(targets)
+
+        # Verify on commands went to on lights
+        all_on_entities = [e for call in turn_on_calls for e in (call if isinstance(call, list) else [call])]
+        assert "light.on_1" in all_on_entities
+        assert "light.on_2" in all_on_entities
+        assert "light.off_1" not in all_on_entities
+
+        # Verify off command went to off light
+        all_off_entities = [e for call in turn_off_calls for e in (call if isinstance(call, list) else [call])]
+        assert "light.off_1" in all_off_entities
+
+    @pytest.mark.asyncio
+    async def test_send_commands_groups_on_targets_by_settings(self, hass, mock_light_states):
+        """Test that on targets are grouped by settings for efficient batching."""
+        controller = LightController(hass)
+
+        # Create targets with same settings (should be batched) and different settings
+        targets = [
+            LightTarget("light.same_1", brightness_pct=75, color_temp_kelvin=4000, state="on"),
+            LightTarget("light.same_2", brightness_pct=75, color_temp_kelvin=4000, state="on"),
+            LightTarget("light.different", brightness_pct=50, color_temp_kelvin=3000, state="on"),
+        ]
+
+        turn_on_calls = []
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                turn_on_calls.append(data.copy())
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        await controller._send_commands_per_target(targets)
+
+        # Should have 2 turn_on calls: one for batched lights, one for different light
+        assert len(turn_on_calls) == 2
+
+    @pytest.mark.asyncio
+    async def test_send_commands_respects_per_entity_transition(self, hass, mock_light_states):
+        """Test that per-entity transition overrides global transition."""
+        controller = LightController(hass)
+
+        # Create targets with different transitions
+        targets = [
+            LightTarget("light.custom_trans", brightness_pct=100, state="on", transition=5.0),
+            LightTarget("light.global_trans", brightness_pct=100, state="on", transition=None),
+        ]
+
+        turn_on_calls = []
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                turn_on_calls.append(data.copy())
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        # Call with global transition of 2.0
+        await controller._send_commands_per_target(targets, global_transition=2.0)
+
+        # Should have 2 calls since transitions differ
+        assert len(turn_on_calls) == 2
+
+        # Find the call with custom transition
+        custom_call = next(c for c in turn_on_calls if "light.custom_trans" in c.get("entity_id", []))
+        global_call = next(c for c in turn_on_calls if "light.global_trans" in c.get("entity_id", []))
+
+        assert custom_call.get("transition") == 5.0
+        assert global_call.get("transition") == 2.0
+
+    @pytest.mark.asyncio
+    async def test_send_commands_all_off(self, hass, mock_light_states):
+        """Test that all-off targets only send turn_off commands."""
+        controller = LightController(hass)
+
+        targets = [
+            LightTarget("light.off_1", brightness_pct=100, state="off"),
+            LightTarget("light.off_2", brightness_pct=100, state="off"),
+        ]
+
+        turn_on_calls = []
+        turn_off_calls = []
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                turn_on_calls.append(data.get("entity_id", []))
+            elif service == "turn_off":
+                turn_off_calls.append(data.get("entity_id", []))
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        await controller._send_commands_per_target(targets)
+
+        # No turn_on calls
+        assert len(turn_on_calls) == 0
+
+        # All entities in turn_off calls
+        all_off_entities = [e for call in turn_off_calls for e in (call if isinstance(call, list) else [call])]
+        assert "light.off_1" in all_off_entities
+        assert "light.off_2" in all_off_entities
+
+    @pytest.mark.asyncio
+    async def test_send_commands_all_on(self, hass, mock_light_states):
+        """Test that all-on targets only send turn_on commands."""
+        controller = LightController(hass)
+
+        targets = [
+            LightTarget("light.on_1", brightness_pct=100, state="on"),
+            LightTarget("light.on_2", brightness_pct=100, state="on"),
+        ]
+
+        turn_on_calls = []
+        turn_off_calls = []
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                turn_on_calls.append(data.get("entity_id", []))
+            elif service == "turn_off":
+                turn_off_calls.append(data.get("entity_id", []))
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        await controller._send_commands_per_target(targets)
+
+        # No turn_off calls
+        assert len(turn_off_calls) == 0
+
+        # All entities in turn_on calls
+        all_on_entities = [e for call in turn_on_calls for e in (call if isinstance(call, list) else [call])]
+        assert "light.on_1" in all_on_entities
+        assert "light.on_2" in all_on_entities
+
+
+class TestEnsureStateMixedTargets:
+    """Tests for ensure_state with mixed per-entity states."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_mixed_states(self, hass, mock_light_states):
+        """Test ensure_state handles targets with mixed on/off states."""
+        from tests.conftest import create_light_state
+
+        # Set up state tracking
+        entity_states = {
+            "light.turn_on": "off",  # Currently off, target on
+            "light.turn_off": "on",  # Currently on, target off
+        }
+
+        def get_state(entity_id):
+            state_value = entity_states.get(entity_id, "unavailable")
+            return create_light_state(entity_id, state_value, brightness=255)
+
+        async def mock_call(domain, service, data, **kwargs):
+            entities = data.get("entity_id", [])
+            if not isinstance(entities, list):
+                entities = [entities]
+            for entity_id in entities:
+                if service == "turn_on":
+                    entity_states[entity_id] = "on"
+                elif service == "turn_off":
+                    entity_states[entity_id] = "off"
+
+        hass.states.get = MagicMock(side_effect=get_state)
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        controller = LightController(hass)
+
+        result = await controller.ensure_state(
+            entities=["light.turn_on", "light.turn_off"],
+            state_target="on",  # Global default
+            targets=[
+                {"entity_id": "light.turn_on", "state": "on", "brightness_pct": 100},
+                {"entity_id": "light.turn_off", "state": "off"},
+            ],
+        )
+
+        assert result["success"] is True
+        # Verify final states
+        assert entity_states["light.turn_on"] == "on"
+        assert entity_states["light.turn_off"] == "off"
+
+
+class TestPerEntityTransition:
+    """Tests for per-entity transition handling."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_per_entity_transition(self, hass, mock_light_states):
+        """Test that per-entity transitions are respected."""
+        from tests.conftest import create_light_state
+
+        transitions_used = {}
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                entities = data.get("entity_id", [])
+                transition = data.get("transition")
+                if not isinstance(entities, list):
+                    entities = [entities]
+                for entity_id in entities:
+                    transitions_used[entity_id] = transition
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        # Set up states that will verify on first attempt
+        def get_state(entity_id):
+            return create_light_state(entity_id, "on", brightness=255)
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+
+        await controller.ensure_state(
+            entities=["light.fast", "light.slow"],
+            state_target="on",
+            transition=1.0,  # Global fallback
+            targets=[
+                {"entity_id": "light.fast", "transition": 0.5},
+                {"entity_id": "light.slow", "transition": 3.0},
+            ],
+            skip_verification=True,
+        )
+
+        # Verify per-entity transitions were used
+        assert transitions_used.get("light.fast") == 0.5
+        assert transitions_used.get("light.slow") == 3.0

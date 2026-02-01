@@ -134,6 +134,8 @@ class LightTarget(LightSettingsMixin):
     rgb_color: list[int] | None = None
     color_temp_kelvin: int | None = None
     effect: str | None = None
+    state: str = "on"
+    transition: float | None = None
 
 
 @dataclass
@@ -286,6 +288,8 @@ class LightController:
         default_rgb_color: list[int] | None,
         default_color_temp_kelvin: int | None,
         default_effect: str | None,
+        default_state: str = "on",
+        default_transition: float | None = None,
     ) -> list[LightTarget]:
         """Build LightTarget objects for each member."""
         targets: list[LightTarget] = []
@@ -302,6 +306,8 @@ class LightController:
                     override.get("color_temperature_kelvin", default_color_temp_kelvin),
                 ),
                 effect=override.get("effect", default_effect),
+                state=override.get("state", default_state),
+                transition=override.get("transition", default_transition),
             )
             targets.append(target)
 
@@ -525,6 +531,62 @@ class LightController:
             tasks = [self._send_turn_on(group, transition) for group in groups]
             await asyncio.gather(*tasks)
 
+    async def _send_commands_per_target(
+        self,
+        targets: list[LightTarget],
+        global_transition: float | None = None,
+    ) -> None:
+        """Send commands to targets, respecting per-entity state and transition.
+
+        This method splits targets by state (on/off) and sends appropriate commands.
+        Per-entity transition takes precedence over global_transition.
+        """
+        on_targets = [t for t in targets if t.state == "on"]
+        off_targets = [t for t in targets if t.state == "off"]
+
+        if off_targets:
+            off_entities = [t.entity_id for t in off_targets]
+            await self._send_turn_off(off_entities)
+
+        if on_targets:
+            groups = self._group_by_settings_with_transition(on_targets, global_transition)
+            tasks = [self._send_turn_on(group, transition) for group, transition in groups]
+            await asyncio.gather(*tasks)
+
+    def _group_by_settings_with_transition(
+        self,
+        targets: list[LightTarget],
+        global_transition: float | None,
+    ) -> list[tuple[LightGroup, float | None]]:
+        """Group targets by settings, returning groups with their transition values."""
+        groups: dict[tuple, tuple[LightGroup, float | None]] = {}
+
+        for target in targets:
+            transition = target.transition if target.transition is not None else global_transition
+
+            rgb_key = tuple(target.rgb_color) if target.rgb_color else None
+            key = (
+                target.brightness_pct,
+                rgb_key,
+                target.color_temp_kelvin,
+                target.effect,
+                transition,
+            )
+
+            if key not in groups:
+                group = LightGroup(
+                    entities=[target.entity_id],
+                    brightness_pct=target.brightness_pct,
+                    rgb_color=target.rgb_color,
+                    color_temp_kelvin=target.color_temp_kelvin,
+                    effect=target.effect,
+                )
+                groups[key] = (group, transition)
+            else:
+                groups[key][0].entities.append(target.entity_id)
+
+        return list(groups.values())
+
     # =========================================================================
     # Logging and Notifications
     # =========================================================================
@@ -647,14 +709,17 @@ class LightController:
             default_rgb_color,
             default_color_temp_kelvin,
             default_effect,
+            default_state=state_target,
+            default_transition=transition if transition > 0 else None,
         )
 
         # Fire-and-forget mode
         if skip_verification:
             _LOGGER.info("Fire-and-forget mode")
-            groups = self._group_by_settings(pending_targets)
-            use_transition = transition if target_state == TargetState.ON else None
-            await self._send_commands(groups, target_state, use_transition)
+            await self._send_commands_per_target(
+                pending_targets,
+                global_transition=transition if transition > 0 else None,
+            )
 
             elapsed = monotonic() - script_start
 
@@ -696,8 +761,10 @@ class LightController:
             if target_state == TargetState.ON and attempt == 0 and transition > 0:
                 use_transition = transition
 
-            groups = self._group_by_settings(pending_targets)
-            await self._send_commands(groups, target_state, use_transition)
+            await self._send_commands_per_target(
+                pending_targets,
+                global_transition=use_transition,
+            )
 
             await asyncio.sleep(current_delay)
 
@@ -705,7 +772,11 @@ class LightController:
             still_pending = [
                 target
                 for target in pending_targets
-                if self._verify_light(target, target_state, tolerances)
+                if self._verify_light(
+                    target,
+                    TargetState.from_string(target.state),
+                    tolerances,
+                )
                 not in [VerificationResult.SUCCESS, VerificationResult.UNAVAILABLE]
             ]
 

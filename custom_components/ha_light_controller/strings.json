@@ -29,7 +29,7 @@
           "manage_presets": "Manage Presets"
         },
         "menu_option_descriptions": {
-          "settings": "Configure default brightness, tolerances, retry behavior, and notifications",
+          "settings": "Configure default brightness, tolerances, retry behavior, and logging",
           "add_preset": "Create a new lighting preset with per-light configuration",
           "manage_presets": "Edit or delete existing presets"
         }
@@ -83,8 +83,8 @@
             }
           },
           "notifications": {
-            "name": "Logging & Notifications",
-            "description": "Configure success logging and failure notifications",
+            "name": "Logging",
+            "description": "Configure success logging",
             "data": {
               "log_success": "Log Success to Logbook"
             },
@@ -235,7 +235,7 @@
         },
         "targets": {
           "name": "Per-Light Overrides",
-          "description": "Per-light settings (e.g., [{\"entity_id\": \"light.desk\", \"brightness_pct\": 80}])"
+          "description": "Per-light settings supporting state, brightness_pct, rgb_color, color_temp_kelvin, effect, transition"
         },
         "brightness_tolerance": {
           "name": "Brightness Tolerance",
@@ -327,7 +327,7 @@
         },
         "targets": {
           "name": "Per-Light Overrides",
-          "description": "Optional per-light settings"
+          "description": "Optional per-light settings supporting state, brightness_pct, rgb_color, color_temp_kelvin, effect, transition"
         },
         "transition": {
           "name": "Transition",

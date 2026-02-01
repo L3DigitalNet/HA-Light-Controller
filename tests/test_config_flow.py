@@ -898,3 +898,169 @@ class TestOptionsFlowAddMoreEntities:
         # Returns to entity menu (shown as form)
         assert result["type"] == FlowResultType.FORM
         assert result["step_id"] == "preset_entity_menu"
+
+
+class TestPresetCreationStateDerivation:
+    """Tests for preset state/transition derivation from per-entity configs."""
+
+    @pytest.mark.asyncio
+    async def test_preset_state_derived_from_targets_all_off(
+        self, hass, config_entry_with_presets
+    ):
+        """Test preset state is 'off' when all targets are off."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry_with_presets
+        flow.hass = hass
+
+        # Set up preset data with all targets "off"
+        flow._preset_data = {
+            "name": "All Off Preset",
+            "entities": ["light.test1", "light.test2"],
+            "skip_verification": False,
+            "targets": {
+                "light.test1": {"entity_id": "light.test1", "state": "off"},
+                "light.test2": {"entity_id": "light.test2", "state": "off"},
+            },
+        }
+
+        # Mock preset_manager
+        mock_preset_manager = MagicMock()
+        mock_preset_manager.presets = {}
+        mock_preset_manager.create_preset = AsyncMock()
+
+        config_entry_with_presets.runtime_data = MagicMock()
+        config_entry_with_presets.runtime_data.preset_manager = mock_preset_manager
+
+        await flow._create_preset_from_data()
+
+        # Verify create_preset was called with state="off"
+        call_args = mock_preset_manager.create_preset.call_args
+        assert call_args.kwargs.get("state") == "off"
+
+    @pytest.mark.asyncio
+    async def test_preset_state_derived_mixed_uses_on(
+        self, hass, config_entry_with_presets
+    ):
+        """Test preset state is 'on' when targets are mixed."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry_with_presets
+        flow.hass = hass
+
+        # Set up preset data with mixed targets
+        flow._preset_data = {
+            "name": "Mixed Preset",
+            "entities": ["light.test1", "light.test2"],
+            "skip_verification": False,
+            "targets": {
+                "light.test1": {"entity_id": "light.test1", "state": "on"},
+                "light.test2": {"entity_id": "light.test2", "state": "off"},
+            },
+        }
+
+        mock_preset_manager = MagicMock()
+        mock_preset_manager.presets = {}
+        mock_preset_manager.create_preset = AsyncMock()
+
+        config_entry_with_presets.runtime_data = MagicMock()
+        config_entry_with_presets.runtime_data.preset_manager = mock_preset_manager
+
+        await flow._create_preset_from_data()
+
+        # Mixed state defaults to "on"
+        call_args = mock_preset_manager.create_preset.call_args
+        assert call_args.kwargs.get("state") == "on"
+
+    @pytest.mark.asyncio
+    async def test_preset_transition_derived_from_max(
+        self, hass, config_entry_with_presets
+    ):
+        """Test preset transition is max of all per-entity transitions."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry_with_presets
+        flow.hass = hass
+
+        # Set up preset data with varying transitions
+        flow._preset_data = {
+            "name": "Transition Preset",
+            "entities": ["light.test1", "light.test2", "light.test3"],
+            "skip_verification": False,
+            "targets": {
+                "light.test1": {"entity_id": "light.test1", "transition": 1.0},
+                "light.test2": {"entity_id": "light.test2", "transition": 5.0},
+                "light.test3": {"entity_id": "light.test3"},  # No transition
+            },
+        }
+
+        mock_preset_manager = MagicMock()
+        mock_preset_manager.presets = {}
+        mock_preset_manager.create_preset = AsyncMock()
+
+        config_entry_with_presets.runtime_data = MagicMock()
+        config_entry_with_presets.runtime_data.preset_manager = mock_preset_manager
+
+        await flow._create_preset_from_data()
+
+        # Transition should be max (5.0)
+        call_args = mock_preset_manager.create_preset.call_args
+        assert call_args.kwargs.get("transition") == 5.0
+
+    @pytest.mark.asyncio
+    async def test_preset_state_all_on_uses_on(
+        self, hass, config_entry_with_presets
+    ):
+        """Test preset state is 'on' when all targets are on."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry_with_presets
+        flow.hass = hass
+
+        flow._preset_data = {
+            "name": "All On Preset",
+            "entities": ["light.test1", "light.test2"],
+            "skip_verification": False,
+            "targets": {
+                "light.test1": {"entity_id": "light.test1", "state": "on"},
+                "light.test2": {"entity_id": "light.test2", "state": "on"},
+            },
+        }
+
+        mock_preset_manager = MagicMock()
+        mock_preset_manager.presets = {}
+        mock_preset_manager.create_preset = AsyncMock()
+
+        config_entry_with_presets.runtime_data = MagicMock()
+        config_entry_with_presets.runtime_data.preset_manager = mock_preset_manager
+
+        await flow._create_preset_from_data()
+
+        call_args = mock_preset_manager.create_preset.call_args
+        assert call_args.kwargs.get("state") == "on"
+
+    @pytest.mark.asyncio
+    async def test_preset_transition_defaults_to_zero(
+        self, hass, config_entry_with_presets
+    ):
+        """Test preset transition defaults to 0.0 when no targets have transition."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry_with_presets
+        flow.hass = hass
+
+        flow._preset_data = {
+            "name": "No Transition Preset",
+            "entities": ["light.test1"],
+            "skip_verification": False,
+            "targets": {
+                "light.test1": {"entity_id": "light.test1", "state": "on"},
+            },
+        }
+
+        mock_preset_manager = MagicMock()
+        mock_preset_manager.presets = {}
+        mock_preset_manager.create_preset = AsyncMock()
+
+        config_entry_with_presets.runtime_data = MagicMock()
+        config_entry_with_presets.runtime_data.preset_manager = mock_preset_manager
+
+        await flow._create_preset_from_data()
+
+        call_args = mock_preset_manager.create_preset.call_args
+        assert call_args.kwargs.get("transition") == 0.0
