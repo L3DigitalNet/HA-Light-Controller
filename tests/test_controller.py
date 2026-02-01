@@ -206,6 +206,30 @@ class TestLightTarget:
         assert "transition" not in data
 
 
+class TestLightTargetStateAndTransition:
+    """Tests for LightTarget state and transition fields."""
+
+    def test_light_target_default_state_on(self):
+        """Test LightTarget defaults to state='on'."""
+        target = LightTarget(entity_id="light.test")
+        assert target.state == "on"
+
+    def test_light_target_custom_state_off(self):
+        """Test LightTarget with state='off'."""
+        target = LightTarget(entity_id="light.test", state="off")
+        assert target.state == "off"
+
+    def test_light_target_default_transition_none(self):
+        """Test LightTarget defaults to transition=None."""
+        target = LightTarget(entity_id="light.test")
+        assert target.transition is None
+
+    def test_light_target_custom_transition(self):
+        """Test LightTarget with custom transition."""
+        target = LightTarget(entity_id="light.test", transition=2.5)
+        assert target.transition == 2.5
+
+
 # =============================================================================
 # LightGroup Tests
 # =============================================================================

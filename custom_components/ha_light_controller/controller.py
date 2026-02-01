@@ -134,6 +134,8 @@ class LightTarget(LightSettingsMixin):
     rgb_color: list[int] | None = None
     color_temp_kelvin: int | None = None
     effect: str | None = None
+    state: str = "on"
+    transition: float | None = None
 
 
 @dataclass
