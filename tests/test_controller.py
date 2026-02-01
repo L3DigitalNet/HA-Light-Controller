@@ -1651,3 +1651,47 @@ class TestEnsureStateMixedTargets:
         # Verify final states
         assert entity_states["light.turn_on"] == "on"
         assert entity_states["light.turn_off"] == "off"
+
+
+class TestPerEntityTransition:
+    """Tests for per-entity transition handling."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_per_entity_transition(self, hass, mock_light_states):
+        """Test that per-entity transitions are respected."""
+        from tests.conftest import create_light_state
+
+        transitions_used = {}
+
+        async def mock_call(domain, service, data, **kwargs):
+            if service == "turn_on":
+                entities = data.get("entity_id", [])
+                transition = data.get("transition")
+                if not isinstance(entities, list):
+                    entities = [entities]
+                for entity_id in entities:
+                    transitions_used[entity_id] = transition
+
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        # Set up states that will verify on first attempt
+        def get_state(entity_id):
+            return create_light_state(entity_id, "on", brightness=255)
+        hass.states.get = MagicMock(side_effect=get_state)
+
+        controller = LightController(hass)
+
+        await controller.ensure_state(
+            entities=["light.fast", "light.slow"],
+            state_target="on",
+            transition=1.0,  # Global fallback
+            targets=[
+                {"entity_id": "light.fast", "transition": 0.5},
+                {"entity_id": "light.slow", "transition": 3.0},
+            ],
+            skip_verification=True,
+        )
+
+        # Verify per-entity transitions were used
+        assert transitions_used.get("light.fast") == 0.5
+        assert transitions_used.get("light.slow") == 3.0
