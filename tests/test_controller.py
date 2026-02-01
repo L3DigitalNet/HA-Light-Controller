@@ -1603,3 +1603,51 @@ class TestMixedStateHandling:
         all_on_entities = [e for call in turn_on_calls for e in (call if isinstance(call, list) else [call])]
         assert "light.on_1" in all_on_entities
         assert "light.on_2" in all_on_entities
+
+
+class TestEnsureStateMixedTargets:
+    """Tests for ensure_state with mixed per-entity states."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_mixed_states(self, hass, mock_light_states):
+        """Test ensure_state handles targets with mixed on/off states."""
+        from tests.conftest import create_light_state
+
+        # Set up state tracking
+        entity_states = {
+            "light.turn_on": "off",  # Currently off, target on
+            "light.turn_off": "on",  # Currently on, target off
+        }
+
+        def get_state(entity_id):
+            state_value = entity_states.get(entity_id, "unavailable")
+            return create_light_state(entity_id, state_value, brightness=255)
+
+        async def mock_call(domain, service, data, **kwargs):
+            entities = data.get("entity_id", [])
+            if not isinstance(entities, list):
+                entities = [entities]
+            for entity_id in entities:
+                if service == "turn_on":
+                    entity_states[entity_id] = "on"
+                elif service == "turn_off":
+                    entity_states[entity_id] = "off"
+
+        hass.states.get = MagicMock(side_effect=get_state)
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        controller = LightController(hass)
+
+        result = await controller.ensure_state(
+            entities=["light.turn_on", "light.turn_off"],
+            state_target="on",  # Global default
+            targets=[
+                {"entity_id": "light.turn_on", "state": "on", "brightness_pct": 100},
+                {"entity_id": "light.turn_off", "state": "off"},
+            ],
+        )
+
+        assert result["success"] is True
+        # Verify final states
+        assert entity_states["light.turn_on"] == "on"
+        assert entity_states["light.turn_off"] == "off"

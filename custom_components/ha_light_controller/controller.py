@@ -716,9 +716,10 @@ class LightController:
         # Fire-and-forget mode
         if skip_verification:
             _LOGGER.info("Fire-and-forget mode")
-            groups = self._group_by_settings(pending_targets)
-            use_transition = transition if target_state == TargetState.ON else None
-            await self._send_commands(groups, target_state, use_transition)
+            await self._send_commands_per_target(
+                pending_targets,
+                global_transition=transition if transition > 0 else None,
+            )
 
             elapsed = monotonic() - script_start
 
@@ -760,8 +761,10 @@ class LightController:
             if target_state == TargetState.ON and attempt == 0 and transition > 0:
                 use_transition = transition
 
-            groups = self._group_by_settings(pending_targets)
-            await self._send_commands(groups, target_state, use_transition)
+            await self._send_commands_per_target(
+                pending_targets,
+                global_transition=use_transition,
+            )
 
             await asyncio.sleep(current_delay)
 
@@ -769,7 +772,11 @@ class LightController:
             still_pending = [
                 target
                 for target in pending_targets
-                if self._verify_light(target, target_state, tolerances)
+                if self._verify_light(
+                    target,
+                    TargetState.from_string(target.state),
+                    tolerances,
+                )
                 not in [VerificationResult.SUCCESS, VerificationResult.UNAVAILABLE]
             ]
 
