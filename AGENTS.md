@@ -11,8 +11,6 @@ This file provides guidance to Codex when working in this repository.
 - **ALWAYS** ensure you are on the `testing` branch before making changes
 - If on `main`, switch to `testing` first: `git checkout testing`
 
-A pre-push hook is installed to block accidental pushes to `main`. To bypass (only when explicitly instructed): `git push --no-verify origin main`
-
 ## Target Audience
 
 Documentation and user-facing text should target **technically proficient Home Assistant users** who:

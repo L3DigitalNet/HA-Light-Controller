@@ -6,13 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **All changes must be made on the `testing` branch**
 - **Do NOT push to `main` without explicit permission**
-- A pre-push hook blocks accidental pushes to `main`. Bypass only when instructed: `git push --no-verify origin main`
 
 ## Project Overview
 
 HA-Light-Controller is a Home Assistant custom integration providing reliable light control with state verification, automatic retries, and preset management. It ensures lights actually reach their target state after commands are sent. Distributed via HACS.
 
 **Scope**: Focused on core light control with verification/retry and preset management. Notification feature and blueprints removed in v0.2.0.
+
+## Environment
+
+- **Python**: 3.12 (required by Home Assistant 2024.4+)
+- **Testing**: Tests mock `homeassistant` module, no running HA instance needed
 
 ## Commands
 
