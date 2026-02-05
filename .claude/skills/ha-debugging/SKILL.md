@@ -38,6 +38,7 @@ View logs at Settings → System → Logs, or via CLI: `tail -f config/home-assi
 ### Step 3: Common Fixes by Error Type
 
 **ImportError / ModuleNotFoundError:**
+
 ```python
 # Check 1: Are relative imports correct?
 from .const import DOMAIN  # RIGHT
@@ -50,6 +51,7 @@ from custom_components.my_integration.const import DOMAIN  # WRONG in package co
 ```
 
 **Config flow "Unexpected exception":**
+
 ```python
 # Check: Is errors dict initialized?
 async def async_step_user(self, user_input=None):
@@ -63,6 +65,7 @@ async def async_step_user(self, user_input=None):
 ```
 
 **Entities unavailable:**
+
 ```python
 # Check 1: Is _async_update_data raising UpdateFailed?
 async def _async_update_data(self):
@@ -81,6 +84,7 @@ def available(self) -> bool:
 ```
 
 **Entities not appearing:**
+
 ```python
 # Check 1: Is the platform in the PLATFORMS list?
 PLATFORMS = [Platform.SENSOR, Platform.SWITCH]  # Must include your platform
@@ -98,6 +102,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
 ```
 
 **Blocking event loop (HA logs "Detected blocking call"):**
+
 ```python
 # Find the sync call and wrap it:
 # WRONG
@@ -108,6 +113,7 @@ data = await hass.async_add_executor_job(requests.get, url)
 ```
 
 **State not updating after coordinator refresh:**
+
 ```python
 # Check: Does entity inherit CoordinatorEntity FIRST?
 class MySensor(CoordinatorEntity[MyCoordinator], SensorEntity):  # Correct order!

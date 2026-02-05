@@ -157,7 +157,7 @@ entry.runtime_data = LightControllerData(...)
 ## Adding New Service Parameters
 
 1. **const.py** - Add `ATTR_*` constant (and `CONF_*`/`DEFAULT_*` if configurable)
-2. **__init__.py** - Add to voluptuous schema, use `_get_param()` helper in handler
+2. ****init**.py** - Add to voluptuous schema, use `_get_param()` helper in handler
 3. **services.yaml** - Add field definition with HA selector
 4. **controller.py** - Add to `ensure_state()` signature if needed
 5. **preset_manager.py** - Add to `activate_preset_with_options()` if preset-relevant
@@ -165,6 +165,7 @@ entry.runtime_data = LightControllerData(...)
 ## Testing
 
 Tests mock HA modules before import. Key fixtures in `conftest.py`:
+
 - `hass` - Mock HomeAssistant instance
 - `config_entry` / `config_entry_with_presets` - Mock config entries
 - `mock_light_states` - Pre-configured light states
@@ -173,6 +174,7 @@ Tests mock HA modules before import. Key fixtures in `conftest.py`:
 ## Documentation Style
 
 Target technically proficient Home Assistant users:
+
 - Use proper HA terminology (`entities`, `services`, `ConfigEntry`)
 - Prefer code examples over prose
 - Skip basic explanations (don't explain what HACS is)
@@ -182,18 +184,21 @@ Target technically proficient Home Assistant users:
 Two requirements govern all code in this repository:
 
 ### 1. Readability
+
 - **Prefer flat over nested** - Avoid deep nesting (3+ levels). Extract helpers instead.
 - **Name for intent** - Variables and functions should describe what they do, not how.
 - **Consistent patterns** - Similar operations should use identical patterns throughout.
 - **Minimal comments** - Code should be self-explanatory. Comments explain "why", not "what".
 
 ### 2. Simplicity
+
 - **No speculative handling** - Only handle edge cases that actually occur. Delete code for hypothetical scenarios.
 - **DRY without over-abstraction** - Extract repeated code, but don't create abstractions for single-use cases.
 - **Delete, don't deprecate** - Remove unused code entirely. No commented-out code or compatibility shims.
 - **Fail early, fail clearly** - Validate inputs at boundaries, then trust internal state.
 
 ### Anti-patterns to Avoid
+
 - Defensive coding for impossible cases
 - Multiple validation points for the same data
 - Redundant lookups within the same scope
