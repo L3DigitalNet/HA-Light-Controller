@@ -8,9 +8,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from homeassistant.core import ServiceCall
 
 from custom_components.ha_light_controller import (
+    async_setup,
     async_setup_entry,
     async_unload_entry,
     async_reload_entry,
+    LightControllerData,
 )
 from custom_components.ha_light_controller.const import (
     DOMAIN,
@@ -102,29 +104,46 @@ class TestAsyncSetupEntry:
             assert config_entry.runtime_data.preset_manager is not None
 
     @pytest.mark.asyncio
-    async def test_setup_entry_registers_services(self, hass, config_entry):
-        """Test that setup entry registers services."""
+    async def test_setup_entry_does_not_register_services(self, hass, config_entry):
+        """Test that setup entry does not register services (they're in async_setup)."""
         with patch(
             "custom_components.ha_light_controller.LightController"
         ), patch(
             "custom_components.ha_light_controller.PresetManager"
         ):
             hass.config_entries.async_forward_entry_setups = AsyncMock()
+            hass.services.async_register.reset_mock()
 
             await async_setup_entry(hass, config_entry)
 
-            # Check services were registered
-            assert hass.services.async_register.call_count >= 5
+            # Services should NOT be registered in async_setup_entry
+            assert hass.services.async_register.call_count == 0
 
-            # Verify service names
-            registered_services = [
-                call[0][1] for call in hass.services.async_register.call_args_list
-            ]
-            assert SERVICE_ENSURE_STATE in registered_services
-            assert SERVICE_ACTIVATE_PRESET in registered_services
-            assert SERVICE_CREATE_PRESET in registered_services
-            assert SERVICE_DELETE_PRESET in registered_services
-            assert SERVICE_CREATE_PRESET_FROM_CURRENT in registered_services
+
+class TestAsyncSetup:
+    """Tests for async_setup (service registration)."""
+
+    @pytest.mark.asyncio
+    async def test_setup_registers_services(self, hass):
+        """Test that async_setup registers services."""
+        hass.services.async_register.reset_mock()
+
+        result = await async_setup(hass, {})
+
+        assert result is True
+
+        # Check services were registered
+        assert hass.services.async_register.call_count == 5
+
+        # Verify service names
+        registered_services = [
+            call[0][1] for call in hass.services.async_register.call_args_list
+        ]
+        assert SERVICE_ENSURE_STATE in registered_services
+        assert SERVICE_ACTIVATE_PRESET in registered_services
+        assert SERVICE_CREATE_PRESET in registered_services
+        assert SERVICE_DELETE_PRESET in registered_services
+        assert SERVICE_CREATE_PRESET_FROM_CURRENT in registered_services
 
     @pytest.mark.asyncio
     async def test_setup_entry_forwards_platforms(self, hass, config_entry):
@@ -195,6 +214,37 @@ class TestAsyncReloadEntry:
 # =============================================================================
 
 
+def _get_service_handler(hass, service_name):
+    """Extract service handler from mock registrations."""
+    for call in hass.services.async_register.call_args_list:
+        if call[0][1] == service_name:
+            return call[0][2]
+    return None
+
+
+async def _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager):
+    """Set up services and config entry for testing."""
+    # Reset service registration mock
+    hass.services.async_register.reset_mock()
+
+    # Register services via async_setup
+    await async_setup(hass, {})
+
+    # Set up config entry with runtime_data
+    with patch(
+        "custom_components.ha_light_controller.LightController",
+        return_value=mock_controller,
+    ), patch(
+        "custom_components.ha_light_controller.PresetManager",
+        return_value=mock_preset_manager,
+    ):
+        hass.config_entries.async_forward_entry_setups = AsyncMock()
+        await async_setup_entry(hass, config_entry)
+
+    # Mock async_entries to return this config entry when looking up DOMAIN
+    hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+
 class TestEnsureStateService:
     """Tests for ensure_state service handler."""
 
@@ -203,24 +253,10 @@ class TestEnsureStateService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test ensure_state service calls controller."""
-        # Set up the integration using patched classes
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        ensure_state_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ENSURE_STATE:
-                ensure_state_handler = call[0][2]
-                break
-
+        ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
         assert ensure_state_handler is not None
 
         # Create a service call
@@ -245,22 +281,10 @@ class TestActivatePresetService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test activate_preset returns error when preset not found."""
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        activate_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ACTIVATE_PRESET:
-                activate_handler = call[0][2]
-                break
+        activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "nonexistent"}
@@ -279,22 +303,10 @@ class TestCreatePresetService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test create_preset returns error when name missing."""
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -316,22 +328,10 @@ class TestDeletePresetService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test delete_preset returns error when ID missing."""
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        delete_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_DELETE_PRESET:
-                delete_handler = call[0][2]
-                break
+        delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: ""}
@@ -347,23 +347,10 @@ class TestDeletePresetService:
     ):
         """Test delete_preset returns error when preset not found."""
         mock_preset_manager.delete_preset.return_value = False
-
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        delete_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_DELETE_PRESET:
-                delete_handler = call[0][2]
-                break
+        delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "nonexistent_id"}
@@ -382,22 +369,10 @@ class TestCreatePresetFromCurrentService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test create_preset_from_current returns error when name missing."""
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET_FROM_CURRENT:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -415,22 +390,10 @@ class TestCreatePresetFromCurrentService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test create_preset_from_current returns error when entities missing."""
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET_FROM_CURRENT:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -458,23 +421,10 @@ class TestEnsureStateServiceAdvanced:
     ):
         """Test ensure_state handles exceptions gracefully."""
         mock_controller.ensure_state = AsyncMock(side_effect=Exception("Controller error"))
-
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        ensure_state_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ENSURE_STATE:
-                ensure_state_handler = call[0][2]
-                break
+        ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -506,23 +456,10 @@ class TestActivatePresetServiceAdvanced:
             brightness_pct=75,
         )
         mock_preset_manager.find_preset.return_value = preset
-
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
         # Get the service handler
-        activate_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ACTIVATE_PRESET:
-                activate_handler = call[0][2]
-                break
+        activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "test_preset"}
@@ -548,22 +485,9 @@ class TestActivatePresetServiceAdvanced:
         )
         # find_preset handles both ID and name lookup
         mock_preset_manager.find_preset.return_value = preset
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        activate_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ACTIVATE_PRESET:
-                activate_handler = call[0][2]
-                break
+        activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "My Preset"}
@@ -589,22 +513,9 @@ class TestActivatePresetServiceAdvanced:
         mock_preset_manager.activate_preset_with_options = AsyncMock(
             side_effect=Exception("Controller error")
         )
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        activate_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_ACTIVATE_PRESET:
-                activate_handler = call[0][2]
-                break
+        activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "test_preset"}
@@ -631,22 +542,9 @@ class TestCreatePresetServiceAdvanced:
             entities=["light.test"],
         )
         mock_preset_manager.create_preset = AsyncMock(return_value=created_preset)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -667,22 +565,9 @@ class TestCreatePresetServiceAdvanced:
     ):
         """Test create_preset handles exceptions."""
         mock_preset_manager.create_preset = AsyncMock(side_effect=Exception("DB error"))
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -705,22 +590,9 @@ class TestDeletePresetServiceAdvanced:
     ):
         """Test delete_preset success path."""
         mock_preset_manager.delete_preset = AsyncMock(return_value=True)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        delete_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_DELETE_PRESET:
-                delete_handler = call[0][2]
-                break
+        delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "preset_to_delete"}
@@ -737,22 +609,9 @@ class TestDeletePresetServiceAdvanced:
     ):
         """Test delete_preset handles exceptions."""
         mock_preset_manager.delete_preset = AsyncMock(side_effect=Exception("DB error"))
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        delete_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_DELETE_PRESET:
-                delete_handler = call[0][2]
-                break
+        delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "preset_id"}
@@ -780,22 +639,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
             targets=[{"entity_id": "light.test", "brightness_pct": 80}],
         )
         mock_preset_manager.create_preset_from_current = AsyncMock(return_value=created_preset)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET_FROM_CURRENT:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -816,22 +662,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
     ):
         """Test create_preset_from_current when preset_manager returns None."""
         mock_preset_manager.create_preset_from_current = AsyncMock(return_value=None)
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET_FROM_CURRENT:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {
@@ -852,22 +685,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
         mock_preset_manager.create_preset_from_current = AsyncMock(
             side_effect=Exception("State read error")
         )
+        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
 
-        with patch(
-            "custom_components.ha_light_controller.LightController",
-            return_value=mock_controller,
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager",
-            return_value=mock_preset_manager,
-        ):
-            hass.config_entries.async_forward_entry_setups = AsyncMock()
-            await async_setup_entry(hass, config_entry)
-
-        create_handler = None
-        for call in hass.services.async_register.call_args_list:
-            if call[0][1] == SERVICE_CREATE_PRESET_FROM_CURRENT:
-                create_handler = call[0][2]
-                break
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {

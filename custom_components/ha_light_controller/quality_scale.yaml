@@ -1,0 +1,122 @@
+# Quality Scale for Light Controller Integration
+# https://developers.home-assistant.io/docs/integration_quality_scale_index/
+#
+# This integration is a "service" type that provides light control services
+# with verification and preset management. It doesn't poll devices or
+# communicate with external APIs.
+
+rules:
+  # =========================================================================
+  # Bronze (Mandatory for all integrations)
+  # =========================================================================
+
+  # Has config flow for UI setup
+  config-flow: done
+
+  # All entities have unique IDs for registry tracking
+  entity-unique-id: done
+
+  # Services are registered in async_setup, not async_setup_entry
+  action-setup: done
+
+  # Has English translations in strings.json
+  has-translations: done
+
+  # Uses runtime_data pattern (HA 2024.4+)
+  runtime-data: done
+
+  # Properly unloads platforms in async_unload_entry
+  config-entry-unloading: done
+
+  # Uses appropriate logging (_LOGGER, no print statements)
+  log-when-unavailable:
+    status: exempt
+    comment: Integration doesn't communicate with devices directly.
+
+  # =========================================================================
+  # Silver (Enhanced functionality)
+  # =========================================================================
+
+  # Entities properly report unavailable state
+  entity-unavailable:
+    status: exempt
+    comment: Button/Sensor entities for presets don't have external state to become unavailable.
+
+  # Specifies PARALLEL_UPDATES for platform modules
+  parallel-updates:
+    status: exempt
+    comment: No polling or device communication; entities are preset-based.
+
+  # Supports reauthentication flow
+  reauthentication-flow:
+    status: exempt
+    comment: No authentication required; integration is local-only.
+
+  # =========================================================================
+  # Gold (Advanced features)
+  # =========================================================================
+
+  # Groups entities under devices
+  devices:
+    status: exempt
+    comment: Service integration without physical devices.
+
+  # Provides diagnostic data for troubleshooting
+  diagnostics:
+    status: todo
+    comment: Could add diagnostics for preset data and controller state.
+
+  # Supports device discovery (zeroconf, dhcp, etc.)
+  discovery:
+    status: exempt
+    comment: No discoverable devices; service-only integration.
+
+  # Dynamic entity addition when new devices appear
+  dynamic-devices:
+    status: done
+    comment: Preset entities are dynamically added/removed via listener pattern.
+
+  # Supports options flow for reconfiguration
+  reconfiguration-flow: done
+
+  # Entities have appropriate entity categories
+  entity-category:
+    status: exempt
+    comment: Preset buttons/sensors are user-facing, not diagnostic.
+
+  # Entity translations in strings.json
+  entity-translations: done
+
+  # Exception translations for user-facing errors
+  exception-translations:
+    status: todo
+    comment: Service errors use inline messages; could add translation keys.
+
+  # Icon translations for state-based icons
+  icon-translations:
+    status: exempt
+    comment: Icons are static (mdi:lightbulb-group).
+
+  # =========================================================================
+  # Platinum (Highest quality)
+  # =========================================================================
+
+  # All dependencies are async
+  async-dependency:
+    status: exempt
+    comment: No external dependencies; uses only HA core.
+
+  # Strict typing with py.typed marker
+  strict-typing:
+    status: todo
+    comment: Could add py.typed and ensure mypy strict compliance.
+
+  # Injects web session to dependencies
+  inject-websession:
+    status: exempt
+    comment: No HTTP communication required.
+
+  # Stale device removal
+  stale-devices:
+    status: exempt
+    comment: No physical devices to become stale.

@@ -18,6 +18,17 @@ HA-Light-Controller is a Home Assistant custom integration providing reliable li
 - **Python**: 3.12 (required by Home Assistant 2024.4+)
 - **Testing**: Tests mock `homeassistant` module, no running HA instance needed
 
+## Home Assistant Environment Constraints
+
+**Blocking calls freeze the entire HA instance.** All I/O must be async or use `hass.async_add_executor_job()`.
+
+| Constraint | Rule |
+|------------|------|
+| Event loop | Single-threaded asyncio. Never use `time.sleep()`, sync `requests`, or blocking I/O |
+| Resources | HA runs on RPi-class hardware. Poll 30-60s minimum, prefer listeners over polling |
+| Sandbox | No filesystem access outside `config/`. Dependencies must be PyPI + `manifest.json` |
+| APIs | Use `hass.services.async_call`, `hass.states.get`. Never bypass HA's state machine |
+
 ## Commands
 
 ```bash

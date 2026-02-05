@@ -25,6 +25,9 @@ mock_ha.core.SupportsResponse.OPTIONAL = "optional"
 
 mock_ha.config_entries.ConfigEntry = MagicMock
 mock_ha.config_entries.ConfigFlowResult = dict
+mock_ha.config_entries.ConfigEntryState = MagicMock()
+mock_ha.config_entries.ConfigEntryState.LOADED = "loaded"
+mock_ha.config_entries.ConfigEntryState.NOT_LOADED = "not_loaded"
 
 # Create proper base classes for ConfigFlow and OptionsFlow
 class MockConfigFlow:
@@ -238,6 +241,7 @@ def config_entry() -> MagicMock:
     entry.async_on_unload = MagicMock()
     entry.add_update_listener = MagicMock()
     entry.runtime_data = None  # Will be set during async_setup_entry
+    entry.state = "loaded"  # ConfigEntryState.LOADED
     return entry
 
 

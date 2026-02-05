@@ -9,9 +9,11 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from typing import TypeAlias
 
+    from homeassistant.helpers.typing import ConfigType
+
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 
@@ -78,6 +80,21 @@ from .controller import LightController
 from .preset_manager import PresetManager
 
 _LOGGER = logging.getLogger(__name__)
+
+# Schema for config entry validation (empty - no YAML config)
+CONFIG_SCHEMA = cv.empty_config_schema(DOMAIN)
+
+
+def _get_loaded_entry(hass: HomeAssistant) -> LightControllerConfigEntry | None:
+    """Get the loaded config entry for this integration.
+
+    Returns None if no entry exists or entry is not loaded.
+    """
+    entries = hass.config_entries.async_entries(DOMAIN)
+    for entry in entries:
+        if entry.state == ConfigEntryState.LOADED:
+            return entry
+    return None
 
 
 def _get_param(
@@ -225,31 +242,29 @@ SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup_entry(
-    hass: HomeAssistant, entry: LightControllerConfigEntry
-) -> bool:
-    """Set up Light Controller from a config entry."""
-    _LOGGER.info("Setting up Light Controller integration")
+async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
+    """Set up the Light Controller integration.
 
-    # Initialize controller and preset manager
-    controller = LightController(hass)
-    preset_manager = PresetManager(hass, entry)
-
-    # Store instances using runtime_data (HA 2024.4+ pattern)
-    entry.runtime_data = LightControllerData(
-        controller=controller,
-        preset_manager=preset_manager,
-    )
-
-    # Get configured options (defaults)
-    options = entry.options
-
+    This registers services that will be available once a config entry is loaded.
+    Services validate that a config entry exists and is loaded before executing.
+    """
     # =========================================================================
     # Service: ensure_state
     # =========================================================================
 
     async def async_handle_ensure_state(call: ServiceCall) -> dict[str, Any]:
         """Handle the ensure_state service call."""
+        entry = _get_loaded_entry(hass)
+        if not entry or not entry.runtime_data:
+            _LOGGER.error("Light Controller is not configured or not loaded")
+            return {
+                "success": False,
+                "result": "error",
+                "message": "Light Controller is not configured or not loaded",
+            }
+
+        controller = entry.runtime_data.controller
+        options = entry.options
         data = call.data
 
         # Helper for getting parameters with fallback chain
@@ -292,6 +307,19 @@ async def async_setup_entry(
 
     async def async_handle_activate_preset(call: ServiceCall) -> dict[str, Any]:
         """Handle the activate_preset service call."""
+        entry = _get_loaded_entry(hass)
+        if not entry or not entry.runtime_data:
+            _LOGGER.error("Light Controller is not configured or not loaded")
+            return {
+                "success": False,
+                "result": "error",
+                "message": "Light Controller is not configured or not loaded",
+            }
+
+        preset_manager = entry.runtime_data.preset_manager
+        controller = entry.runtime_data.controller
+        options = entry.options
+
         preset_name_or_id = call.data.get(ATTR_PRESET, "")
 
         preset = preset_manager.find_preset(preset_name_or_id)
@@ -330,6 +358,17 @@ async def async_setup_entry(
 
     async def async_handle_create_preset(call: ServiceCall) -> dict[str, Any]:
         """Handle the create_preset service call."""
+        entry = _get_loaded_entry(hass)
+        if not entry or not entry.runtime_data:
+            _LOGGER.error("Light Controller is not configured or not loaded")
+            return {
+                "success": False,
+                "result": "error",
+                "message": "Light Controller is not configured or not loaded",
+            }
+
+        preset_manager = entry.runtime_data.preset_manager
+
         name = call.data.get(ATTR_PRESET_NAME, "")
         entities = call.data.get(ATTR_ENTITIES, [])
 
@@ -376,6 +415,16 @@ async def async_setup_entry(
 
     async def async_handle_delete_preset(call: ServiceCall) -> dict[str, Any]:
         """Handle the delete_preset service call."""
+        entry = _get_loaded_entry(hass)
+        if not entry or not entry.runtime_data:
+            _LOGGER.error("Light Controller is not configured or not loaded")
+            return {
+                "success": False,
+                "result": "error",
+                "message": "Light Controller is not configured or not loaded",
+            }
+
+        preset_manager = entry.runtime_data.preset_manager
         preset_id = call.data.get(ATTR_PRESET_ID, "")
 
         if not preset_id:
@@ -415,6 +464,17 @@ async def async_setup_entry(
 
     async def async_handle_create_preset_from_current(call: ServiceCall) -> dict[str, Any]:
         """Handle the create_preset_from_current service call."""
+        entry = _get_loaded_entry(hass)
+        if not entry or not entry.runtime_data:
+            _LOGGER.error("Light Controller is not configured or not loaded")
+            return {
+                "success": False,
+                "result": "error",
+                "message": "Light Controller is not configured or not loaded",
+            }
+
+        preset_manager = entry.runtime_data.preset_manager
+
         name = call.data.get(ATTR_PRESET_NAME, "")
         entities = call.data.get(ATTR_ENTITIES, [])
 
@@ -451,30 +511,51 @@ async def async_setup_entry(
             }
 
     # =========================================================================
-    # Register services with cleanup via async_on_unload
+    # Register all services
     # =========================================================================
 
-    services = [
-        (SERVICE_ENSURE_STATE, async_handle_ensure_state, SERVICE_ENSURE_STATE_SCHEMA),
-        (SERVICE_ACTIVATE_PRESET, async_handle_activate_preset, SERVICE_ACTIVATE_PRESET_SCHEMA),
-        (SERVICE_CREATE_PRESET, async_handle_create_preset, SERVICE_CREATE_PRESET_SCHEMA),
-        (SERVICE_DELETE_PRESET, async_handle_delete_preset, SERVICE_DELETE_PRESET_SCHEMA),
-        (SERVICE_CREATE_PRESET_FROM_CURRENT, async_handle_create_preset_from_current, SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA),
-    ]
+    hass.services.async_register(
+        DOMAIN, SERVICE_ENSURE_STATE, async_handle_ensure_state,
+        schema=SERVICE_ENSURE_STATE_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_ACTIVATE_PRESET, async_handle_activate_preset,
+        schema=SERVICE_ACTIVATE_PRESET_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_CREATE_PRESET, async_handle_create_preset,
+        schema=SERVICE_CREATE_PRESET_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_DELETE_PRESET, async_handle_delete_preset,
+        schema=SERVICE_DELETE_PRESET_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN, SERVICE_CREATE_PRESET_FROM_CURRENT, async_handle_create_preset_from_current,
+        schema=SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+    )
 
-    for service_name, handler, schema in services:
-        hass.services.async_register(
-            DOMAIN, service_name, handler,
-            schema=schema, supports_response=SupportsResponse.OPTIONAL,
-        )
-        entry.async_on_unload(
-            lambda svc=service_name: hass.services.async_remove(DOMAIN, svc)
-        )
+    _LOGGER.debug("Registered Light Controller services")
+    return True
 
-    # =========================================================================
+
+async def async_setup_entry(
+    hass: HomeAssistant, entry: LightControllerConfigEntry
+) -> bool:
+    """Set up Light Controller from a config entry."""
+    _LOGGER.info("Setting up Light Controller integration")
+
+    # Initialize controller and preset manager
+    controller = LightController(hass)
+    preset_manager = PresetManager(hass, entry)
+
+    # Store instances using runtime_data (HA 2024.4+ pattern)
+    entry.runtime_data = LightControllerData(
+        controller=controller,
+        preset_manager=preset_manager,
+    )
+
     # Forward setup to platforms
-    # =========================================================================
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Listen for options updates
@@ -490,12 +571,8 @@ async def async_unload_entry(
     """Unload a config entry."""
     _LOGGER.info("Unloading Light Controller integration")
 
-    # Unload platforms
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-    # Services are cleaned up via async_on_unload registered during setup
-
-    return unload_ok
+    # Unload platforms (services remain registered in async_setup)
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_reload_entry(
