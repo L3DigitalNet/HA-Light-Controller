@@ -186,11 +186,41 @@ Documentation and user-facing text should target **technically proficient Home A
 
 This is a Home Assistant custom integration (`ha_light_controller`) that provides reliable light control with state verification, automatic retries, and preset management. It is distributed via HACS.
 
+**Current Status:**
+- Version: 0.2.1
+- Python: 3.14.2 (minimum 3.13)
+- Home Assistant: 2025.2.0+
+- Scope: Light control with verification/retry + presets only
+
 ## Development Environment
 
 This is a pure Python Home Assistant integration with no build steps.
 
-To develop locally:
+**Environment:**
+- Python 3.14.2 (minimum 3.13)
+- Home Assistant 2025.2.0+
+- Development tools: Ruff, mypy, pytest, pre-commit
+
+**Development Setup:**
+
+```bash
+# Initial setup
+make setup              # Install dependencies and pre-commit hooks
+
+# Quality checks
+make quality            # Run all checks (lint, format, type-check, test)
+make ci                 # Simulate CI checks locally
+make test-cov           # Run tests with coverage report
+
+# Individual checks
+make lint               # Run Ruff linter
+make lint-fix           # Lint with auto-fix
+make format             # Format code
+make type-check         # Run mypy
+make test               # Run tests
+```
+
+**Local Testing:**
 
 1. Copy `custom_components/ha_light_controller` to your Home Assistant `config/custom_components/` directory.
 2. Restart Home Assistant.
@@ -239,13 +269,14 @@ To develop locally:
 The integration has a comprehensive test suite using pytest. Tests are located in the `tests/` directory.
 
 ```bash
-# Run all tests
+# Using Makefile (recommended)
+make test               # Run all tests
+make test-cov           # Run tests with coverage report
+make ci                 # Run all CI checks locally
+
+# Direct pytest commands (also work)
 pytest tests/
-
-# Run tests with coverage
 pytest tests/ --cov=custom_components/ha_light_controller
-
-# Run a specific test file
 pytest tests/test_controller.py
 ```
 
@@ -257,6 +288,8 @@ Test files:
 - `test_preset_manager.py` - Preset CRUD operations
 - `test_button.py` - Preset button entities
 - `test_sensor.py` - Preset status sensor entities
+
+Tests mock the entire `homeassistant` module and don't require a running HA instance.
 
 ## Resources
 

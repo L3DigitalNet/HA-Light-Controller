@@ -1,8 +1,8 @@
 # HA-Light-Controller - Complete Reference Guide
 
-**Version:** 0.2.0
+**Version:** 0.2.1
 **Date:** February 7, 2026
-**Python Version:** 3.12 | Home Assistant 2024.4+
+**Python Version:** 3.14.2 (minimum 3.13) | Home Assistant 2025.2.0+
 
 This comprehensive guide documents the complete setup and usage of the HA-Light-Controller Home Assistant custom integration, including AI agents, automation, and best practices.
 
@@ -41,8 +41,8 @@ HA-Light-Controller is a production-ready Home Assistant custom integration prov
 
 | Feature | Description | Status |
 |---------|-------------|--------|
-| **Python Environment** | Python 3.12 (HA 2024.4+ requirement) | ✅ Ready |
-| **Home Assistant** | Custom integration with config flow | ✅ Ready |
+| **Python Environment** | Python 3.14.2 (minimum 3.13) | ✅ Ready |
+| **Home Assistant** | Custom integration with config flow (2025.2.0+) | ✅ Ready |
 | **Light Control** | ensure_state service with verification/retry | ✅ Ready |
 | **Preset System** | Create, activate, manage presets via UI/service | ✅ Ready |
 | **Testing** | pytest + mocked HA environment | ✅ Ready |
@@ -52,6 +52,7 @@ HA-Light-Controller is a production-ready Home Assistant custom integration prov
 | **CI/CD** | GitHub Actions pipeline | ✅ Ready |
 | **AI Agents** | Claude, Copilot, Codex integration | ✅ Ready |
 | **VS Code Tasks** | Interactive development tasks | ✅ Ready |
+| **Makefile** | Comprehensive development commands | ✅ Ready |
 | **Documentation** | Complete guides and examples | ✅ Ready |
 
 ---
@@ -535,12 +536,30 @@ Edit `.github/dependabot.yml` and replace `your-github-username` with your actua
 ### Initial Setup
 
 ```bash
-# 1. Activate virtual environment (if using one)
+# 1. Navigate to project
 cd /home/chris/projects/HA-Light-Controller
+
+# 2. Complete setup (installs dependencies + pre-commit hooks)
+make setup
+
+# 3. Verify setup
+make verify
+
+# 4. Run quality checks
+make quality
+```
+
+**Alternative (manual setup):**
+
+```bash
+# 1. Activate virtual environment (if using one)
 source venv/bin/activate  # If you have a venv
 
 # 2. Install dependencies
-pip install -e .
+pip install -U pip
+pip install homeassistant aiohttp voluptuous
+pip install pytest pytest-asyncio pytest-homeassistant-custom-component pytest-cov
+pip install ruff mypy pre-commit
 
 # 3. Install pre-commit hooks
 pre-commit install
@@ -560,14 +579,11 @@ mypy custom_components/
 # Edit custom_components/ha_light_controller/...
 
 # 2. Run quality checks
-ruff check --fix custom_components/
-ruff format custom_components/
-mypy custom_components/
-pytest tests/
+make quality            # Runs: lint-fix, format, type-check, test
 
 # 3. Check coverage
-pytest tests/ --cov=custom_components --cov-report=html
-xdg-open htmlcov/index.html
+make test-cov           # Generates HTML coverage report
+make coverage-report    # Opens report in browser
 
 # 4. Commit (pre-commit hooks run automatically)
 git add .
@@ -577,11 +593,28 @@ git commit -m "Add feature X"
 git push
 ```
 
+**Alternative (manual commands):**
+
+```bash
+# 2. Run quality checks manually
+ruff check --fix custom_components/
+ruff format custom_components/
+mypy custom_components/
+pytest tests/
+
+# 3. Check coverage manually
+pytest tests/ --cov=custom_components --cov-report=html
+xdg-open htmlcov/index.html
+```
+
 #### Watch Mode (Development)
 
 ```bash
-# Auto-run tests on file changes
-find custom_components tests -name "*.py" | entr -c pytest tests/
+# Auto-run tests on file changes (requires entr)
+make watch-test
+
+# Or manually:
+find custom_components tests -name "*.py" | entr -c pytest tests/ -v
 
 # In another terminal, edit code
 # Tests run automatically when you save
@@ -592,34 +625,38 @@ find custom_components tests -name "*.py" | entr -c pytest tests/
 #### Run All Tests
 
 ```bash
-# Option 1: Direct
+# Option 1: Makefile (recommended)
+make test
+
+# Option 2: Direct pytest
 pytest tests/ -v
 
-# Option 2: VS Code Task
+# Option 3: VS Code Task
 # Ctrl+Shift+P → Tasks: Run Task → Run All Tests
 ```
 
 #### Run with Coverage
 
 ```bash
-# Generate HTML report
-pytest tests/ --cov=custom_components --cov-report=html
+# Option 1: Makefile (recommended)
+make test-cov           # Generate HTML report
+make coverage-report    # Open report in browser
 
-# Open in browser
+# Option 2: Direct pytest
+pytest tests/ --cov=custom_components --cov-report=html
 xdg-open htmlcov/index.html
 ```
 
 #### Run Specific Tests
 
 ```bash
-# Specific file
-pytest tests/test_config_flow.py -v
+# Option 1: Makefile
+make test-specific FILE=tests/test_config_flow.py
 
-# Specific test function
-pytest tests/test_config_flow.py::test_user_flow -v
-
-# Tests matching pattern
-pytest tests/ -k "test_preset" -v
+# Option 2: Direct pytest
+pytest tests/test_config_flow.py -v                      # Specific file
+pytest tests/test_config_flow.py::test_user_flow -v     # Specific test function
+pytest tests/ -k "test_preset" -v                       # Tests matching pattern
 ```
 
 ### Testing Best Practices
@@ -701,7 +738,10 @@ tests/conftest.py                          # Adds path to sys.path
 #### Before Committing
 
 ```bash
-# Run all quality checks
+# Option 1: Makefile (recommended)
+make quality            # Runs all checks: lint-fix, format, type-check, test
+
+# Option 2: Manual commands
 ruff check --fix custom_components/
 ruff format custom_components/
 mypy custom_components/
@@ -711,7 +751,10 @@ pytest tests/
 #### Before Creating PR
 
 ```bash
-# Run all checks in order
+# Option 1: Makefile (simulates CI environment)
+make ci                 # Runs all checks exactly as CI does
+
+# Option 2: Manual commands (in order)
 ruff check custom_components/
 ruff format --check custom_components/
 mypy custom_components/
@@ -742,10 +785,7 @@ git checkout -b feature/new-parameter
 # ... edit files ...
 
 # 3. Run quality checks
-ruff check --fix custom_components/
-ruff format custom_components/
-mypy custom_components/
-pytest tests/
+make quality            # Or: make ci to simulate CI environment
 
 # 4. Commit (hooks run automatically)
 git add .
@@ -1076,13 +1116,26 @@ async def async_setup_platform(hass, config, async_add_entities):
 ### Essential Commands
 
 ```bash
-# Testing
+# Makefile Commands (Recommended)
+make help               # Show all available commands
+make setup              # Initial project setup
+make verify             # Verify development environment
+make quality            # Run all quality checks
+make ci                 # Simulate CI checks locally
+make test               # Run all tests
+make test-cov           # Run tests with coverage
+make lint               # Run Ruff linter
+make lint-fix           # Lint with auto-fix
+make format             # Format code
+make type-check         # Run mypy
+make clean              # Remove build artifacts
+make info               # Show project information
+
+# Direct Commands (Also Work)
 pytest tests/                         # Run all tests
 pytest tests/ -v                      # Verbose output
 pytest tests/test_controller.py       # Specific file
 pytest tests/ --cov=custom_components # With coverage
-
-# Quality Checks
 ruff check custom_components/         # Lint only
 ruff check --fix custom_components/   # Lint with auto-fix
 ruff format custom_components/        # Format code
@@ -1297,9 +1350,12 @@ xdg-open htmlcov/index.html
 
 ```bash
 # Solution: Check Python version
-python --version  # Should be 3.12
+python --version  # Should be 3.14.2 or 3.13+
 
 # Run exact CI checks
+make ci             # Simulates CI environment exactly
+
+# Or manually:
 ruff check custom_components/
 ruff format --check custom_components/
 mypy custom_components/
@@ -1408,7 +1464,7 @@ pytest tests/ -m "not slow"
 #### Problem: Slow CI
 
 - Caching is enabled in `.github/workflows/ci.yml`
-- CI runs on Python 3.12 only (not a matrix)
+- CI runs on Python 3.14 only (not a matrix)
 - Consider splitting tests if they get too large
 
 ---
@@ -1452,17 +1508,24 @@ pytest tests/ -m "not slow"
 
 3. **Run verification**
    ```bash
-   pytest tests/ -v
-   ruff check custom_components/
-   mypy custom_components/
+   make verify         # Verify environment
+   make quality        # Run all checks
+   make ci             # Simulate CI
    ```
 
-4. **Check logs**
+4. **Use Makefile commands**
+   ```bash
+   make info           # Show environment information
+   make verify         # Verify development environment
+   make ci             # Run all CI checks locally
+   ```
+
+5. **Check logs**
    - CI logs on GitHub
    - Local test output
    - Home Assistant logs
 
-5. **Community support**
+6. **Community support**
    - HA Community Forums
    - HA Discord
    - GitHub Issues
@@ -1529,9 +1592,9 @@ HA-Light-Controller is a production-ready Home Assistant custom integration prov
 
 **Quick Start:**
 ```bash
-pytest tests/
-ruff check custom_components/
-mypy custom_components/
+make setup          # Initial setup
+make quality        # Run all quality checks
+make ci             # Simulate CI locally
 ```
 
 **Need Help?** See [Troubleshooting](#troubleshooting) or ask the agent:
@@ -1543,6 +1606,6 @@ Help me with [your task]
 ---
 
 *Last Updated: February 7, 2026*
-*Integration Version: 0.2.0*
-*Home Assistant Version: 2024.4+*
-*Python Version: 3.12*
+*Integration Version: 0.2.1*
+*Home Assistant Version: 2025.2.0+*
+*Python Version: 3.14.2 (minimum 3.13)*

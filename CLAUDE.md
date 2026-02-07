@@ -185,17 +185,24 @@ HA-Light-Controller is a Home Assistant custom integration providing reliable li
 
 ## Commands
 
+All commands can be run via Makefile targets or directly:
+
 ```bash
-# Run all tests
-pytest
+# Makefile targets (recommended)
+make test              # Run all tests
+make test-cov          # Run tests with coverage report
+make lint              # Run Ruff linter
+make lint-fix          # Lint with auto-fix
+make format            # Format code with Ruff
+make type-check        # Run mypy type checker
+make quality           # Run all quality checks
+make ci                # Simulate CI checks locally
+make setup             # Initial project setup
 
-# Run specific test file
+# Direct commands (also work)
+pytest tests/
 pytest tests/test_controller.py
-
-# Run specific test
 pytest tests/test_controller.py::test_ensure_state_single_light
-
-# Run with coverage
 pytest --cov=custom_components/ha_light_controller
 
 # Enable debug logging (add to HA configuration.yaml)
