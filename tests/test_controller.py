@@ -2,30 +2,28 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import asyncio
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE
 
-from homeassistant.const import STATE_ON, STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN
-
+from custom_components.ha_light_controller.const import (
+    RESULT_CODE_ERROR,
+    RESULT_CODE_FAILED,
+    RESULT_CODE_NO_VALID_ENTITIES,
+    RESULT_CODE_SUCCESS,
+    RESULT_CODE_TIMEOUT,
+)
 from custom_components.ha_light_controller.controller import (
+    ColorTolerance,
     LightController,
+    LightGroup,
+    LightTarget,
+    OperationResult,
+    RetryConfig,
     TargetState,
     VerificationResult,
-    ColorTolerance,
-    RetryConfig,
-    LightTarget,
-    LightGroup,
-    OperationResult,
 )
-from custom_components.ha_light_controller.const import (
-    RESULT_CODE_SUCCESS,
-    RESULT_CODE_FAILED,
-    RESULT_CODE_TIMEOUT,
-    RESULT_CODE_ERROR,
-    RESULT_CODE_NO_VALID_ENTITIES,
-)
-
 
 # =============================================================================
 # TargetState Enum Tests
@@ -401,11 +399,13 @@ class TestLightControllerEntityExpansion:
     def test_expand_entities_multiple(self, hass, mock_light_states):
         """Test expanding multiple entities."""
         controller = LightController(hass)
-        valid, skipped = controller._expand_entities([
-            "light.test_light_1",
-            "light.test_light_2",
-            "light.unavailable_light",
-        ])
+        valid, skipped = controller._expand_entities(
+            [
+                "light.test_light_1",
+                "light.test_light_2",
+                "light.unavailable_light",
+            ]
+        )
         assert "light.test_light_1" in valid
         assert "light.test_light_2" in valid
         assert "light.unavailable_light" in skipped
@@ -413,11 +413,13 @@ class TestLightControllerEntityExpansion:
     def test_expand_entities_deduplication(self, hass, mock_light_states):
         """Test that duplicate entities are deduplicated."""
         controller = LightController(hass)
-        valid, skipped = controller._expand_entities([
-            "light.test_light_1",
-            "light.test_light_1",  # Duplicate
-            "light.test_group",  # Contains test_light_1
-        ])
+        valid, skipped = controller._expand_entities(
+            [
+                "light.test_light_1",
+                "light.test_light_1",  # Duplicate
+                "light.test_group",  # Contains test_light_1
+            ]
+        )
         # Should only have unique entries
         assert valid.count("light.test_light_1") == 1
 
@@ -542,6 +544,7 @@ class TestLightControllerVerification:
     def test_verify_brightness_within_tolerance(self, hass):
         """Test brightness verification within tolerance."""
         from tests.conftest import create_light_state
+
         state = create_light_state("light.test", STATE_ON, brightness=191)  # ~75%
         hass.states.get = MagicMock(return_value=state)
 
@@ -552,6 +555,7 @@ class TestLightControllerVerification:
     def test_verify_brightness_outside_tolerance(self, hass):
         """Test brightness verification outside tolerance."""
         from tests.conftest import create_light_state
+
         state = create_light_state("light.test", STATE_ON, brightness=128)  # ~50%
         hass.states.get = MagicMock(return_value=state)
 
@@ -562,6 +566,7 @@ class TestLightControllerVerification:
     def test_verify_rgb_within_tolerance(self, hass):
         """Test RGB verification within tolerance."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -577,6 +582,7 @@ class TestLightControllerVerification:
     def test_verify_rgb_outside_tolerance(self, hass):
         """Test RGB verification outside tolerance."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -598,6 +604,7 @@ class TestLightControllerVerification:
     def test_verify_rgb_not_supported(self, hass):
         """Test RGB verification when RGB not supported."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -612,6 +619,7 @@ class TestLightControllerVerification:
     def test_verify_kelvin_within_tolerance(self, hass):
         """Test kelvin verification within tolerance."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -627,6 +635,7 @@ class TestLightControllerVerification:
     def test_verify_kelvin_outside_tolerance(self, hass):
         """Test kelvin verification outside tolerance."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -660,6 +669,7 @@ class TestLightControllerVerification:
     def test_verify_light_unavailable(self, hass):
         """Test verifying unavailable light."""
         from tests.conftest import create_light_state
+
         state = create_light_state("light.test", STATE_UNAVAILABLE)
         hass.states.get = MagicMock(return_value=state)
 
@@ -731,6 +741,7 @@ class TestLightControllerEnsureState:
         """Test ensure_state for turning lights off."""
         # Make lights appear off after command
         from tests.conftest import create_light_state
+
         call_count = [0]
 
         def get_state_after_call(entity_id):
@@ -739,6 +750,7 @@ class TestLightControllerEnsureState:
             return mock_light_states.get(entity_id)
 
         original_get = hass.states.get
+
         def mock_get(entity_id):
             result = get_state_after_call(entity_id)
             return result if result else original_get(entity_id)
@@ -892,7 +904,6 @@ class TestLightControllerLogging:
         await controller._log_to_logbook("Test", "Message")
 
 
-
 class TestLightGroupWithEffect:
     """Tests for LightGroup with effect."""
 
@@ -959,9 +970,7 @@ class TestLightControllerEntityExpansionEdgeCases:
         # Create light group with member entities
         group_state = MagicMock()
         group_state.state = "on"
-        group_state.attributes = {
-            "entity_id": ["light.available", "light.unavailable"]
-        }
+        group_state.attributes = {"entity_id": ["light.available", "light.unavailable"]}
 
         available = create_light_state("light.available", STATE_ON)
         unavailable = create_light_state("light.unavailable", STATE_UNAVAILABLE)
@@ -1031,6 +1040,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_rgb_invalid_actual(self, hass):
         """Test RGB verification with invalid actual RGB value."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1052,6 +1062,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_kelvin_not_supported(self, hass):
         """Test kelvin verification when color_temp not supported."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1066,6 +1077,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_kelvin_no_actual_value(self, hass):
         """Test kelvin verification when no actual kelvin value."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1081,6 +1093,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_wrong_state_on(self, hass):
         """Test verifying light off when target is on."""
         from tests.conftest import create_light_state
+
         state = create_light_state("light.test", STATE_OFF)
         hass.states.get = MagicMock(return_value=state)
 
@@ -1094,6 +1107,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_wrong_brightness(self, hass):
         """Test verifying light with wrong brightness."""
         from tests.conftest import create_light_state
+
         state = create_light_state("light.test", STATE_ON, brightness=50)  # ~20%
         hass.states.get = MagicMock(return_value=state)
 
@@ -1112,6 +1126,7 @@ class TestLightControllerVerificationEdgeCases:
         lenient 'rgb_ok or kelvin_ok' check.
         """
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1122,7 +1137,9 @@ class TestLightControllerVerificationEdgeCases:
         hass.states.get = MagicMock(return_value=state)
 
         controller = LightController(hass)
-        target = LightTarget("light.test", brightness_pct=100, rgb_color=[255, 0, 0])  # Red
+        target = LightTarget(
+            "light.test", brightness_pct=100, rgb_color=[255, 0, 0]
+        )  # Red
         tolerances = ColorTolerance()
 
         result = controller._verify_light(target, TargetState.ON, tolerances)
@@ -1137,6 +1154,7 @@ class TestLightControllerVerificationEdgeCases:
         lenient 'rgb_ok or kelvin_ok' check.
         """
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1147,7 +1165,9 @@ class TestLightControllerVerificationEdgeCases:
         hass.states.get = MagicMock(return_value=state)
 
         controller = LightController(hass)
-        target = LightTarget("light.test", brightness_pct=100, color_temp_kelvin=2700)  # Warm
+        target = LightTarget(
+            "light.test", brightness_pct=100, color_temp_kelvin=2700
+        )  # Warm
         tolerances = ColorTolerance(kelvin=150)
 
         result = controller._verify_light(target, TargetState.ON, tolerances)
@@ -1157,6 +1177,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_both_wrong_fails(self, hass):
         """Test that verification fails when both RGB and kelvin are specified and wrong."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1183,6 +1204,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_both_rgb_and_kelvin_rgb_matches(self, hass):
         """Test verifying light with both RGB and kelvin when RGB matches."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1207,6 +1229,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_both_unsupported(self, hass):
         """Test verifying light with both RGB and kelvin but neither supported."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1241,6 +1264,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_both_rgb_and_kelvin_both_wrong(self, hass):
         """Test verifying light when both RGB and kelvin are set but both are wrong."""
         from tests.conftest import create_light_state
+
         # Light supports both RGB and color_temp, but actual values don't match
         state = create_light_state(
             "light.test",
@@ -1267,6 +1291,7 @@ class TestLightControllerVerificationEdgeCases:
     def test_verify_light_no_color_targets(self, hass):
         """Test verifying light with no color targets (brightness only)."""
         from tests.conftest import create_light_state
+
         state = create_light_state(
             "light.test",
             STATE_ON,
@@ -1286,7 +1311,9 @@ class TestLightControllerEnsureStateAdvanced:
     """Advanced tests for ensure_state."""
 
     @pytest.mark.asyncio
-    async def test_ensure_state_fire_and_forget_with_log_success(self, hass, mock_light_states):
+    async def test_ensure_state_fire_and_forget_with_log_success(
+        self, hass, mock_light_states
+    ):
         """Test fire-and-forget mode with log_success=True."""
         controller = LightController(hass)
         result = await controller.ensure_state(
@@ -1305,6 +1332,7 @@ class TestLightControllerEnsureStateAdvanced:
         """Test ensure_state timeout."""
         # Make verification always fail
         from tests.conftest import create_light_state
+
         wrong_state = create_light_state("light.test_light_1", STATE_OFF)
         hass.states.get = MagicMock(return_value=wrong_state)
 
@@ -1321,9 +1349,12 @@ class TestLightControllerEnsureStateAdvanced:
         assert result["result"] == RESULT_CODE_TIMEOUT
 
     @pytest.mark.asyncio
-    async def test_ensure_state_timeout_with_notification(self, hass, mock_light_states):
+    async def test_ensure_state_timeout_with_notification(
+        self, hass, mock_light_states
+    ):
         """Test ensure_state timeout with notification."""
         from tests.conftest import create_light_state
+
         wrong_state = create_light_state("light.test_light_1", STATE_OFF)
         hass.states.get = MagicMock(return_value=wrong_state)
 
@@ -1343,6 +1374,7 @@ class TestLightControllerEnsureStateAdvanced:
     async def test_ensure_state_failed_with_notification(self, hass, mock_light_states):
         """Test ensure_state failure with notification."""
         from tests.conftest import create_light_state
+
         wrong_state = create_light_state("light.test_light_1", STATE_OFF)
         hass.states.get = MagicMock(return_value=wrong_state)
 
@@ -1359,7 +1391,9 @@ class TestLightControllerEnsureStateAdvanced:
         assert result["result"] == RESULT_CODE_FAILED
 
     @pytest.mark.asyncio
-    async def test_ensure_state_success_with_skipped_and_log(self, hass, mock_light_states):
+    async def test_ensure_state_success_with_skipped_and_log(
+        self, hass, mock_light_states
+    ):
         """Test success with skipped entities and log_success (fire-and-forget)."""
         controller = LightController(hass)
         result = await controller.ensure_state(
@@ -1380,7 +1414,9 @@ class TestLightControllerEnsureStateAdvanced:
         from tests.conftest import create_light_state
 
         # Light starts on and stays on - verification passes immediately
-        success_state = create_light_state("light.test_light_1", STATE_ON, brightness=255)
+        success_state = create_light_state(
+            "light.test_light_1", STATE_ON, brightness=255
+        )
         unavail_state = create_light_state("light.unavailable_light", STATE_UNAVAILABLE)
 
         def get_state(entity_id):
@@ -1409,7 +1445,9 @@ class TestLightControllerEnsureStateAdvanced:
         assert "Skipped" in result["message"] or "skipped" in result["message"].lower()
 
     @pytest.mark.asyncio
-    async def test_ensure_state_with_transition_first_attempt(self, hass, mock_light_states):
+    async def test_ensure_state_with_transition_first_attempt(
+        self, hass, mock_light_states
+    ):
         """Test that transition is only used on first attempt."""
         from tests.conftest import create_light_state
 
@@ -1476,25 +1514,41 @@ class TestMixedStateHandling:
         await controller._send_commands_per_target(targets)
 
         # Verify on commands went to on lights
-        all_on_entities = [e for call in turn_on_calls for e in (call if isinstance(call, list) else [call])]
+        all_on_entities = [
+            e
+            for call in turn_on_calls
+            for e in (call if isinstance(call, list) else [call])
+        ]
         assert "light.on_1" in all_on_entities
         assert "light.on_2" in all_on_entities
         assert "light.off_1" not in all_on_entities
 
         # Verify off command went to off light
-        all_off_entities = [e for call in turn_off_calls for e in (call if isinstance(call, list) else [call])]
+        all_off_entities = [
+            e
+            for call in turn_off_calls
+            for e in (call if isinstance(call, list) else [call])
+        ]
         assert "light.off_1" in all_off_entities
 
     @pytest.mark.asyncio
-    async def test_send_commands_groups_on_targets_by_settings(self, hass, mock_light_states):
+    async def test_send_commands_groups_on_targets_by_settings(
+        self, hass, mock_light_states
+    ):
         """Test that on targets are grouped by settings for efficient batching."""
         controller = LightController(hass)
 
         # Create targets with same settings (should be batched) and different settings
         targets = [
-            LightTarget("light.same_1", brightness_pct=75, color_temp_kelvin=4000, state="on"),
-            LightTarget("light.same_2", brightness_pct=75, color_temp_kelvin=4000, state="on"),
-            LightTarget("light.different", brightness_pct=50, color_temp_kelvin=3000, state="on"),
+            LightTarget(
+                "light.same_1", brightness_pct=75, color_temp_kelvin=4000, state="on"
+            ),
+            LightTarget(
+                "light.same_2", brightness_pct=75, color_temp_kelvin=4000, state="on"
+            ),
+            LightTarget(
+                "light.different", brightness_pct=50, color_temp_kelvin=3000, state="on"
+            ),
         ]
 
         turn_on_calls = []
@@ -1511,14 +1565,20 @@ class TestMixedStateHandling:
         assert len(turn_on_calls) == 2
 
     @pytest.mark.asyncio
-    async def test_send_commands_respects_per_entity_transition(self, hass, mock_light_states):
+    async def test_send_commands_respects_per_entity_transition(
+        self, hass, mock_light_states
+    ):
         """Test that per-entity transition overrides global transition."""
         controller = LightController(hass)
 
         # Create targets with different transitions
         targets = [
-            LightTarget("light.custom_trans", brightness_pct=100, state="on", transition=5.0),
-            LightTarget("light.global_trans", brightness_pct=100, state="on", transition=None),
+            LightTarget(
+                "light.custom_trans", brightness_pct=100, state="on", transition=5.0
+            ),
+            LightTarget(
+                "light.global_trans", brightness_pct=100, state="on", transition=None
+            ),
         ]
 
         turn_on_calls = []
@@ -1536,8 +1596,12 @@ class TestMixedStateHandling:
         assert len(turn_on_calls) == 2
 
         # Find the call with custom transition
-        custom_call = next(c for c in turn_on_calls if "light.custom_trans" in c.get("entity_id", []))
-        global_call = next(c for c in turn_on_calls if "light.global_trans" in c.get("entity_id", []))
+        custom_call = next(
+            c for c in turn_on_calls if "light.custom_trans" in c.get("entity_id", [])
+        )
+        global_call = next(
+            c for c in turn_on_calls if "light.global_trans" in c.get("entity_id", [])
+        )
 
         assert custom_call.get("transition") == 5.0
         assert global_call.get("transition") == 2.0
@@ -1569,7 +1633,11 @@ class TestMixedStateHandling:
         assert len(turn_on_calls) == 0
 
         # All entities in turn_off calls
-        all_off_entities = [e for call in turn_off_calls for e in (call if isinstance(call, list) else [call])]
+        all_off_entities = [
+            e
+            for call in turn_off_calls
+            for e in (call if isinstance(call, list) else [call])
+        ]
         assert "light.off_1" in all_off_entities
         assert "light.off_2" in all_off_entities
 
@@ -1600,7 +1668,11 @@ class TestMixedStateHandling:
         assert len(turn_off_calls) == 0
 
         # All entities in turn_on calls
-        all_on_entities = [e for call in turn_on_calls for e in (call if isinstance(call, list) else [call])]
+        all_on_entities = [
+            e
+            for call in turn_on_calls
+            for e in (call if isinstance(call, list) else [call])
+        ]
         assert "light.on_1" in all_on_entities
         assert "light.on_2" in all_on_entities
 
@@ -1677,6 +1749,7 @@ class TestPerEntityTransition:
         # Set up states that will verify on first attempt
         def get_state(entity_id):
             return create_light_state(entity_id, "on", brightness=255)
+
         hass.states.get = MagicMock(side_effect=get_state)
 
         controller = LightController(hass)

@@ -2,36 +2,34 @@
 
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
+from homeassistant.const import STATE_OFF, STATE_ON
 
-from homeassistant.const import STATE_ON, STATE_OFF
-
-from custom_components.ha_light_controller.preset_manager import (
-    PresetManager,
-    PresetConfig,
-    PresetStatus,
-)
 from custom_components.ha_light_controller.const import (
     CONF_PRESETS,
-    PRESET_ID,
-    PRESET_NAME,
-    PRESET_ENTITIES,
-    PRESET_STATE,
     PRESET_BRIGHTNESS_PCT,
-    PRESET_RGB_COLOR,
     PRESET_COLOR_TEMP_KELVIN,
     PRESET_EFFECT,
+    PRESET_ENTITIES,
+    PRESET_ID,
+    PRESET_NAME,
+    PRESET_RGB_COLOR,
+    PRESET_SKIP_VERIFICATION,
+    PRESET_STATE,
+    PRESET_STATUS_ACTIVATING,
+    PRESET_STATUS_FAILED,
+    PRESET_STATUS_IDLE,
+    PRESET_STATUS_SUCCESS,
     PRESET_TARGETS,
     PRESET_TRANSITION,
-    PRESET_SKIP_VERIFICATION,
-    PRESET_STATUS_IDLE,
-    PRESET_STATUS_ACTIVATING,
-    PRESET_STATUS_SUCCESS,
-    PRESET_STATUS_FAILED,
 )
-
+from custom_components.ha_light_controller.preset_manager import (
+    PresetConfig,
+    PresetManager,
+    PresetStatus,
+)
 
 # =============================================================================
 # PresetConfig Tests
@@ -265,7 +263,9 @@ class TestPresetManagerCRUD:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_update_preset_cannot_change_id(self, hass, config_entry_with_presets):
+    async def test_update_preset_cannot_change_id(
+        self, hass, config_entry_with_presets
+    ):
         """Test that preset ID cannot be changed via update."""
         manager = PresetManager(hass, config_entry_with_presets)
         original_id = "preset_1"
@@ -284,7 +284,11 @@ class TestPresetManagerCRUD:
 
         # Set up mock entity registry
         mock_ent_reg = MagicMock()
-        mock_ent_reg.async_get_entity_id = MagicMock(side_effect=lambda domain, platform, unique_id: f"{domain}.test_entity" if "preset_1" in unique_id else None)
+        mock_ent_reg.async_get_entity_id = MagicMock(
+            side_effect=lambda domain, platform, unique_id: (
+                f"{domain}.test_entity" if "preset_1" in unique_id else None
+            )
+        )
         mock_ent_reg.async_remove = MagicMock()
         er.async_get = MagicMock(return_value=mock_ent_reg)
 
@@ -308,7 +312,9 @@ class TestPresetManagerCRUD:
         assert result is False
 
     @pytest.mark.asyncio
-    async def test_delete_preset_entity_registry_error(self, hass, config_entry_with_presets):
+    async def test_delete_preset_entity_registry_error(
+        self, hass, config_entry_with_presets
+    ):
         """Test deleting a preset when entity registry raises an exception."""
         from homeassistant.helpers import entity_registry as er
 
@@ -481,7 +487,9 @@ class TestPresetManagerListeners:
         callback.assert_called()
 
     @pytest.mark.asyncio
-    async def test_listeners_notified_on_status_change(self, hass, config_entry_with_presets):
+    async def test_listeners_notified_on_status_change(
+        self, hass, config_entry_with_presets
+    ):
         """Test that listeners are notified when status changes."""
         manager = PresetManager(hass, config_entry_with_presets)
         callback = MagicMock()
@@ -662,7 +670,9 @@ class TestPresetManagerCreateFromCurrent:
         assert preset.targets[0]["entity_id"] == "light.test_1"
 
     @pytest.mark.asyncio
-    async def test_create_from_current_color_temperature_kelvin_attr(self, hass, config_entry):
+    async def test_create_from_current_color_temperature_kelvin_attr(
+        self, hass, config_entry
+    ):
         """Test that color_temperature_kelvin attribute is captured."""
         # Some lights use color_temperature_kelvin instead of color_temp_kelvin
         state = MagicMock()

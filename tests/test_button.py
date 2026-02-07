@@ -3,30 +3,30 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.ha_light_controller.button import (
-    async_setup_entry,
     PresetButton,
+    async_setup_entry,
+)
+from custom_components.ha_light_controller.const import (
+    DOMAIN,
+    PRESET_STATUS_ACTIVATING,
+    PRESET_STATUS_FAILED,
+    PRESET_STATUS_SUCCESS,
 )
 from custom_components.ha_light_controller.preset_manager import (
     PresetConfig,
     PresetStatus,
-)
-from custom_components.ha_light_controller.const import (
-    DOMAIN,
-    PRESET_STATUS_IDLE,
-    PRESET_STATUS_ACTIVATING,
-    PRESET_STATUS_SUCCESS,
-    PRESET_STATUS_FAILED,
 )
 
 
 @dataclass
 class MockRuntimeData:
     """Mock runtime data for tests."""
+
     controller: MagicMock
     preset_manager: MagicMock
 
@@ -73,12 +73,16 @@ def mock_preset_manager(mock_preset):
 def mock_controller():
     """Create a mock controller."""
     controller = MagicMock()
-    controller.ensure_state = AsyncMock(return_value={"success": True, "result": "success"})
+    controller.ensure_state = AsyncMock(
+        return_value={"success": True, "result": "success"}
+    )
     return controller
 
 
 @pytest.fixture
-def button_entity(hass, config_entry, mock_preset_manager, mock_controller, mock_preset):
+def button_entity(
+    hass, config_entry, mock_preset_manager, mock_controller, mock_preset
+):
     """Create a PresetButton entity."""
     return PresetButton(
         hass=hass,
@@ -181,7 +185,10 @@ class TestPresetButton:
 
     def test_device_class(self, button_entity):
         """Test device class is not set (None)."""
-        assert not hasattr(button_entity, '_attr_device_class') or button_entity._attr_device_class is None
+        assert (
+            not hasattr(button_entity, "_attr_device_class")
+            or button_entity._attr_device_class is None
+        )
 
     def test_has_entity_name(self, button_entity):
         """Test has_entity_name flag."""
@@ -354,7 +361,8 @@ class TestPresetButtonPress:
     ):
         """Test that successful activation sets status to success."""
         mock_preset_manager.activate_preset_with_options.return_value = {
-            "success": True, "result": "success"
+            "success": True,
+            "result": "success",
         }
 
         await button_entity.async_press()

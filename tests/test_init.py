@@ -2,34 +2,30 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from homeassistant.core import ServiceCall
 
 from custom_components.ha_light_controller import (
+    async_reload_entry,
     async_setup,
     async_setup_entry,
     async_unload_entry,
-    async_reload_entry,
-    LightControllerData,
 )
 from custom_components.ha_light_controller.const import (
-    DOMAIN,
-    SERVICE_ENSURE_STATE,
+    ATTR_DEFAULT_BRIGHTNESS_PCT,
+    ATTR_ENTITIES,
+    ATTR_PRESET,
+    ATTR_PRESET_ID,
+    ATTR_PRESET_NAME,
+    ATTR_STATE_TARGET,
     SERVICE_ACTIVATE_PRESET,
     SERVICE_CREATE_PRESET,
-    SERVICE_DELETE_PRESET,
     SERVICE_CREATE_PRESET_FROM_CURRENT,
-    CONF_PRESETS,
-    ATTR_ENTITIES,
-    ATTR_STATE_TARGET,
-    ATTR_DEFAULT_BRIGHTNESS_PCT,
-    ATTR_PRESET,
-    ATTR_PRESET_NAME,
-    ATTR_PRESET_ID,
+    SERVICE_DELETE_PRESET,
+    SERVICE_ENSURE_STATE,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -49,7 +45,6 @@ def mock_controller():
 @pytest.fixture
 def mock_preset_manager():
     """Create a mock preset manager."""
-    from custom_components.ha_light_controller.preset_manager import PresetConfig
 
     manager = MagicMock()
     manager.presets = {}
@@ -85,11 +80,10 @@ class TestAsyncSetupEntry:
     @pytest.mark.asyncio
     async def test_setup_entry_creates_data(self, hass, config_entry):
         """Test that setup entry creates runtime_data."""
-        with patch(
-            "custom_components.ha_light_controller.LightController"
-        ) as mock_lc, patch(
-            "custom_components.ha_light_controller.PresetManager"
-        ) as mock_pm:
+        with (
+            patch("custom_components.ha_light_controller.LightController") as mock_lc,
+            patch("custom_components.ha_light_controller.PresetManager") as mock_pm,
+        ):
             mock_lc.return_value = MagicMock()
             mock_pm.return_value = MagicMock()
 
@@ -106,10 +100,9 @@ class TestAsyncSetupEntry:
     @pytest.mark.asyncio
     async def test_setup_entry_does_not_register_services(self, hass, config_entry):
         """Test that setup entry does not register services (they're in async_setup)."""
-        with patch(
-            "custom_components.ha_light_controller.LightController"
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager"
+        with (
+            patch("custom_components.ha_light_controller.LightController"),
+            patch("custom_components.ha_light_controller.PresetManager"),
         ):
             hass.config_entries.async_forward_entry_setups = AsyncMock()
             hass.services.async_register.reset_mock()
@@ -148,10 +141,9 @@ class TestAsyncSetup:
     @pytest.mark.asyncio
     async def test_setup_entry_forwards_platforms(self, hass, config_entry):
         """Test that setup entry forwards platform setup."""
-        with patch(
-            "custom_components.ha_light_controller.LightController"
-        ), patch(
-            "custom_components.ha_light_controller.PresetManager"
+        with (
+            patch("custom_components.ha_light_controller.LightController"),
+            patch("custom_components.ha_light_controller.PresetManager"),
         ):
             hass.config_entries.async_forward_entry_setups = AsyncMock()
 
@@ -222,7 +214,9 @@ def _get_service_handler(hass, service_name):
     return None
 
 
-async def _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager):
+async def _setup_services_with_entry(
+    hass, config_entry, mock_controller, mock_preset_manager
+):
     """Set up services and config entry for testing."""
     # Reset service registration mock
     hass.services.async_register.reset_mock()
@@ -231,12 +225,15 @@ async def _setup_services_with_entry(hass, config_entry, mock_controller, mock_p
     await async_setup(hass, {})
 
     # Set up config entry with runtime_data
-    with patch(
-        "custom_components.ha_light_controller.LightController",
-        return_value=mock_controller,
-    ), patch(
-        "custom_components.ha_light_controller.PresetManager",
-        return_value=mock_preset_manager,
+    with (
+        patch(
+            "custom_components.ha_light_controller.LightController",
+            return_value=mock_controller,
+        ),
+        patch(
+            "custom_components.ha_light_controller.PresetManager",
+            return_value=mock_preset_manager,
+        ),
     ):
         hass.config_entries.async_forward_entry_setups = AsyncMock()
         await async_setup_entry(hass, config_entry)
@@ -253,7 +250,9 @@ class TestEnsureStateService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test ensure_state service calls controller."""
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
@@ -281,7 +280,9 @@ class TestActivatePresetService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test activate_preset returns error when preset not found."""
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
@@ -303,7 +304,9 @@ class TestCreatePresetService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test create_preset returns error when name missing."""
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
@@ -328,7 +331,9 @@ class TestDeletePresetService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test delete_preset returns error when ID missing."""
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
@@ -347,7 +352,9 @@ class TestDeletePresetService:
     ):
         """Test delete_preset returns error when preset not found."""
         mock_preset_manager.delete_preset.return_value = False
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
@@ -369,7 +376,9 @@ class TestCreatePresetFromCurrentService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test create_preset_from_current returns error when name missing."""
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
@@ -390,7 +399,9 @@ class TestCreatePresetFromCurrentService:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test create_preset_from_current returns error when entities missing."""
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
@@ -420,8 +431,12 @@ class TestEnsureStateServiceAdvanced:
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
         """Test ensure_state handles exceptions gracefully."""
-        mock_controller.ensure_state = AsyncMock(side_effect=Exception("Controller error"))
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        mock_controller.ensure_state = AsyncMock(
+            side_effect=Exception("Controller error")
+        )
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
@@ -437,6 +452,7 @@ class TestEnsureStateServiceAdvanced:
         assert result["success"] is False
         assert result["result"] == "error"
         assert "Service error" in result["message"]
+
 
 class TestActivatePresetServiceAdvanced:
     """Advanced tests for activate_preset service handler."""
@@ -456,7 +472,9 @@ class TestActivatePresetServiceAdvanced:
             brightness_pct=75,
         )
         mock_preset_manager.find_preset.return_value = preset
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         # Get the service handler
         activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
@@ -485,7 +503,9 @@ class TestActivatePresetServiceAdvanced:
         )
         # find_preset handles both ID and name lookup
         mock_preset_manager.find_preset.return_value = preset
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
@@ -513,7 +533,9 @@ class TestActivatePresetServiceAdvanced:
         mock_preset_manager.activate_preset_with_options = AsyncMock(
             side_effect=Exception("Controller error")
         )
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
@@ -542,7 +564,9 @@ class TestCreatePresetServiceAdvanced:
             entities=["light.test"],
         )
         mock_preset_manager.create_preset = AsyncMock(return_value=created_preset)
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
@@ -565,7 +589,9 @@ class TestCreatePresetServiceAdvanced:
     ):
         """Test create_preset handles exceptions."""
         mock_preset_manager.create_preset = AsyncMock(side_effect=Exception("DB error"))
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
@@ -590,7 +616,9 @@ class TestDeletePresetServiceAdvanced:
     ):
         """Test delete_preset success path."""
         mock_preset_manager.delete_preset = AsyncMock(return_value=True)
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
@@ -609,7 +637,9 @@ class TestDeletePresetServiceAdvanced:
     ):
         """Test delete_preset handles exceptions."""
         mock_preset_manager.delete_preset = AsyncMock(side_effect=Exception("DB error"))
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
@@ -638,8 +668,12 @@ class TestCreatePresetFromCurrentServiceAdvanced:
             entities=["light.test"],
             targets=[{"entity_id": "light.test", "brightness_pct": 80}],
         )
-        mock_preset_manager.create_preset_from_current = AsyncMock(return_value=created_preset)
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        mock_preset_manager.create_preset_from_current = AsyncMock(
+            return_value=created_preset
+        )
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
@@ -662,7 +696,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
     ):
         """Test create_preset_from_current when preset_manager returns None."""
         mock_preset_manager.create_preset_from_current = AsyncMock(return_value=None)
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
@@ -685,7 +721,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
         mock_preset_manager.create_preset_from_current = AsyncMock(
             side_effect=Exception("State read error")
         )
-        await _setup_services_with_entry(hass, config_entry, mock_controller, mock_preset_manager)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
 
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 

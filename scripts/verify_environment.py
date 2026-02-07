@@ -191,9 +191,7 @@ def main() -> int:
     results["manifest"] = check_file_exists(
         integration_dir / "manifest.json", "manifest.json"
     )
-    results["init"] = check_file_exists(
-        integration_dir / "__init__.py", "__init__.py"
-    )
+    results["init"] = check_file_exists(integration_dir / "__init__.py", "__init__.py")
     results["const"] = check_file_exists(integration_dir / "const.py", "const.py")
     results["strings"] = check_file_exists(
         integration_dir / "strings.json", "strings.json"
