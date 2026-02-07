@@ -22,13 +22,14 @@ Bronze tier is the **minimum acceptable quality** for custom integrations. All i
 - [ ] **Config flow UI setup implemented** (`config_flow.py`)
   - No YAML configuration required
   - User can add integration via HA UI (Settings → Devices & Services)
-  - See: [../custom_components/example_integration/config_flow.py](../custom_components/example_integration/config_flow.py)
+  - See: [../custom_components/ha_light_controller/config_flow.py](../custom_components/ha_light_controller/config_flow.py)
 
 - [ ] **`manifest.json` properly configured**
   - Required fields: domain, name, version, codeowners, documentation, issue_tracker
   - Correct `integration_type` (device, hub, service, virtual, helper)
   - Correct `iot_class` (local_polling, local_push, cloud_polling, cloud_push, calculated, assumed_state)
-  - See: [../custom_components/example_integration/manifest.json](../custom_components/example_integration/manifest.json)
+  - Python 3.13+ and Home Assistant 2025.2.0+ requirements met
+  - See: [../custom_components/ha_light_controller/manifest.json](../custom_components/ha_light_controller/manifest.json)
 
 - [ ] **`async_setup_entry()` with automated tests**
   - Integration loads successfully from config entry
@@ -47,8 +48,8 @@ Bronze tier is the **minimum acceptable quality** for custom integrations. All i
 - [ ] **Unique IDs for all entities**
   - Every entity has a stable `unique_id` property
   - IDs don't change between restarts
-  - Format: `{DOMAIN}_{device_id}_{entity_type}`
-  - See: [../custom_components/example_integration/entity.py](../custom_components/example_integration/entity.py)
+  - Format: `{DOMAIN}_{preset_id}_{entity_type}`
+  - See: [../custom_components/ha_light_controller/button.py](../custom_components/ha_light_controller/button.py)
 
 - [ ] **At least one entity platform implemented**
   - Minimum one platform file (sensor.py, switch.py, etc.)
@@ -86,8 +87,8 @@ Silver tier focuses on **reliability and error handling**. Integrations should g
 - [ ] **Entity availability properly managed**
   - Entities show as "unavailable" when device is offline
   - Availability restored when device comes back online
-  - Uses CoordinatorEntity `available` property
-  - See: [../custom_components/example_integration/entity.py](../custom_components/example_integration/entity.py)
+  - Uses proper availability patterns for service-based integrations
+  - See: [../custom_components/ha_light_controller/button.py](../custom_components/ha_light_controller/button.py)
 
 - [ ] **Coordinator handles offline devices gracefully**
   - No exceptions bubble up to HA core
@@ -149,10 +150,10 @@ Gold tier represents **feature-complete, production-quality** integrations.
   - See: [PERFORMANCE.md](PERFORMANCE.md)
 
 - [ ] **Device registry integration**
-  - Devices properly registered with HA device registry
-  - `device_info` property implemented on entities
-  - Devices show in UI with manufacturer/model
-  - See: [../custom_components/example_integration/entity.py](../custom_components/example_integration/entity.py)
+  - Devices properly registered with HA device registry (if applicable)
+  - `device_info` property implemented on entities (if applicable)
+  - For service-based integrations, device registry may not be applicable
+  - See: Home Assistant device registry documentation
 
 ### Testing
 
@@ -287,7 +288,7 @@ pre-commit run --all-files
 
 - Review [CLAUDE.md](../CLAUDE.md) for mandatory patterns
 - Check [REFERENCE_GUIDE.md](../REFERENCE_GUIDE.md) for technical details
-- See [example_integration/](../custom_components/example_integration/) for working code
+- See [HA Light Controller code](../custom_components/ha_light_controller/) for working examples
 
 ---
 

@@ -84,7 +84,7 @@ Create a `hacs.json` file in your repository root to configure HACS integration:
 {
   "name": "Your Integration Name",
   "content_in_root": false,
-  "homeassistant": "2024.4.0"
+  "homeassistant": "2025.2.0"
 }
 ```
 
@@ -94,7 +94,7 @@ Create a `hacs.json` file in your repository root to configure HACS integration:
 {
   "name": "Your Integration Name",
   "content_in_root": false,
-  "homeassistant": "2024.4.0",
+  "homeassistant": "2025.2.0",
   "country": ["US", "CA", "GB"],
   "render_readme": true,
   "persistent_directory": "storage",
@@ -109,7 +109,7 @@ Create a `hacs.json` file in your repository root to configure HACS integration:
 |-------|----------|-------------|
 | `name` | Yes | Display name shown in HACS (can differ from domain) |
 | `content_in_root` | Yes | Always `false` for integrations (code is in `custom_components/`) |
-| `homeassistant` | Yes | Minimum Home Assistant version required (e.g., "2024.4.0") |
+| `homeassistant` | Yes | Minimum Home Assistant version required (e.g., "2025.2.0") |
 | `country` | No | List of country codes where integration is relevant |
 | `render_readme` | No | Set to `true` to render README.md in HACS UI |
 | `persistent_directory` | No | Directory name for persistent data storage |
@@ -126,8 +126,10 @@ Use the **oldest Home Assistant version** your integration supports:
 # 2024.4.0 - Python 3.12 minimum
 # 2024.11.0 - Python 3.12.4 minimum
 # 2025.2.0 - Python 3.13 minimum
+# 2025.6.0 - Python 3.14 minimum (expected)
 
 # Conservative approach: Test on oldest version you claim to support
+# HA Light Controller requires 2025.2.0+ (Python 3.13+)
 ```
 
 **Tip:** Use `homeassistant >= MAJOR.MINOR.0` format (patch version 0) unless you need a specific patch.
