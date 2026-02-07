@@ -1,17 +1,17 @@
 # Fix Preset Configuration Gaps Implementation Plan
 
-> ❌ **STATUS: NOT IMPLEMENTED** (as of v0.2.1)
+> ✅ **STATUS: COMPLETED** (implemented in v0.2.1)
 >
-> **Current State:**
-> - UI collects per-entity state and transition configuration for presets
-> - Backend does NOT use this configuration (fields not present in LightTarget)
-> - This plan remains valid but has not been executed
+> **Implementation:**
+> - Commits 787e429 through 3ab3816 (2026-01-31) completed all 8 tasks
+> - LightTarget now has `state` and `transition` fields with proper defaults
+> - Per-entity state and transition overrides fully functional
+> - Mixed on/off states in single preset supported via `_send_commands_per_target()`
+> - Preset creation derives state/transition from per-entity configs
+> - Full test coverage added for new functionality
 >
-> **Scope:**
-> This plan was created on 2026-01-31 alongside the scope simplification work. The focus was on removing features (notifications/blueprints) in v0.2.0, leaving this enhancement for a future release.
->
-> **Next Steps:**
-> Execute this plan when ready to implement per-entity state/transition support. All 8 tasks are defined and ready for implementation.
+> **Note:**
+> This plan was created and executed on 2026-01-31 alongside the scope simplification work (v0.2.0). The implementation completed all tasks as specified, adding per-entity state and transition support to the backend to match the UI capabilities.
 
 ---
 
