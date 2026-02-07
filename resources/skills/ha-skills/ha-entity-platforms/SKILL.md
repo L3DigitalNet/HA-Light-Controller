@@ -249,7 +249,7 @@ class {Name}Switch({Name}Entity, SwitchEntity):
 
 ## Additional Resources
 
-For a complete reference of all device classes, state classes, and binary sensor device classes, see [reference/device-classes.md](reference/device-classes.md).
+For a complete reference of all device classes, state classes, and binary sensor device classes, see [device-classes.md](../device-classes.md).
 
 ## Critical Rules
 

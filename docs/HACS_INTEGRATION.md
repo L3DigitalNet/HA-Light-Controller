@@ -11,7 +11,7 @@ This guide explains how to publish your Home Assistant custom integration to [HA
 - [Submission Process](#submission-process)
 - [Post-Submission](#post-submission)
 - [Common Rejection Reasons](#common-rejection-reasons)
-- [Maintenance & Updates](#maintenance--updates)
+- [Maintenance & Updates](#maintenance-updates)
 
 ---
 

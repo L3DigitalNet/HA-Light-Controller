@@ -211,7 +211,7 @@ Must match every step, error, and abort reason in the config flow:
 
 ## Discovery Support (Optional)
 
-For devices that support network discovery (Zeroconf, SSDP, DHCP, USB, Bluetooth), see [reference/discovery-methods.md](reference/discovery-methods.md) for complete implementation patterns.
+For devices that support network discovery (Zeroconf, SSDP, DHCP, USB, Bluetooth), see [discovery-methods.md](../discovery-methods.md) for complete implementation patterns.
 
 Basic Zeroconf example:
 

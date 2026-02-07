@@ -5,7 +5,7 @@ Security is critical for Home Assistant integrations. This guide provides patter
 ## Table of Contents
 
 - [Credential Storage](#credential-storage)
-- [API Key & Token Handling](#api-key--token-handling)
+- [API Key & Token Handling](#api-key-token-handling)
 - [Network Security](#network-security)
 - [Input Validation](#input-validation)
 - [Logging Security](#logging-security)
