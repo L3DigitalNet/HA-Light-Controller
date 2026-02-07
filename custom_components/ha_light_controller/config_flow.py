@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import (
     ConfigEntry,
     ConfigFlow,
@@ -18,41 +17,41 @@ from homeassistant.data_entry_flow import section
 from homeassistant.helpers import selector
 
 from .const import (
-    DOMAIN,
-    CONF_DEFAULT_BRIGHTNESS_PCT,
-    CONF_DEFAULT_TRANSITION,
-    CONF_BRIGHTNESS_TOLERANCE,
-    CONF_RGB_TOLERANCE,
-    CONF_KELVIN_TOLERANCE,
-    CONF_DELAY_AFTER_SEND,
-    CONF_MAX_RETRIES,
-    CONF_MAX_RUNTIME_SECONDS,
-    CONF_USE_EXPONENTIAL_BACKOFF,
-    CONF_MAX_BACKOFF_SECONDS,
-    CONF_LOG_SUCCESS,
-    DEFAULT_BRIGHTNESS_PCT,
-    DEFAULT_TRANSITION,
-    DEFAULT_BRIGHTNESS_TOLERANCE,
-    DEFAULT_RGB_TOLERANCE,
-    DEFAULT_KELVIN_TOLERANCE,
-    DEFAULT_DELAY_AFTER_SEND,
-    DEFAULT_MAX_RETRIES,
-    DEFAULT_MAX_RUNTIME_SECONDS,
-    DEFAULT_USE_EXPONENTIAL_BACKOFF,
-    DEFAULT_MAX_BACKOFF_SECONDS,
-    DEFAULT_LOG_SUCCESS,
-    PRESET_NAME,
-    PRESET_ENTITIES,
-    PRESET_STATE,
-    PRESET_BRIGHTNESS_PCT,
-    PRESET_COLOR_MODE,
-    PRESET_RGB_COLOR,
-    PRESET_COLOR_TEMP_KELVIN,
-    PRESET_TRANSITION,
-    PRESET_SKIP_VERIFICATION,
+    COLOR_MODE_COLOR_TEMP,
     COLOR_MODE_NONE,
     COLOR_MODE_RGB,
-    COLOR_MODE_COLOR_TEMP,
+    CONF_BRIGHTNESS_TOLERANCE,
+    CONF_DEFAULT_BRIGHTNESS_PCT,
+    CONF_DEFAULT_TRANSITION,
+    CONF_DELAY_AFTER_SEND,
+    CONF_KELVIN_TOLERANCE,
+    CONF_LOG_SUCCESS,
+    CONF_MAX_BACKOFF_SECONDS,
+    CONF_MAX_RETRIES,
+    CONF_MAX_RUNTIME_SECONDS,
+    CONF_RGB_TOLERANCE,
+    CONF_USE_EXPONENTIAL_BACKOFF,
+    DEFAULT_BRIGHTNESS_PCT,
+    DEFAULT_BRIGHTNESS_TOLERANCE,
+    DEFAULT_DELAY_AFTER_SEND,
+    DEFAULT_KELVIN_TOLERANCE,
+    DEFAULT_LOG_SUCCESS,
+    DEFAULT_MAX_BACKOFF_SECONDS,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MAX_RUNTIME_SECONDS,
+    DEFAULT_RGB_TOLERANCE,
+    DEFAULT_TRANSITION,
+    DEFAULT_USE_EXPONENTIAL_BACKOFF,
+    DOMAIN,
+    PRESET_BRIGHTNESS_PCT,
+    PRESET_COLOR_MODE,
+    PRESET_COLOR_TEMP_KELVIN,
+    PRESET_ENTITIES,
+    PRESET_NAME,
+    PRESET_RGB_COLOR,
+    PRESET_SKIP_VERIFICATION,
+    PRESET_STATE,
+    PRESET_TRANSITION,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -202,7 +201,8 @@ class LightControllerOptionsFlow(OptionsFlow):
                                 vol.Optional(
                                     CONF_DEFAULT_BRIGHTNESS_PCT,
                                     default=options.get(
-                                        CONF_DEFAULT_BRIGHTNESS_PCT, DEFAULT_BRIGHTNESS_PCT
+                                        CONF_DEFAULT_BRIGHTNESS_PCT,
+                                        DEFAULT_BRIGHTNESS_PCT,
                                     ),
                                 ): selector.NumberSelector(
                                     selector.NumberSelectorConfig(
@@ -238,7 +238,8 @@ class LightControllerOptionsFlow(OptionsFlow):
                                 vol.Optional(
                                     CONF_BRIGHTNESS_TOLERANCE,
                                     default=options.get(
-                                        CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE
+                                        CONF_BRIGHTNESS_TOLERANCE,
+                                        DEFAULT_BRIGHTNESS_TOLERANCE,
                                     ),
                                 ): selector.NumberSelector(
                                     selector.NumberSelectorConfig(
@@ -251,7 +252,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                                 ),
                                 vol.Optional(
                                     CONF_RGB_TOLERANCE,
-                                    default=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
+                                    default=options.get(
+                                        CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE
+                                    ),
                                 ): selector.NumberSelector(
                                     selector.NumberSelectorConfig(
                                         min=0,
@@ -298,7 +301,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                                 ),
                                 vol.Optional(
                                     CONF_MAX_RETRIES,
-                                    default=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
+                                    default=options.get(
+                                        CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES
+                                    ),
                                 ): selector.NumberSelector(
                                     selector.NumberSelectorConfig(
                                         min=1,
@@ -310,7 +315,8 @@ class LightControllerOptionsFlow(OptionsFlow):
                                 vol.Optional(
                                     CONF_MAX_RUNTIME_SECONDS,
                                     default=options.get(
-                                        CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS
+                                        CONF_MAX_RUNTIME_SECONDS,
+                                        DEFAULT_MAX_RUNTIME_SECONDS,
                                     ),
                                 ): selector.NumberSelector(
                                     selector.NumberSelectorConfig(
@@ -324,13 +330,15 @@ class LightControllerOptionsFlow(OptionsFlow):
                                 vol.Optional(
                                     CONF_USE_EXPONENTIAL_BACKOFF,
                                     default=options.get(
-                                        CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF
+                                        CONF_USE_EXPONENTIAL_BACKOFF,
+                                        DEFAULT_USE_EXPONENTIAL_BACKOFF,
                                     ),
                                 ): selector.BooleanSelector(),
                                 vol.Optional(
                                     CONF_MAX_BACKOFF_SECONDS,
                                     default=options.get(
-                                        CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS
+                                        CONF_MAX_BACKOFF_SECONDS,
+                                        DEFAULT_MAX_BACKOFF_SECONDS,
                                     ),
                                 ): selector.NumberSelector(
                                     selector.NumberSelectorConfig(
@@ -351,7 +359,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                             {
                                 vol.Optional(
                                     CONF_LOG_SUCCESS,
-                                    default=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
+                                    default=options.get(
+                                        CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS
+                                    ),
                                 ): selector.BooleanSelector(),
                             }
                         ),
@@ -381,7 +391,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                 self._preset_data = {
                     PRESET_NAME: name,
                     PRESET_ENTITIES: list(entities),
-                    PRESET_SKIP_VERIFICATION: user_input.get(PRESET_SKIP_VERIFICATION, False),
+                    PRESET_SKIP_VERIFICATION: user_input.get(
+                        PRESET_SKIP_VERIFICATION, False
+                    ),
                     "targets": {},  # Dict keyed by entity_id for easy lookup/update
                 }
 
@@ -401,7 +413,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                             multiple=True,
                         )
                     ),
-                    vol.Optional(PRESET_SKIP_VERIFICATION, default=False): selector.BooleanSelector(),
+                    vol.Optional(
+                        PRESET_SKIP_VERIFICATION, default=False
+                    ): selector.BooleanSelector(),
                 }
             ),
             errors=errors,
@@ -411,7 +425,9 @@ class LightControllerOptionsFlow(OptionsFlow):
         """Get friendly name for an entity."""
         entity_state = self.hass.states.get(entity_id)
         if entity_state:
-            return entity_state.attributes.get("friendly_name", entity_id)
+            friendly_name = entity_state.attributes.get("friendly_name")
+            if isinstance(friendly_name, str) and friendly_name:
+                return friendly_name
         return entity_id
 
     def _build_entity_status_summary(self) -> str:
@@ -528,8 +544,7 @@ class LightControllerOptionsFlow(OptionsFlow):
             status = "✓" if entity_id in targets else "○"
             entity_options.append(
                 selector.SelectOptionDict(
-                    value=entity_id,
-                    label=f"{status} {friendly_name}"
+                    value=entity_id, label=f"{status} {friendly_name}"
                 )
             )
 
@@ -547,7 +562,7 @@ class LightControllerOptionsFlow(OptionsFlow):
             ),
         )
 
-    async def async_step_configure_entity(
+    async def async_step_configure_entity(  # noqa: C901
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Configure a specific entity's settings."""
@@ -616,7 +631,9 @@ class LightControllerOptionsFlow(OptionsFlow):
             step_id="configure_entity",
             data_schema=vol.Schema(
                 {
-                    vol.Optional(PRESET_STATE, default=default_state): selector.SelectSelector(
+                    vol.Optional(
+                        PRESET_STATE, default=default_state
+                    ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
                             options=[
                                 selector.SelectOptionDict(value="on", label="On"),
@@ -625,7 +642,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
-                    vol.Optional(PRESET_TRANSITION, default=default_transition): selector.NumberSelector(
+                    vol.Optional(
+                        PRESET_TRANSITION, default=default_transition
+                    ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=0,
                             max=60,
@@ -634,7 +653,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
                     ),
-                    vol.Optional(PRESET_BRIGHTNESS_PCT, default=default_brightness): selector.NumberSelector(
+                    vol.Optional(
+                        PRESET_BRIGHTNESS_PCT, default=default_brightness
+                    ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=1,
                             max=100,
@@ -643,17 +664,28 @@ class LightControllerOptionsFlow(OptionsFlow):
                             mode=selector.NumberSelectorMode.SLIDER,
                         )
                     ),
-                    vol.Optional(PRESET_COLOR_MODE, default=default_color_mode): selector.SelectSelector(
+                    vol.Optional(
+                        PRESET_COLOR_MODE, default=default_color_mode
+                    ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
                             options=[
-                                selector.SelectOptionDict(value=COLOR_MODE_NONE, label="No Color"),
-                                selector.SelectOptionDict(value=COLOR_MODE_COLOR_TEMP, label="Color Temperature"),
-                                selector.SelectOptionDict(value=COLOR_MODE_RGB, label="RGB Color"),
+                                selector.SelectOptionDict(
+                                    value=COLOR_MODE_NONE, label="No Color"
+                                ),
+                                selector.SelectOptionDict(
+                                    value=COLOR_MODE_COLOR_TEMP,
+                                    label="Color Temperature",
+                                ),
+                                selector.SelectOptionDict(
+                                    value=COLOR_MODE_RGB, label="RGB Color"
+                                ),
                             ],
                             mode=selector.SelectSelectorMode.DROPDOWN,
                         )
                     ),
-                    vol.Optional(PRESET_COLOR_TEMP_KELVIN, default=default_color_temp): selector.NumberSelector(
+                    vol.Optional(
+                        PRESET_COLOR_TEMP_KELVIN, default=default_color_temp
+                    ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
                             min=2000,
                             max=6500,
@@ -760,18 +792,25 @@ class LightControllerOptionsFlow(OptionsFlow):
         # Derive preset-level state from per-entity targets
         # If all targets are "off", preset state is "off"; otherwise "on"
         target_states = [t.get("state", "on") for t in targets]
-        preset_state = "off" if target_states and all(s == "off" for s in target_states) else "on"
+        preset_state = (
+            "off" if target_states and all(s == "off" for s in target_states) else "on"
+        )
 
         # Derive preset-level transition from per-entity targets
         # Use the maximum transition among targets (or 0.0 if none set)
         target_transitions = [t.get("transition", 0) for t in targets]
-        preset_transition = float(max(target_transitions)) if target_transitions else 0.0
+        preset_transition = (
+            float(max(target_transitions)) if target_transitions else 0.0
+        )
 
         # Check if we're editing an existing preset
         editing_preset_id = getattr(self, "_editing_preset_id", None)
 
         # Get preset manager from runtime_data
-        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+        if (
+            hasattr(self.config_entry, "runtime_data")
+            and self.config_entry.runtime_data
+        ):
             preset_manager = self.config_entry.runtime_data.preset_manager
             if preset_manager:
                 if editing_preset_id and editing_preset_id in preset_manager.presets:
@@ -785,7 +824,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                         transition=preset_transition,
                         skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
                     )
-                    _LOGGER.info("Updated preset: %s with %d entity configs", name, len(targets))
+                    _LOGGER.info(
+                        "Updated preset: %s with %d entity configs", name, len(targets)
+                    )
                 else:
                     # Create new preset
                     await preset_manager.create_preset(
@@ -796,7 +837,9 @@ class LightControllerOptionsFlow(OptionsFlow):
                         transition=preset_transition,
                         skip_verification=data.get(PRESET_SKIP_VERIFICATION, False),
                     )
-                    _LOGGER.info("Created preset: %s with %d entity configs", name, len(targets))
+                    _LOGGER.info(
+                        "Created preset: %s with %d entity configs", name, len(targets)
+                    )
 
         # Clear stored data
         self._preset_data = {}
@@ -812,7 +855,10 @@ class LightControllerOptionsFlow(OptionsFlow):
         """Handle managing existing presets - show menu with edit/delete options."""
         # Get preset manager from runtime_data
         preset_manager = None
-        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+        if (
+            hasattr(self.config_entry, "runtime_data")
+            and self.config_entry.runtime_data
+        ):
             preset_manager = self.config_entry.runtime_data.preset_manager
 
         if not preset_manager or not preset_manager.presets:
@@ -835,7 +881,10 @@ class LightControllerOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Select a preset to edit."""
         preset_manager = None
-        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+        if (
+            hasattr(self.config_entry, "runtime_data")
+            and self.config_entry.runtime_data
+        ):
             preset_manager = self.config_entry.runtime_data.preset_manager
 
         if not preset_manager or not preset_manager.presets:
@@ -891,7 +940,10 @@ class LightControllerOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         """Select a preset to delete."""
         preset_manager = None
-        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+        if (
+            hasattr(self.config_entry, "runtime_data")
+            and self.config_entry.runtime_data
+        ):
             preset_manager = self.config_entry.runtime_data.preset_manager
 
         if not preset_manager or not preset_manager.presets:
@@ -936,7 +988,10 @@ class LightControllerOptionsFlow(OptionsFlow):
             return await self.async_step_manage_presets()
 
         preset_manager = None
-        if hasattr(self.config_entry, 'runtime_data') and self.config_entry.runtime_data:
+        if (
+            hasattr(self.config_entry, "runtime_data")
+            and self.config_entry.runtime_data
+        ):
             preset_manager = self.config_entry.runtime_data.preset_manager
 
         if not preset_manager or preset_id not in preset_manager.presets:
@@ -959,7 +1014,9 @@ class LightControllerOptionsFlow(OptionsFlow):
             step_id="confirm_delete",
             data_schema=vol.Schema(
                 {
-                    vol.Required("confirm_delete", default=False): selector.BooleanSelector(),
+                    vol.Required(
+                        "confirm_delete", default=False
+                    ): selector.BooleanSelector(),
                 }
             ),
             description_placeholders={

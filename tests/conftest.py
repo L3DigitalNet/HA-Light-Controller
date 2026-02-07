@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import sys
-from unittest.mock import MagicMock, AsyncMock
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 
 # =============================================================================
 # Mock Home Assistant modules before importing custom component
@@ -29,9 +28,11 @@ mock_ha.config_entries.ConfigEntryState = MagicMock()
 mock_ha.config_entries.ConfigEntryState.LOADED = "loaded"
 mock_ha.config_entries.ConfigEntryState.NOT_LOADED = "not_loaded"
 
+
 # Create proper base classes for ConfigFlow and OptionsFlow
 class MockConfigFlow:
     """Mock ConfigFlow base class."""
+
     def __init_subclass__(cls, **kwargs):
         pass
 
@@ -47,6 +48,7 @@ class MockConfigFlow:
 
 class MockOptionsFlow:
     """Mock OptionsFlow base class."""
+
     _config_entry = None
 
     def __init_subclass__(cls, **kwargs):
@@ -107,9 +109,11 @@ mock_ha.components.group = MagicMock()
 mock_ha.components.group.DOMAIN = "group"
 mock_ha.components.button = MagicMock()
 
+
 # Create proper base classes for entities
 class MockButtonEntity:
     """Mock ButtonEntity base class."""
+
     _attr_has_entity_name = False
     _attr_device_class = None
     _attr_unique_id = None
@@ -125,6 +129,7 @@ class MockButtonEntity:
 
 class MockSensorEntity:
     """Mock SensorEntity base class."""
+
     _attr_has_entity_name = False
     _attr_unique_id = None
     _attr_name = None
@@ -139,6 +144,7 @@ class MockSensorEntity:
 
 class MockButtonDeviceClass:
     """Mock ButtonDeviceClass enum."""
+
     IDENTIFY = "identify"
 
 
@@ -168,7 +174,9 @@ sys.modules["homeassistant.config_entries"] = mock_ha.config_entries
 sys.modules["homeassistant.data_entry_flow"] = mock_ha.data_entry_flow
 sys.modules["homeassistant.const"] = mock_ha.const
 sys.modules["homeassistant.helpers"] = mock_ha.helpers
-sys.modules["homeassistant.helpers.config_validation"] = mock_ha.helpers.config_validation
+sys.modules["homeassistant.helpers.config_validation"] = (
+    mock_ha.helpers.config_validation
+)
 sys.modules["homeassistant.helpers.selector"] = mock_ha.helpers.selector
 sys.modules["homeassistant.helpers.entity"] = mock_ha.helpers.entity
 sys.modules["homeassistant.helpers.entity_platform"] = mock_ha.helpers.entity_platform
@@ -181,8 +189,7 @@ sys.modules["homeassistant.components.sensor"] = mock_ha.components.sensor
 sys.modules["voluptuous"] = mock_vol
 
 # Now we can import the custom component
-from custom_components.ha_light_controller.const import DOMAIN, CONF_PRESETS
-
+from custom_components.ha_light_controller.const import CONF_PRESETS  # noqa: E402  # isort: skip
 
 # =============================================================================
 # Constants
@@ -198,9 +205,11 @@ STATE_UNKNOWN = "unknown"
 # State mock class
 # =============================================================================
 
+
 @dataclass
 class State:
     """Mock Home Assistant State."""
+
     entity_id: str
     state: str
     attributes: dict

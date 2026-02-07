@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.data_entry_flow import FlowResultType
 
@@ -13,34 +13,32 @@ from custom_components.ha_light_controller.config_flow import (
     LightControllerOptionsFlow,
 )
 from custom_components.ha_light_controller.const import (
-    DOMAIN,
+    COLOR_MODE_COLOR_TEMP,
+    COLOR_MODE_NONE,
+    COLOR_MODE_RGB,
+    CONF_BRIGHTNESS_TOLERANCE,
     CONF_DEFAULT_BRIGHTNESS_PCT,
     CONF_DEFAULT_TRANSITION,
-    CONF_BRIGHTNESS_TOLERANCE,
-    CONF_RGB_TOLERANCE,
-    CONF_KELVIN_TOLERANCE,
     CONF_DELAY_AFTER_SEND,
+    CONF_KELVIN_TOLERANCE,
+    CONF_LOG_SUCCESS,
+    CONF_MAX_BACKOFF_SECONDS,
     CONF_MAX_RETRIES,
     CONF_MAX_RUNTIME_SECONDS,
+    CONF_RGB_TOLERANCE,
     CONF_USE_EXPONENTIAL_BACKOFF,
-    CONF_MAX_BACKOFF_SECONDS,
-    CONF_LOG_SUCCESS,
     DEFAULT_BRIGHTNESS_PCT,
     DEFAULT_TRANSITION,
-    PRESET_NAME,
-    PRESET_ENTITIES,
-    PRESET_STATE,
     PRESET_BRIGHTNESS_PCT,
-    PRESET_SKIP_VERIFICATION,
-    PRESET_TRANSITION,
     PRESET_COLOR_MODE,
     PRESET_COLOR_TEMP_KELVIN,
+    PRESET_ENTITIES,
+    PRESET_NAME,
     PRESET_RGB_COLOR,
-    COLOR_MODE_NONE,
-    COLOR_MODE_COLOR_TEMP,
-    COLOR_MODE_RGB,
+    PRESET_SKIP_VERIFICATION,
+    PRESET_STATE,
+    PRESET_TRANSITION,
 )
-
 
 # =============================================================================
 # ConfigFlow Tests
@@ -179,6 +177,7 @@ class TestLightControllerOptionsFlow:
         assert result["data"][CONF_USE_EXPONENTIAL_BACKOFF] is True
         assert result["data"][CONF_LOG_SUCCESS] is True
 
+
 class TestOptionsFlowAddPreset:
     """Tests for the add_preset options flow steps (multi-step flow)."""
 
@@ -265,7 +264,9 @@ class TestOptionsFlowAddPreset:
         assert result["errors"]["base"] == "entities_required"
 
     @pytest.mark.asyncio
-    async def test_step_preset_entity_menu_shows_actions(self, options_flow_with_manager):
+    async def test_step_preset_entity_menu_shows_actions(
+        self, options_flow_with_manager
+    ):
         """Test preset_entity_menu shows available actions."""
         flow, _ = options_flow_with_manager
         # Set up preset data as if we came from add_preset
@@ -284,7 +285,9 @@ class TestOptionsFlowAddPreset:
         assert result["description_placeholders"]["preset_name"] == "Test Preset"
 
     @pytest.mark.asyncio
-    async def test_step_preset_entity_menu_requires_configuration(self, options_flow_with_manager):
+    async def test_step_preset_entity_menu_requires_configuration(
+        self, options_flow_with_manager
+    ):
         """Test preset_entity_menu requires at least one entity to be configured."""
         flow, _ = options_flow_with_manager
         flow._preset_data = {
@@ -294,9 +297,7 @@ class TestOptionsFlowAddPreset:
             "targets": {},  # No entities configured yet
         }
 
-        result = await flow.async_step_preset_entity_menu(
-            user_input={"action": "save"}
-        )
+        result = await flow.async_step_preset_entity_menu(user_input={"action": "save"})
 
         assert result["type"] == FlowResultType.FORM
         assert result["errors"]["base"] == "configure_at_least_one"
@@ -336,7 +337,9 @@ class TestOptionsFlowAddPreset:
         assert "entity_name" in result["description_placeholders"]
 
     @pytest.mark.asyncio
-    async def test_step_configure_entity_saves_on_state(self, options_flow_with_manager):
+    async def test_step_configure_entity_saves_on_state(
+        self, options_flow_with_manager
+    ):
         """Test configure_entity saves 'on' state configuration."""
         flow, _ = options_flow_with_manager
         flow._preset_data = {
@@ -369,7 +372,9 @@ class TestOptionsFlowAddPreset:
         assert target["transition"] == 1.5
 
     @pytest.mark.asyncio
-    async def test_step_configure_entity_saves_off_state(self, options_flow_with_manager):
+    async def test_step_configure_entity_saves_off_state(
+        self, options_flow_with_manager
+    ):
         """Test configure_entity saves 'off' state without brightness/color."""
         flow, _ = options_flow_with_manager
         flow._preset_data = {
@@ -407,7 +412,7 @@ class TestOptionsFlowAddPreset:
         }
         flow._configuring_entity = "light.test"
 
-        result = await flow.async_step_configure_entity(
+        await flow.async_step_configure_entity(
             user_input={
                 PRESET_STATE: "on",
                 PRESET_TRANSITION: 0,
@@ -441,7 +446,9 @@ class TestOptionsFlowAddPreset:
         assert "light.test3" in flow._preset_data[PRESET_ENTITIES]
 
     @pytest.mark.asyncio
-    async def test_step_add_more_entities_no_duplicates(self, options_flow_with_manager):
+    async def test_step_add_more_entities_no_duplicates(
+        self, options_flow_with_manager
+    ):
         """Test add_more_entities doesn't add duplicate entities."""
         flow, _ = options_flow_with_manager
         flow._preset_data = {
@@ -480,7 +487,9 @@ class TestOptionsFlowAddPreset:
         assert "light.test1" not in flow._preset_data["targets"]
 
     @pytest.mark.asyncio
-    async def test_step_remove_entity_prevents_last_removal(self, options_flow_with_manager):
+    async def test_step_remove_entity_prevents_last_removal(
+        self, options_flow_with_manager
+    ):
         """Test cannot remove last entity from preset."""
         flow, _ = options_flow_with_manager
         flow._preset_data = {
@@ -506,7 +515,11 @@ class TestOptionsFlowAddPreset:
             PRESET_ENTITIES: ["light.test1", "light.test2"],
             PRESET_SKIP_VERIFICATION: True,
             "targets": {
-                "light.test1": {"entity_id": "light.test1", "state": "on", "brightness_pct": 75},
+                "light.test1": {
+                    "entity_id": "light.test1",
+                    "state": "on",
+                    "brightness_pct": 75,
+                },
                 "light.test2": {"entity_id": "light.test2", "state": "off"},
             },
         }
@@ -606,7 +619,9 @@ class TestOptionsFlowManagePresets:
         assert result["step_id"] == "delete_preset"
 
     @pytest.mark.asyncio
-    async def test_step_delete_preset_goes_to_confirmation(self, options_flow_with_presets):
+    async def test_step_delete_preset_goes_to_confirmation(
+        self, options_flow_with_presets
+    ):
         """Test delete_preset selection goes to confirm step."""
         flow, preset_manager = options_flow_with_presets
 
@@ -623,9 +638,7 @@ class TestOptionsFlowManagePresets:
         flow, preset_manager = options_flow_with_presets
 
         # First select preset to delete
-        await flow.async_step_delete_preset(
-            user_input={"preset_to_delete": "preset_1"}
-        )
+        await flow.async_step_delete_preset(user_input={"preset_to_delete": "preset_1"})
 
         # Then confirm deletion
         result = await flow.async_step_confirm_delete(
@@ -641,9 +654,7 @@ class TestOptionsFlowManagePresets:
         flow, preset_manager = options_flow_with_presets
 
         # First select preset to delete
-        await flow.async_step_delete_preset(
-            user_input={"preset_to_delete": "preset_1"}
-        )
+        await flow.async_step_delete_preset(user_input={"preset_to_delete": "preset_1"})
 
         # Cancel the deletion
         result = await flow.async_step_confirm_delete(
@@ -753,7 +764,6 @@ class TestOptionsFlowConfirmDeleteEdgeCases:
     @pytest.mark.asyncio
     async def test_step_confirm_delete_no_preset_id(self, config_entry, hass):
         """Test confirm_delete returns to menu when no preset_id set."""
-        from custom_components.ha_light_controller.preset_manager import PresetConfig
 
         flow = LightControllerOptionsFlow()
         flow._config_entry = config_entry
@@ -889,7 +899,9 @@ class TestOptionsFlowAddMoreEntities:
         assert "light.test_3" in flow._preset_data["entities"]
 
     @pytest.mark.asyncio
-    async def test_step_add_more_entities_empty_returns_to_menu(self, flow_with_preset_data):
+    async def test_step_add_more_entities_empty_returns_to_menu(
+        self, flow_with_preset_data
+    ):
         """Test submitting empty selection returns to entity menu."""
         flow = flow_with_preset_data
 
@@ -1005,9 +1017,7 @@ class TestPresetCreationStateDerivation:
         assert call_args.kwargs.get("transition") == 5.0
 
     @pytest.mark.asyncio
-    async def test_preset_state_all_on_uses_on(
-        self, hass, config_entry_with_presets
-    ):
+    async def test_preset_state_all_on_uses_on(self, hass, config_entry_with_presets):
         """Test preset state is 'on' when all targets are on."""
         flow = LightControllerOptionsFlow()
         flow._config_entry = config_entry_with_presets
