@@ -219,7 +219,7 @@ class LightController:
     # Entity Expansion
     # =========================================================================
 
-    def _expand_entity(self, entity_id: str) -> tuple[list[str], list[str]]:
+    def _expand_entity(self, entity_id: object) -> tuple[list[str], list[str]]:
         """
         Expand a single entity into member lights.
 
@@ -227,6 +227,10 @@ class LightController:
         """
         valid: list[str] = []
         skipped: list[str] = []
+
+        if not isinstance(entity_id, str):
+            _LOGGER.warning("Invalid entity_id type: %s", type(entity_id).__name__)
+            return valid, skipped
 
         state = self._get_state(entity_id)
         attrs = dict(state.attributes) if state else {}
@@ -236,6 +240,8 @@ class LightController:
         if isinstance(members, (list, tuple)) and members:
             _LOGGER.debug("Expanding group %s with %d members", entity_id, len(members))
             for member in members:
+                if not isinstance(member, str):
+                    continue
                 if not member.startswith(f"{LIGHT_DOMAIN}."):
                     continue
                 if self._is_available(member):
