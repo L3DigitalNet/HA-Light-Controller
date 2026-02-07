@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-02-07
+
+### Changed
+- Updated Python requirement to 3.14.2 (Home Assistant 2025.2.0+)
+- Updated minimum Home Assistant version to 2025.2.0
+- Improved documentation clarity and removed early beta disclaimer
+
+### Fixed
+- Minor bug fixes and stability improvements
+
 ## [0.2.0] - 2026-01-31
 
 ### Removed
