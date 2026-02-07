@@ -1,0 +1,153 @@
+name: Bug Report
+description: Report a bug with the template or an integration built from it
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! This template is for:
+        - 🛠️ **Template issues**: Problems with setup scripts, CI, tooling, documentation, or example code
+        - 🏠 **Integration issues**: Problems with integrations you've built using this template
+
+        Please fill out the information below to help us diagnose the issue.
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of issue are you reporting?
+      options:
+        - "Template Issue (setup, CI, tooling, documentation)"
+        - "Integration Issue (integration built from this template)"
+        - "Unsure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: |
+        Examples:
+        - Template: "The verify_environment.py script fails on macOS with..."
+        - Template: "CI pipeline fails during mypy check with..."
+        - Template: "Example integration missing coordinator.py file..."
+        - Integration: "My integration fails to load when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        Template issue example:
+        1. Clone repository
+        2. Run `source venv/bin/activate`
+        3. Run `python scripts/verify_environment.py`
+        4. See error: ...
+
+        Integration issue example:
+        1. Configure integration with...
+        2. Restart Home Assistant
+        3. See error in logs
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen
+      placeholder: |
+        Template issue: The verification script should pass all checks...
+        Integration issue: The integration should load successfully and...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output (CI logs, terminal output, or HA logs)
+      render: shell
+      placeholder: |
+        # Template issue (CI/terminal output):
+        ERROR: Type checking failed
+        custom_components/my_integration/sensor.py:42: error: ...
+
+        # Integration issue (Home Assistant logs):
+        2026-02-07 00:00:00 ERROR (MainThread) [custom_components.my_integration] ...
+
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant Version
+      description: What version of Home Assistant are you running?
+      placeholder: "2026.2.0"
+    validations:
+      required: true
+
+  - type: input
+    id: integration-version
+    attributes:
+      label: Integration Version
+      description: What version of the integration are you using?
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      description: What version of Python are you using?
+      placeholder: "3.13.0"
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you developing on?
+      placeholder: "Linux (Fedora 43), macOS 14.2, Windows 11, etc."
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Development Environment
+      description: Output of `python scripts/verify_environment.py` (if applicable)
+      render: shell
+      placeholder: |
+        ============================================================
+        Python Environment
+        ============================================================
+        ✓ Python 3.14.2 (>= 3.13 required)
+        ...
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Configuration
+      description: Your integration configuration (remove sensitive information!)
+      render: yaml
+      placeholder: |
+        # Config flow or configuration.yaml snippet
+        # REMOVE API keys, passwords, and personal information!
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here
+      placeholder: |
+        Examples:
+        - This started happening after upgrading Python to 3.14...
+        - Works on Linux but fails on Windows...
+        - Started after upgrading Home Assistant to 2026.2...
+        - The example integration works but mine doesn't...

@@ -169,7 +169,7 @@ HA-Light-Controller is a Home Assistant custom integration providing reliable li
 
 ## Environment
 
-- **Python**: 3.12 (required by Home Assistant 2024.4+)
+- **Python**: 3.14.2 (HA 2025.2+ requires Python 3.13+)
 - **Testing**: Tests mock `homeassistant` module, no running HA instance needed
 
 ## Home Assistant Environment Constraints
@@ -297,7 +297,7 @@ Platforms use listener pattern to add/remove entities when presets change:
 preset_manager.register_listener(async_add_preset_entities)  # Returns unsubscribe callable
 ```
 
-### Runtime Data (HA 2024.4+)
+### Runtime Data (HA 2025.2+)
 
 ```python
 @dataclass
