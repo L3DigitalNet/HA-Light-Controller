@@ -257,3 +257,11 @@ Test files:
 - `test_preset_manager.py` - Preset CRUD operations
 - `test_button.py` - Preset button entities
 - `test_sensor.py` - Preset status sensor entities
+
+## Resources
+
+- [CLAUDE.md](CLAUDE.md) — Claude Code instructions with detailed patterns and principles
+- [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md) — Comprehensive integration development reference
+- [resources/](resources/) — HA development skills, agent specifications, and best practices
+  - `skills/ha-skills/` — Codex CLI skills for HA integration development (11 skills)
+  - `agents/` — Agent specifications including ha-integration-dev, debugger, and reviewer

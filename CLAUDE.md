@@ -358,3 +358,11 @@ Two requirements govern all code in this repository:
 - Redundant lookups within the same scope
 - Overly broad exception handling (`except Exception`)
 - State persistence via instance variables when dataflow would be clearer
+
+## Resources
+
+- [AGENTS.md](AGENTS.md) — Codex agent instructions and architecture details
+- [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md) — Comprehensive integration development reference
+- [resources/](resources/) — HA development skills, agent specifications, and best practices
+  - `skills/ha-skills/` — Claude Code skills for HA integration development
+  - `agents/` — Agent specifications for ha-integration-dev, debugger, and reviewer

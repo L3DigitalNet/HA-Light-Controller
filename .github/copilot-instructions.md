@@ -67,3 +67,4 @@ For comprehensive guidance, see the source documentation:
 
 - [AGENTS.md](../AGENTS.md) — Full agent instructions, architecture details, and coding guidelines
 - [CLAUDE.md](../CLAUDE.md) — Extended patterns, anti-patterns, and code principles
+- [resources/](../resources/) — HA development skills and agent specifications
