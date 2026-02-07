@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 if TYPE_CHECKING:
@@ -15,12 +15,12 @@ if TYPE_CHECKING:
 
 from .const import (
     DOMAIN,
-    PRESET_STATUS_IDLE,
     PRESET_STATUS_ACTIVATING,
-    PRESET_STATUS_SUCCESS,
     PRESET_STATUS_FAILED,
+    PRESET_STATUS_IDLE,
+    PRESET_STATUS_SUCCESS,
 )
-from .preset_manager import PresetManager, PresetConfig
+from .preset_manager import PresetConfig, PresetManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -70,9 +70,7 @@ async def async_setup_entry(
     async_add_preset_sensors()
 
     # Register listener for preset changes
-    entry.async_on_unload(
-        preset_manager.register_listener(async_add_preset_sensors)
-    )
+    entry.async_on_unload(preset_manager.register_listener(async_add_preset_sensors))
 
 
 class PresetStatusSensor(SensorEntity):

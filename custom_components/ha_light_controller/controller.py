@@ -4,36 +4,44 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from time import monotonic
 from dataclasses import dataclass, field
 from enum import Enum
+from time import monotonic
 from typing import Any
 
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, State
-from homeassistant.components.light import DOMAIN as LIGHT_DOMAIN
-from homeassistant.components.group import DOMAIN as GROUP_DOMAIN
-from homeassistant.const import STATE_ON, STATE_OFF, STATE_UNAVAILABLE, STATE_UNKNOWN
 
 from .const import (
-    RESULT_SUCCESS,
-    RESULT_CODE,
-    RESULT_MESSAGE,
-    RESULT_ATTEMPTS,
-    RESULT_TOTAL_LIGHTS,
-    RESULT_FAILED_LIGHTS,
-    RESULT_SKIPPED_LIGHTS,
-    RESULT_ELAPSED_SECONDS,
-    RESULT_CODE_SUCCESS,
-    RESULT_CODE_FAILED,
-    RESULT_CODE_TIMEOUT,
-    RESULT_CODE_ERROR,
-    RESULT_CODE_NO_VALID_ENTITIES,
-    COLOR_MODE_RGB,
-    COLOR_MODE_HS,
     COLOR_MODE_COLOR_TEMP,
+    COLOR_MODE_HS,
+    COLOR_MODE_RGB,
+    RESULT_ATTEMPTS,
+    RESULT_CODE,
+    RESULT_CODE_ERROR,
+    RESULT_CODE_FAILED,
+    RESULT_CODE_NO_VALID_ENTITIES,
+    RESULT_CODE_SUCCESS,
+    RESULT_CODE_TIMEOUT,
+    RESULT_ELAPSED_SECONDS,
+    RESULT_FAILED_LIGHTS,
+    RESULT_MESSAGE,
+    RESULT_SKIPPED_LIGHTS,
+    RESULT_SUCCESS,
+    RESULT_TOTAL_LIGHTS,
 )
 
 _LOGGER = logging.getLogger(__name__)
+LIGHT_DOMAIN = "light"
+
+type GroupSettingsKey = tuple[int, tuple[int, ...] | None, int | None, str | None]
+type GroupTransitionKey = tuple[
+    int,
+    tuple[int, ...] | None,
+    int | None,
+    str | None,
+    float | None,
+]
 
 
 # =============================================================================
@@ -48,7 +56,7 @@ class TargetState(Enum):
     OFF = "off"
 
     @classmethod
-    def from_string(cls, value: str) -> "TargetState":
+    def from_string(cls, value: str) -> TargetState:
         """Parse a string into a TargetState enum value."""
         normalized = value.lower().strip()
         for state in cls:
@@ -95,7 +103,8 @@ class RetryConfig:
     def calculate_delay(self, attempt: int) -> float:
         """Calculate delay for a given attempt with optional exponential backoff."""
         if self.use_exponential_backoff and attempt > 0:
-            return min(self.delay_after_send * (2**attempt), self.max_backoff_seconds)
+            delay = self.delay_after_send * (2**attempt)
+            return float(min(delay, self.max_backoff_seconds))
         return self.delay_after_send
 
 
@@ -107,7 +116,9 @@ class LightSettingsMixin:
     color_temp_kelvin: int | None
     effect: str | None
 
-    def to_service_data(self, include_transition: float | None = None) -> dict[str, Any]:
+    def to_service_data(
+        self, include_transition: float | None = None
+    ) -> dict[str, Any]:
         """Convert to service call data."""
         data: dict[str, Any] = {"brightness_pct": self.brightness_pct}
 
@@ -217,10 +228,6 @@ class LightController:
         valid: list[str] = []
         skipped: list[str] = []
 
-        if not isinstance(entity_id, str):
-            _LOGGER.warning("Invalid entity_id type: %s", type(entity_id))
-            return valid, skipped
-
         state = self._get_state(entity_id)
         attrs = dict(state.attributes) if state else {}
         members = attrs.get("entity_id", [])
@@ -248,9 +255,7 @@ class LightController:
 
         return valid, skipped
 
-    def _expand_entities(
-        self, entities: list[str]
-    ) -> tuple[list[str], list[str]]:
+    def _expand_entities(self, entities: list[str]) -> tuple[list[str], list[str]]:
         """
         Expand a list of entities into deduplicated light entity IDs.
 
@@ -315,7 +320,7 @@ class LightController:
 
     def _group_by_settings(self, targets: list[LightTarget]) -> list[LightGroup]:
         """Group targets with identical settings for batched commands."""
-        groups: dict[tuple, LightGroup] = {}
+        groups: dict[GroupSettingsKey, LightGroup] = {}
 
         for target in targets:
             rgb_key = tuple(target.rgb_color) if target.rgb_color else None
@@ -352,8 +357,8 @@ class LightController:
         raw_brightness = attrs.get("brightness") or 0
         actual_pct = round((raw_brightness / 255) * 100)
 
-        within_tolerance = (expected_pct - tolerance) <= actual_pct <= (
-            expected_pct + tolerance
+        within_tolerance = (
+            (expected_pct - tolerance) <= actual_pct <= (expected_pct + tolerance)
         )
 
         _LOGGER.debug(
@@ -377,16 +382,24 @@ class LightController:
         state = self._get_state(entity_id)
         attrs = dict(state.attributes) if state else {}
         supported_modes = attrs.get("supported_color_modes", []) or []
-        supports_rgb = COLOR_MODE_RGB in supported_modes or COLOR_MODE_HS in supported_modes
+        supports_rgb = (
+            COLOR_MODE_RGB in supported_modes or COLOR_MODE_HS in supported_modes
+        )
 
         if not supports_rgb:
             return None
 
         actual_rgb = attrs.get("rgb_color")
-        if not actual_rgb or not isinstance(actual_rgb, (list, tuple)) or len(actual_rgb) != 3:
+        if (
+            not actual_rgb
+            or not isinstance(actual_rgb, (list, tuple))
+            or len(actual_rgb) != 3
+        ):
             return False
 
-        for i, (expected, actual) in enumerate(zip(expected_rgb, actual_rgb)):
+        for i, (expected, actual) in enumerate(
+            zip(expected_rgb, actual_rgb, strict=False)
+        ):
             if not ((expected - tolerance) <= actual <= (expected + tolerance)):
                 _LOGGER.debug(
                     "%s RGB channel %d: expected=%d, actual=%d, MISMATCH",
@@ -417,11 +430,14 @@ class LightController:
             "color_temperature_kelvin"
         )
 
-        if actual_kelvin is None:
+        if not isinstance(actual_kelvin, (int, float)):
             return False
 
-        within_tolerance = (expected_kelvin - tolerance) <= actual_kelvin <= (
-            expected_kelvin + tolerance
+        actual_kelvin_int = int(actual_kelvin)
+        within_tolerance = (
+            (expected_kelvin - tolerance)
+            <= actual_kelvin_int
+            <= (expected_kelvin + tolerance)
         )
 
         return within_tolerance
@@ -549,8 +565,12 @@ class LightController:
             await self._send_turn_off(off_entities)
 
         if on_targets:
-            groups = self._group_by_settings_with_transition(on_targets, global_transition)
-            tasks = [self._send_turn_on(group, transition) for group, transition in groups]
+            groups = self._group_by_settings_with_transition(
+                on_targets, global_transition
+            )
+            tasks = [
+                self._send_turn_on(group, transition) for group, transition in groups
+            ]
             await asyncio.gather(*tasks)
 
     def _group_by_settings_with_transition(
@@ -559,10 +579,14 @@ class LightController:
         global_transition: float | None,
     ) -> list[tuple[LightGroup, float | None]]:
         """Group targets by settings, returning groups with their transition values."""
-        groups: dict[tuple, tuple[LightGroup, float | None]] = {}
+        groups: dict[GroupTransitionKey, tuple[LightGroup, float | None]] = {}
 
         for target in targets:
-            transition = target.transition if target.transition is not None else global_transition
+            transition = (
+                target.transition
+                if target.transition is not None
+                else global_transition
+            )
 
             rgb_key = tuple(target.rgb_color) if target.rgb_color else None
             key = (
@@ -607,7 +631,7 @@ class LightController:
     # Main Entry Point
     # =========================================================================
 
-    async def ensure_state(
+    async def ensure_state(  # noqa: C901
         self,
         entities: list[str],
         state_target: str = "on",
@@ -640,7 +664,11 @@ class LightController:
         )
 
         # Input validation
-        if not entities or not isinstance(entities, (list, tuple)) or len(entities) == 0:
+        if (
+            not entities
+            or not isinstance(entities, (list, tuple))
+            or len(entities) == 0
+        ):
             message = "No entities provided"
             _LOGGER.warning(message)
             await self._log_to_logbook("Light Controller", f"{message}; exiting.")
@@ -815,9 +843,7 @@ class LightController:
 
         # Failure after retries
         if pending_targets:
-            message = (
-                f"Failed after {attempt} attempts. Remaining: {', '.join(failed_entities)}"
-            )
+            message = f"Failed after {attempt} attempts. Remaining: {', '.join(failed_entities)}"
             _LOGGER.error(message)
             await self._log_to_logbook("Light Controller", message)
 
@@ -833,7 +859,9 @@ class LightController:
             ).to_dict()
 
         # Success
-        message = f"Set {len(members)} lights to {target_state.value} in {attempt} attempts"
+        message = (
+            f"Set {len(members)} lights to {target_state.value} in {attempt} attempts"
+        )
         if skipped_entities:
             message += f". Skipped {len(skipped_entities)} unavailable."
 

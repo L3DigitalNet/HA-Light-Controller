@@ -3,31 +3,32 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from unittest.mock import MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
-from custom_components.ha_light_controller.sensor import (
-    async_setup_entry,
-    PresetStatusSensor,
-    STATUS_ICONS,
+from custom_components.ha_light_controller.const import (
+    DOMAIN,
+    PRESET_STATUS_ACTIVATING,
+    PRESET_STATUS_FAILED,
+    PRESET_STATUS_IDLE,
+    PRESET_STATUS_SUCCESS,
 )
 from custom_components.ha_light_controller.preset_manager import (
     PresetConfig,
     PresetStatus,
 )
-from custom_components.ha_light_controller.const import (
-    DOMAIN,
-    PRESET_STATUS_IDLE,
-    PRESET_STATUS_ACTIVATING,
-    PRESET_STATUS_SUCCESS,
-    PRESET_STATUS_FAILED,
+from custom_components.ha_light_controller.sensor import (
+    STATUS_ICONS,
+    PresetStatusSensor,
+    async_setup_entry,
 )
 
 
 @dataclass
 class MockRuntimeData:
     """Mock runtime data for tests."""
+
     controller: MagicMock = None
     preset_manager: MagicMock = None
 

@@ -3,78 +3,76 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from typing import TypeAlias
-
     from homeassistant.helpers.typing import ConfigType
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
-    DOMAIN,
-    PLATFORMS,
-    SERVICE_ENSURE_STATE,
-    SERVICE_ACTIVATE_PRESET,
-    SERVICE_CREATE_PRESET,
-    SERVICE_DELETE_PRESET,
-    SERVICE_CREATE_PRESET_FROM_CURRENT,
+    ATTR_BRIGHTNESS_TOLERANCE,
+    ATTR_DEFAULT_BRIGHTNESS_PCT,
+    ATTR_DEFAULT_COLOR_TEMP_KELVIN,
+    ATTR_DEFAULT_EFFECT,
+    ATTR_DEFAULT_RGB_COLOR,
+    ATTR_DELAY_AFTER_SEND,
+    # Service attributes
+    ATTR_ENTITIES,
+    ATTR_KELVIN_TOLERANCE,
+    ATTR_LOG_SUCCESS,
+    ATTR_MAX_BACKOFF_SECONDS,
+    ATTR_MAX_RETRIES,
+    ATTR_MAX_RUNTIME_SECONDS,
+    # Preset attributes
+    ATTR_PRESET,
+    ATTR_PRESET_ID,
+    ATTR_PRESET_NAME,
+    ATTR_RGB_TOLERANCE,
+    ATTR_SKIP_VERIFICATION,
+    ATTR_STATE_TARGET,
+    ATTR_TARGETS,
+    ATTR_TRANSITION,
+    ATTR_USE_EXPONENTIAL_BACKOFF,
+    CONF_BRIGHTNESS_TOLERANCE,
     # Config options
     CONF_DEFAULT_BRIGHTNESS_PCT,
     CONF_DEFAULT_TRANSITION,
-    CONF_BRIGHTNESS_TOLERANCE,
-    CONF_RGB_TOLERANCE,
-    CONF_KELVIN_TOLERANCE,
     CONF_DELAY_AFTER_SEND,
+    CONF_KELVIN_TOLERANCE,
+    CONF_LOG_SUCCESS,
+    CONF_MAX_BACKOFF_SECONDS,
     CONF_MAX_RETRIES,
     CONF_MAX_RUNTIME_SECONDS,
+    CONF_RGB_TOLERANCE,
     CONF_USE_EXPONENTIAL_BACKOFF,
-    CONF_MAX_BACKOFF_SECONDS,
-    CONF_LOG_SUCCESS,
     # Defaults
     DEFAULT_BRIGHTNESS_PCT,
-    DEFAULT_TRANSITION,
     DEFAULT_BRIGHTNESS_TOLERANCE,
-    DEFAULT_RGB_TOLERANCE,
-    DEFAULT_KELVIN_TOLERANCE,
     DEFAULT_DELAY_AFTER_SEND,
+    DEFAULT_KELVIN_TOLERANCE,
+    DEFAULT_LOG_SUCCESS,
+    DEFAULT_MAX_BACKOFF_SECONDS,
     DEFAULT_MAX_RETRIES,
     DEFAULT_MAX_RUNTIME_SECONDS,
+    DEFAULT_RGB_TOLERANCE,
+    DEFAULT_TRANSITION,
     DEFAULT_USE_EXPONENTIAL_BACKOFF,
-    DEFAULT_MAX_BACKOFF_SECONDS,
-    DEFAULT_LOG_SUCCESS,
-    # Service attributes
-    ATTR_ENTITIES,
-    ATTR_STATE_TARGET,
-    ATTR_DEFAULT_BRIGHTNESS_PCT,
-    ATTR_DEFAULT_RGB_COLOR,
-    ATTR_DEFAULT_COLOR_TEMP_KELVIN,
-    ATTR_DEFAULT_EFFECT,
-    ATTR_TARGETS,
-    ATTR_BRIGHTNESS_TOLERANCE,
-    ATTR_RGB_TOLERANCE,
-    ATTR_KELVIN_TOLERANCE,
-    ATTR_TRANSITION,
-    ATTR_DELAY_AFTER_SEND,
-    ATTR_MAX_RETRIES,
-    ATTR_MAX_RUNTIME_SECONDS,
-    ATTR_USE_EXPONENTIAL_BACKOFF,
-    ATTR_MAX_BACKOFF_SECONDS,
-    ATTR_SKIP_VERIFICATION,
-    ATTR_LOG_SUCCESS,
-    # Preset attributes
-    ATTR_PRESET,
-    ATTR_PRESET_NAME,
-    ATTR_PRESET_ID,
+    DOMAIN,
+    PLATFORMS,
     PRESET_STATUS_ACTIVATING,
-    PRESET_STATUS_SUCCESS,
     PRESET_STATUS_FAILED,
+    PRESET_STATUS_SUCCESS,
+    SERVICE_ACTIVATE_PRESET,
+    SERVICE_CREATE_PRESET,
+    SERVICE_CREATE_PRESET_FROM_CURRENT,
+    SERVICE_DELETE_PRESET,
+    SERVICE_ENSURE_STATE,
 )
 from .controller import LightController
 from .preset_manager import PresetManager
@@ -98,14 +96,21 @@ def _get_loaded_entry(hass: HomeAssistant) -> LightControllerConfigEntry | None:
 
 
 def _get_param(
-    call_data: dict, options: dict, attr: str, conf: str, default: Any
+    call_data: Mapping[str, Any],
+    options: Mapping[str, Any],
+    attr: str,
+    conf: str,
+    default: Any,
 ) -> Any:
     """Get parameter from call data, falling back to options then default."""
     return call_data.get(attr, options.get(conf, default))
 
 
 def _get_optional_str(
-    call_data: dict, options: dict, attr: str, conf: str
+    call_data: Mapping[str, Any],
+    options: Mapping[str, Any],
+    attr: str,
+    conf: str,
 ) -> str | None:
     """Get optional string parameter, treating empty as None."""
     val = call_data.get(attr) or options.get(conf) or None
@@ -114,11 +119,13 @@ def _get_optional_str(
 
 # Reusable RGB color validation schema
 RGB_COLOR_SCHEMA = vol.All(
-    vol.ExactSequence([
-        vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-        vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-        vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
-    ])
+    vol.ExactSequence(
+        [
+            vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+            vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+            vol.All(vol.Coerce(int), vol.Range(min=0, max=255)),
+        ]
+    )
 )
 
 
@@ -130,10 +137,7 @@ class LightControllerData:
     preset_manager: PresetManager
 
 
-if TYPE_CHECKING:
-    LightControllerConfigEntry: TypeAlias = ConfigEntry[LightControllerData]
-else:
-    LightControllerConfigEntry = ConfigEntry
+type LightControllerConfigEntry = ConfigEntry[LightControllerData]
 
 # Service schema for ensure_state
 SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(
@@ -242,7 +246,7 @@ SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA = vol.Schema(
 )
 
 
-async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa: C901
     """Set up the Light Controller integration.
 
     This registers services that will be available once a config entry is loaded.
@@ -275,22 +279,58 @@ async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
             result = await controller.ensure_state(
                 entities=data.get(ATTR_ENTITIES, []),
                 state_target=data.get(ATTR_STATE_TARGET, "on"),
-                default_brightness_pct=get(ATTR_DEFAULT_BRIGHTNESS_PCT, CONF_DEFAULT_BRIGHTNESS_PCT, DEFAULT_BRIGHTNESS_PCT),
+                default_brightness_pct=get(
+                    ATTR_DEFAULT_BRIGHTNESS_PCT,
+                    CONF_DEFAULT_BRIGHTNESS_PCT,
+                    DEFAULT_BRIGHTNESS_PCT,
+                ),
                 default_rgb_color=data.get(ATTR_DEFAULT_RGB_COLOR),
                 default_color_temp_kelvin=data.get(ATTR_DEFAULT_COLOR_TEMP_KELVIN),
                 default_effect=data.get(ATTR_DEFAULT_EFFECT),
                 targets=data.get(ATTR_TARGETS),
-                brightness_tolerance=get(ATTR_BRIGHTNESS_TOLERANCE, CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
-                rgb_tolerance=get(ATTR_RGB_TOLERANCE, CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-                kelvin_tolerance=get(ATTR_KELVIN_TOLERANCE, CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
-                transition=get(ATTR_TRANSITION, CONF_DEFAULT_TRANSITION, DEFAULT_TRANSITION),
-                delay_after_send=get(ATTR_DELAY_AFTER_SEND, CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
-                max_retries=get(ATTR_MAX_RETRIES, CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-                max_runtime_seconds=get(ATTR_MAX_RUNTIME_SECONDS, CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
-                use_exponential_backoff=get(ATTR_USE_EXPONENTIAL_BACKOFF, CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
-                max_backoff_seconds=get(ATTR_MAX_BACKOFF_SECONDS, CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
+                brightness_tolerance=get(
+                    ATTR_BRIGHTNESS_TOLERANCE,
+                    CONF_BRIGHTNESS_TOLERANCE,
+                    DEFAULT_BRIGHTNESS_TOLERANCE,
+                ),
+                rgb_tolerance=get(
+                    ATTR_RGB_TOLERANCE, CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE
+                ),
+                kelvin_tolerance=get(
+                    ATTR_KELVIN_TOLERANCE,
+                    CONF_KELVIN_TOLERANCE,
+                    DEFAULT_KELVIN_TOLERANCE,
+                ),
+                transition=get(
+                    ATTR_TRANSITION, CONF_DEFAULT_TRANSITION, DEFAULT_TRANSITION
+                ),
+                delay_after_send=get(
+                    ATTR_DELAY_AFTER_SEND,
+                    CONF_DELAY_AFTER_SEND,
+                    DEFAULT_DELAY_AFTER_SEND,
+                ),
+                max_retries=get(
+                    ATTR_MAX_RETRIES, CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES
+                ),
+                max_runtime_seconds=get(
+                    ATTR_MAX_RUNTIME_SECONDS,
+                    CONF_MAX_RUNTIME_SECONDS,
+                    DEFAULT_MAX_RUNTIME_SECONDS,
+                ),
+                use_exponential_backoff=get(
+                    ATTR_USE_EXPONENTIAL_BACKOFF,
+                    CONF_USE_EXPONENTIAL_BACKOFF,
+                    DEFAULT_USE_EXPONENTIAL_BACKOFF,
+                ),
+                max_backoff_seconds=get(
+                    ATTR_MAX_BACKOFF_SECONDS,
+                    CONF_MAX_BACKOFF_SECONDS,
+                    DEFAULT_MAX_BACKOFF_SECONDS,
+                ),
                 skip_verification=data.get(ATTR_SKIP_VERIFICATION, False),
-                log_success=get(ATTR_LOG_SUCCESS, CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
+                log_success=get(
+                    ATTR_LOG_SUCCESS, CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS
+                ),
             )
             return result
         except Exception as e:
@@ -339,13 +379,17 @@ async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
                 preset, controller, options
             )
 
-            status = PRESET_STATUS_SUCCESS if result.get("success") else PRESET_STATUS_FAILED
+            status = (
+                PRESET_STATUS_SUCCESS if result.get("success") else PRESET_STATUS_FAILED
+            )
             await preset_manager.set_status(preset.id, status, result)
 
             return result
         except Exception as e:
             _LOGGER.exception("Error activating preset %s: %s", preset.name, e)
-            await preset_manager.set_status(preset.id, PRESET_STATUS_FAILED, {"message": str(e)})
+            await preset_manager.set_status(
+                preset.id, PRESET_STATUS_FAILED, {"message": str(e)}
+            )
             return {
                 "success": False,
                 "result": "error",
@@ -462,7 +506,9 @@ async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
     # Service: create_preset_from_current
     # =========================================================================
 
-    async def async_handle_create_preset_from_current(call: ServiceCall) -> dict[str, Any]:
+    async def async_handle_create_preset_from_current(
+        call: ServiceCall,
+    ) -> dict[str, Any]:
         """Handle the create_preset_from_current service call."""
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
@@ -489,7 +535,9 @@ async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
             preset = await preset_manager.create_preset_from_current(name, entities)
 
             if preset:
-                _LOGGER.info("Created preset from current state: %s (%s)", preset.name, preset.id)
+                _LOGGER.info(
+                    "Created preset from current state: %s (%s)", preset.name, preset.id
+                )
                 return {
                     "success": True,
                     "result": "created",
@@ -515,24 +563,39 @@ async def async_setup(hass: HomeAssistant, config: "ConfigType") -> bool:
     # =========================================================================
 
     hass.services.async_register(
-        DOMAIN, SERVICE_ENSURE_STATE, async_handle_ensure_state,
-        schema=SERVICE_ENSURE_STATE_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+        DOMAIN,
+        SERVICE_ENSURE_STATE,
+        async_handle_ensure_state,
+        schema=SERVICE_ENSURE_STATE_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_ACTIVATE_PRESET, async_handle_activate_preset,
-        schema=SERVICE_ACTIVATE_PRESET_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+        DOMAIN,
+        SERVICE_ACTIVATE_PRESET,
+        async_handle_activate_preset,
+        schema=SERVICE_ACTIVATE_PRESET_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_CREATE_PRESET, async_handle_create_preset,
-        schema=SERVICE_CREATE_PRESET_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+        DOMAIN,
+        SERVICE_CREATE_PRESET,
+        async_handle_create_preset,
+        schema=SERVICE_CREATE_PRESET_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_DELETE_PRESET, async_handle_delete_preset,
-        schema=SERVICE_DELETE_PRESET_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+        DOMAIN,
+        SERVICE_DELETE_PRESET,
+        async_handle_delete_preset,
+        schema=SERVICE_DELETE_PRESET_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
     hass.services.async_register(
-        DOMAIN, SERVICE_CREATE_PRESET_FROM_CURRENT, async_handle_create_preset_from_current,
-        schema=SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+        DOMAIN,
+        SERVICE_CREATE_PRESET_FROM_CURRENT,
+        async_handle_create_preset_from_current,
+        schema=SERVICE_CREATE_PRESET_FROM_CURRENT_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
     )
 
     _LOGGER.debug("Registered Light Controller services")

@@ -4,52 +4,58 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
-import uuid
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 
+if TYPE_CHECKING:
+    from .controller import LightController
+
 from .const import (
-    CONF_PRESETS,
     CONF_BRIGHTNESS_TOLERANCE,
-    CONF_RGB_TOLERANCE,
-    CONF_KELVIN_TOLERANCE,
     CONF_DELAY_AFTER_SEND,
+    CONF_KELVIN_TOLERANCE,
+    CONF_LOG_SUCCESS,
+    CONF_MAX_BACKOFF_SECONDS,
     CONF_MAX_RETRIES,
     CONF_MAX_RUNTIME_SECONDS,
+    CONF_PRESETS,
+    CONF_RGB_TOLERANCE,
     CONF_USE_EXPONENTIAL_BACKOFF,
-    CONF_MAX_BACKOFF_SECONDS,
-    CONF_LOG_SUCCESS,
     DEFAULT_BRIGHTNESS_TOLERANCE,
-    DEFAULT_RGB_TOLERANCE,
-    DEFAULT_KELVIN_TOLERANCE,
     DEFAULT_DELAY_AFTER_SEND,
+    DEFAULT_KELVIN_TOLERANCE,
+    DEFAULT_LOG_SUCCESS,
+    DEFAULT_MAX_BACKOFF_SECONDS,
     DEFAULT_MAX_RETRIES,
     DEFAULT_MAX_RUNTIME_SECONDS,
+    DEFAULT_RGB_TOLERANCE,
     DEFAULT_USE_EXPONENTIAL_BACKOFF,
-    DEFAULT_MAX_BACKOFF_SECONDS,
-    DEFAULT_LOG_SUCCESS,
-    PRESET_ID,
-    PRESET_NAME,
-    PRESET_ENTITIES,
-    PRESET_STATE,
     PRESET_BRIGHTNESS_PCT,
-    PRESET_RGB_COLOR,
     PRESET_COLOR_TEMP_KELVIN,
     PRESET_EFFECT,
-    PRESET_TARGETS,
-    PRESET_TRANSITION,
+    PRESET_ENTITIES,
+    PRESET_ID,
+    PRESET_NAME,
+    PRESET_RGB_COLOR,
     PRESET_SKIP_VERIFICATION,
+    PRESET_STATE,
+    PRESET_STATUS_FAILED,
     PRESET_STATUS_IDLE,
     PRESET_STATUS_SUCCESS,
-    PRESET_STATUS_FAILED,
+    PRESET_TARGETS,
+    PRESET_TRANSITION,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+type PresetListener = Callable[[], None]
 
 
 @dataclass
@@ -69,7 +75,7 @@ class PresetConfig:
     skip_verification: bool = False
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "PresetConfig":
+    def from_dict(cls, data: dict[str, Any]) -> PresetConfig:
         """Create a PresetConfig from a dictionary."""
         return cls(
             id=data.get(PRESET_ID, str(uuid.uuid4())),
@@ -128,7 +134,7 @@ class PresetManager:
         self.entry = entry
         self._presets: dict[str, PresetConfig] = {}
         self._status: dict[str, PresetStatus] = {}
-        self._listeners: list[Callable] = []
+        self._listeners: list[PresetListener] = []
 
         # Load presets from config entry
         self._load_presets()
@@ -151,8 +157,7 @@ class PresetManager:
     async def _save_presets(self) -> None:
         """Save presets to config entry data."""
         presets_data = {
-            preset_id: preset.to_dict()
-            for preset_id, preset in self._presets.items()
+            preset_id: preset.to_dict() for preset_id, preset in self._presets.items()
         }
 
         # Update config entry data
@@ -175,7 +180,7 @@ class PresetManager:
                 _LOGGER.error("Error notifying listener: %s", e)
 
     @callback
-    def register_listener(self, listener: Callable) -> Callable:
+    def register_listener(self, listener: PresetListener) -> Callable[[], None]:
         """Register a listener for preset changes. Returns unsubscribe function."""
         self._listeners.append(listener)
 
@@ -268,9 +273,7 @@ class PresetManager:
         _LOGGER.info("Created preset: %s (%s)", name, preset_id)
         return preset
 
-    async def update_preset(
-        self, preset_id: str, **kwargs: Any
-    ) -> PresetConfig | None:
+    async def update_preset(self, preset_id: str, **kwargs: Any) -> PresetConfig | None:
         """Update an existing preset."""
         if preset_id not in self._presets:
             _LOGGER.warning("Preset not found: %s", preset_id)
@@ -306,14 +309,18 @@ class PresetManager:
 
             # Remove button entity
             button_unique_id = f"{entry_id}_preset_{preset_id}_button"
-            button_entity = ent_reg.async_get_entity_id("button", "ha_light_controller", button_unique_id)
+            button_entity = ent_reg.async_get_entity_id(
+                "button", "ha_light_controller", button_unique_id
+            )
             if button_entity:
                 ent_reg.async_remove(button_entity)
                 _LOGGER.debug("Removed button entity: %s", button_entity)
 
             # Remove sensor entity
             sensor_unique_id = f"{entry_id}_preset_{preset_id}_status"
-            sensor_entity = ent_reg.async_get_entity_id("sensor", "ha_light_controller", sensor_unique_id)
+            sensor_entity = ent_reg.async_get_entity_id(
+                "sensor", "ha_light_controller", sensor_unique_id
+            )
             if sensor_entity:
                 ent_reg.async_remove(sensor_entity)
                 _LOGGER.debug("Removed sensor entity: %s", sensor_entity)
@@ -387,8 +394,8 @@ class PresetManager:
     async def activate_preset_with_options(
         self,
         preset: PresetConfig,
-        controller: Any,
-        options: dict[str, Any],
+        controller: LightController,
+        options: Mapping[str, Any],
     ) -> dict[str, Any]:
         """Activate a preset using configured options.
 
@@ -410,13 +417,25 @@ class PresetManager:
             targets=preset.targets if preset.targets else None,
             transition=preset.transition,
             skip_verification=preset.skip_verification,
-            brightness_tolerance=options.get(CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE),
+            brightness_tolerance=options.get(
+                CONF_BRIGHTNESS_TOLERANCE, DEFAULT_BRIGHTNESS_TOLERANCE
+            ),
             rgb_tolerance=options.get(CONF_RGB_TOLERANCE, DEFAULT_RGB_TOLERANCE),
-            kelvin_tolerance=options.get(CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE),
-            delay_after_send=options.get(CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND),
+            kelvin_tolerance=options.get(
+                CONF_KELVIN_TOLERANCE, DEFAULT_KELVIN_TOLERANCE
+            ),
+            delay_after_send=options.get(
+                CONF_DELAY_AFTER_SEND, DEFAULT_DELAY_AFTER_SEND
+            ),
             max_retries=options.get(CONF_MAX_RETRIES, DEFAULT_MAX_RETRIES),
-            max_runtime_seconds=options.get(CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS),
-            use_exponential_backoff=options.get(CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF),
-            max_backoff_seconds=options.get(CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS),
+            max_runtime_seconds=options.get(
+                CONF_MAX_RUNTIME_SECONDS, DEFAULT_MAX_RUNTIME_SECONDS
+            ),
+            use_exponential_backoff=options.get(
+                CONF_USE_EXPONENTIAL_BACKOFF, DEFAULT_USE_EXPONENTIAL_BACKOFF
+            ),
+            max_backoff_seconds=options.get(
+                CONF_MAX_BACKOFF_SECONDS, DEFAULT_MAX_BACKOFF_SECONDS
+            ),
             log_success=options.get(CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS),
         )
