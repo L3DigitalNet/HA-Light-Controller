@@ -38,9 +38,22 @@ This repository is a **Home Assistant custom integration for light control** wit
 
 ### Prerequisites
 
-- Python 3.14.2 or later
+- Python 3.14.2 or later (minimum 3.13)
 - Git
-- Home Assistant 2026.2.0 (installed in venv)
+- Home Assistant 2025.2.0+ (installed in venv)
+
+### Quick Reference
+
+Common development commands (see Makefile for all options):
+
+```bash
+make setup         # Initial setup (dependencies + pre-commit hooks)
+make quality       # Run all quality checks
+make test          # Run tests
+make test-cov      # Run tests with coverage
+make ci            # Simulate CI checks locally
+make help          # Show all available commands
+```
 
 ### Initial Setup
 
@@ -49,42 +62,73 @@ This repository is a **Home Assistant custom integration for light control** wit
 git clone https://github.com/L3DigitalNet/HA-Light-Controller.git
 cd HA-Light-Controller
 
-# 2. Activate the virtual environment
-source venv/bin/activate
+# 2. Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/macOS
+# or: venv\Scripts\activate  # Windows
 
-# 3. Verify environment
-python scripts/verify_environment.py
+# 3. Run initial setup (installs dependencies and pre-commit hooks)
+make setup
+
+# 4. Verify environment
+make verify
 ```
+
+**What `make setup` does:**
+- Installs Home Assistant and all development dependencies (pytest, ruff, mypy, etc.)
+- Configures pre-commit hooks for automatic code quality checks
+- Prepares your environment for development
+
+**Development Tools:**
+- **Ruff** - Fast Python linter and formatter (replaces Black, isort, flake8)
+- **mypy** - Static type checker with strict mode enabled
+- **pytest** - Test framework with async support
+- **pre-commit** - Automatic code quality checks before commits
 
 ### Running Tests
 
 ```bash
-# Activate venv first
-source venv/bin/activate
-
 # Run all tests
-pytest tests/ -v
+make test
 
 # Run with coverage
-pytest tests/ --cov=custom_components --cov-report=html
+make test-cov
 
 # Run specific test file
-pytest tests/test_config_flow.py -v
+make test-specific FILE=tests/test_config_flow.py
+
+# View coverage report in browser
+make coverage-report
+```
+
+**Alternative:** Direct pytest commands still work if needed:
+```bash
+pytest tests/ -v
+pytest tests/ --cov=custom_components --cov-report=html
 ```
 
 ### Code Quality Checks
 
 ```bash
-# Lint and auto-fix
-ruff check . --fix
+# Run all quality checks (lint, format, type-check, test)
+make quality
 
-# Format code
-ruff format .
+# Individual checks:
+make lint          # Run Ruff linter
+make lint-fix      # Run Ruff linter with auto-fix
+make format        # Format code with Ruff
+make type-check    # Run mypy type checker
+make pre-commit    # Run pre-commit hooks
 
-# Type check
+# Simulate CI checks locally
+make ci
+```
+
+**Alternative:** Direct tool commands still work:
+```bash
+ruff check custom_components/ tests/ scripts/ --fix
+ruff format custom_components/ tests/ scripts/
 mypy custom_components/
-
-# Run all pre-commit hooks
 pre-commit run --all-files
 ```
 
@@ -147,9 +191,11 @@ chore: update pre-commit hooks
 
 3. **Test your changes**
    ```bash
-   pytest tests/ -v
-   ruff check . --fix
-   mypy custom_components/
+   make quality  # Runs all quality checks
+   # or individually:
+   make test
+   make lint-fix
+   make type-check
    ```
 
 4. **Update CHANGELOG.md**
@@ -178,13 +224,15 @@ chore: update pre-commit hooks
 
 ### Before Submitting
 
-- [ ] All tests pass (`pytest tests/`)
-- [ ] Code passes linting (`ruff check .`)
-- [ ] Code is formatted (`ruff format .`)
-- [ ] Type checking passes (`mypy custom_components/`)
+- [ ] All tests pass (`make test` or `pytest tests/`)
+- [ ] Code passes linting (`make lint-fix` or `ruff check . --fix`)
+- [ ] Code is formatted (`make format` or `ruff format .`)
+- [ ] Type checking passes (`make type-check` or `mypy custom_components/`)
 - [ ] CHANGELOG.md updated
 - [ ] Documentation updated (if applicable)
-- [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
+- [ ] Pre-commit hooks pass (`make pre-commit` or `pre-commit run --all-files`)
+
+**Quick check:** Run `make ci` to simulate all CI checks locally.
 
 ### PR Title
 
@@ -299,7 +347,7 @@ class MyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
 ### Type Hints
 
-Use modern Python 3.13+ syntax:
+Use modern Python 3.14+ syntax:
 
 ```python
 # ✅ CORRECT
@@ -393,12 +441,18 @@ def mock_api():
 Check coverage after adding tests:
 
 ```bash
-pytest tests/ --cov=custom_components --cov-report=term-missing
+# Run tests with coverage report
+make test-cov
 
-# Open HTML report
+# Open HTML coverage report in browser
+make coverage-report
+```
+
+**Alternative:** Direct pytest commands:
+```bash
 pytest tests/ --cov=custom_components --cov-report=html
-open htmlcov/index.html  # macOS
 xdg-open htmlcov/index.html  # Linux
+open htmlcov/index.html      # macOS
 ```
 
 ---
