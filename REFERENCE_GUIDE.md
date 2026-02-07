@@ -316,7 +316,7 @@ This integration provides **four complementary automation systems**:
 |-----|---------|----------|----------|
 | **Lint** | `ruff check` + `ruff format --check` | ~30s | ✅ |
 | **Type Check** | `mypy custom_components/` | ~45s | ✅ |
-| **Test** | `pytest tests/` (Python 3.12) | ~2min | ✅ |
+| **Test** | `pytest tests/` (Python 3.14) | ~2min | ✅ |
 | **All Checks** | Gate job (all must pass) | ~1s | ✅ |
 
 **Features:**
