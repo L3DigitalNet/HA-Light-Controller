@@ -1,5 +1,20 @@
 # Fix Preset Configuration Gaps Implementation Plan
 
+> ❌ **STATUS: NOT IMPLEMENTED** (as of v0.2.1)
+>
+> **Current State:**
+> - UI collects per-entity state and transition configuration for presets
+> - Backend does NOT use this configuration (fields not present in LightTarget)
+> - This plan remains valid but has not been executed
+>
+> **Scope:**
+> This plan was created on 2026-01-31 alongside the scope simplification work. The focus was on removing features (notifications/blueprints) in v0.2.0, leaving this enhancement for a future release.
+>
+> **Next Steps:**
+> Execute this plan when ready to implement per-entity state/transition support. All 8 tasks are defined and ready for implementation.
+
+---
+
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
 **Goal:** Fix 4 gaps where per-entity preset configuration is collected by UI but not used by controller.
