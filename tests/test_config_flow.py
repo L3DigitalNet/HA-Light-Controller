@@ -1074,3 +1074,471 @@ class TestPresetCreationStateDerivation:
 
         call_args = mock_preset_manager.create_preset.call_args
         assert call_args.kwargs.get("transition") == 0.0
+
+
+class TestCoverageGaps:
+    """Tests for coverage gaps identified in config_flow.py."""
+
+    @pytest.fixture
+    def _create_options_flow(self, config_entry, hass):
+        """Create an options flow instance."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+        # Initialize state
+        flow._preset_data = {}
+        flow._configuring_entity = None
+        flow._editing_preset_id = None
+        flow._deleting_preset_id = None
+
+        # Mock entity state for friendly name lookup
+        mock_state = MagicMock()
+        mock_state.attributes = {"friendly_name": "Test Light"}
+        hass.states.get = MagicMock(return_value=mock_state)
+
+        return flow
+
+    # =============================================================================
+    # Settings Tests
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_settings_with_non_section_input(self, config_entry):
+        """Test settings step with non-dict (non-section) values in user_input."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        result = await flow.async_step_settings({"some_key": "some_value"})
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    # =============================================================================
+    # Preset Entity Menu Actions
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_preset_entity_menu_configure(self, _create_options_flow):
+        """Test preset entity menu configure action."""
+        flow = _create_options_flow
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        result = await flow.async_step_preset_entity_menu({"action": "configure"})
+        # Should redirect to select_entity_to_configure step
+        assert result["step_id"] == "select_entity_to_configure"
+
+    @pytest.mark.asyncio
+    async def test_preset_entity_menu_add(self, _create_options_flow):
+        """Test preset entity menu add action."""
+        flow = _create_options_flow
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        result = await flow.async_step_preset_entity_menu({"action": "add"})
+        assert result["step_id"] == "add_more_entities"
+
+    @pytest.mark.asyncio
+    async def test_preset_entity_menu_remove(self, _create_options_flow, hass):
+        """Test preset entity menu remove action."""
+        flow = _create_options_flow
+        flow.hass = hass
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.a", "light.b"],
+            "targets": {},
+        }
+        result = await flow.async_step_preset_entity_menu({"action": "remove"})
+        assert result["step_id"] == "remove_entity"
+
+    @pytest.mark.asyncio
+    async def test_preset_entity_menu_save(self, config_entry, hass):
+        """Test preset entity menu save action with configured targets."""
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+        flow._preset_data = {
+            PRESET_NAME: "Test",
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {
+                "light.test": {
+                    "entity_id": "light.test",
+                    "state": "on",
+                    "brightness_pct": 80,
+                }
+            },
+            PRESET_SKIP_VERIFICATION: False,
+        }
+
+        # Mock preset manager
+        mock_pm = MagicMock()
+        mock_pm.create_preset = AsyncMock()
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = mock_pm
+        config_entry.runtime_data = runtime_data
+
+        result = await flow.async_step_preset_entity_menu({"action": "save"})
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    @pytest.mark.asyncio
+    async def test_preset_entity_menu_save_no_targets(self, _create_options_flow):
+        """Test preset entity menu save with no configured targets shows error."""
+        flow = _create_options_flow
+        flow._preset_data = {
+            PRESET_NAME: "Test",
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        result = await flow.async_step_preset_entity_menu({"action": "save"})
+        assert result["type"] == FlowResultType.FORM
+        assert result.get("errors", {}).get("base") == "configure_at_least_one"
+
+    # =============================================================================
+    # Select Entity to Configure
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_select_entity_to_configure_with_entity(self, _create_options_flow):
+        """Test selecting an entity to configure."""
+        flow = _create_options_flow
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        result = await flow.async_step_select_entity_to_configure(
+            {"entity_to_configure": "light.test"}
+        )
+        assert flow._configuring_entity == "light.test"
+        assert result["step_id"] == "configure_entity"
+
+    # =============================================================================
+    # Configure Entity Edge Cases
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_no_configuring_entity(self, _create_options_flow):
+        """Test configure_entity without _configuring_entity set."""
+        flow = _create_options_flow
+        flow._configuring_entity = None
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        result = await flow.async_step_configure_entity()
+        # Should redirect to menu
+        assert result["step_id"] == "preset_entity_menu"
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_with_color_temp_default(
+        self, _create_options_flow, hass
+    ):
+        """Test configure_entity with color_temp_kelvin in existing config."""
+        flow = _create_options_flow
+        flow.hass = hass
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {
+                "light.test": {"entity_id": "light.test", "color_temp_kelvin": 4000}
+            },
+        }
+
+        # Mock entity state for friendly name
+        mock_state = MagicMock()
+        mock_state.attributes = {"friendly_name": "Test Light"}
+        hass.states.get = MagicMock(return_value=mock_state)
+
+        result = await flow.async_step_configure_entity()
+        assert result["step_id"] == "configure_entity"
+        assert result["type"] == FlowResultType.FORM
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_with_rgb_default(self, _create_options_flow, hass):
+        """Test configure_entity with rgb_color in existing config."""
+        flow = _create_options_flow
+        flow.hass = hass
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {
+                "light.test": {"entity_id": "light.test", "rgb_color": [255, 0, 0]}
+            },
+        }
+
+        # Mock entity state
+        mock_state = MagicMock()
+        mock_state.attributes = {"friendly_name": "Test Light"}
+        hass.states.get = MagicMock(return_value=mock_state)
+
+        result = await flow.async_step_configure_entity()
+        assert result["step_id"] == "configure_entity"
+        assert result["type"] == FlowResultType.FORM
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_state_on_with_brightness_and_color_temp(
+        self, _create_options_flow
+    ):
+        """Test configuring entity with state=on, brightness, and color_temp."""
+        flow = _create_options_flow
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        await flow.async_step_configure_entity(
+            {
+                PRESET_STATE: "on",
+                PRESET_TRANSITION: 0,
+                PRESET_BRIGHTNESS_PCT: 80,
+                PRESET_COLOR_MODE: COLOR_MODE_COLOR_TEMP,
+                PRESET_COLOR_TEMP_KELVIN: 4000,
+            }
+        )
+        assert "light.test" in flow._preset_data["targets"]
+        target = flow._preset_data["targets"]["light.test"]
+        assert target["brightness_pct"] == 80
+        assert target["color_temp_kelvin"] == 4000
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_state_on_with_rgb(self, _create_options_flow):
+        """Test configuring entity with state=on and RGB color."""
+        flow = _create_options_flow
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        await flow.async_step_configure_entity(
+            {
+                PRESET_STATE: "on",
+                PRESET_TRANSITION: 0,
+                PRESET_BRIGHTNESS_PCT: 80,
+                PRESET_COLOR_MODE: COLOR_MODE_RGB,
+                PRESET_RGB_COLOR: [255, 0, 0],
+            }
+        )
+        target = flow._preset_data["targets"]["light.test"]
+        assert target["rgb_color"] == [255, 0, 0]
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_state_off(self, _create_options_flow):
+        """Test configuring entity with state=off - no brightness/color should be set."""
+        flow = _create_options_flow
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        await flow.async_step_configure_entity(
+            {
+                PRESET_STATE: "off",
+                PRESET_TRANSITION: 2.0,
+            }
+        )
+        target = flow._preset_data["targets"]["light.test"]
+        assert target["state"] == "off"
+        assert "brightness_pct" not in target
+        assert target["transition"] == 2.0
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_no_brightness(self, _create_options_flow):
+        """Test state=on but brightness_pct is None."""
+        flow = _create_options_flow
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        await flow.async_step_configure_entity(
+            {
+                PRESET_STATE: "on",
+                PRESET_TRANSITION: 0,
+                PRESET_COLOR_MODE: COLOR_MODE_NONE,
+            }
+        )
+        target = flow._preset_data["targets"]["light.test"]
+        assert "brightness_pct" not in target
+
+    @pytest.mark.asyncio
+    async def test_configure_entity_color_mode_none(self, _create_options_flow):
+        """Test color mode = none, no color settings."""
+        flow = _create_options_flow
+        flow._configuring_entity = "light.test"
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {},
+        }
+        await flow.async_step_configure_entity(
+            {
+                PRESET_STATE: "on",
+                PRESET_TRANSITION: 0,
+                PRESET_BRIGHTNESS_PCT: 100,
+                PRESET_COLOR_MODE: COLOR_MODE_NONE,
+            }
+        )
+        target = flow._preset_data["targets"]["light.test"]
+        assert "color_temp_kelvin" not in target
+        assert "rgb_color" not in target
+
+    # =============================================================================
+    # Remove Entity
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_remove_entity_invalid(self, _create_options_flow):
+        """Test removing an invalid entity."""
+        flow = _create_options_flow
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.a", "light.b"],
+            "targets": {},
+        }
+        await flow.async_step_remove_entity({"entity_to_remove": "light.nonexistent"})
+        # Should go back to menu without removing anything
+        assert "light.a" in flow._preset_data[PRESET_ENTITIES]
+        assert "light.b" in flow._preset_data[PRESET_ENTITIES]
+
+    @pytest.mark.asyncio
+    async def test_remove_entity_none(self, _create_options_flow):
+        """Test removing None entity."""
+        flow = _create_options_flow
+        flow._preset_data = {
+            PRESET_ENTITIES: ["light.a", "light.b"],
+            "targets": {},
+        }
+        await flow.async_step_remove_entity({"entity_to_remove": None})
+        assert len(flow._preset_data[PRESET_ENTITIES]) == 2
+
+    # =============================================================================
+    # Create Preset From Data
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_create_preset_from_data_no_runtime_data(self, config_entry):
+        """Test creating preset when runtime_data is None."""
+        config_entry.runtime_data = None
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow._preset_data = {
+            PRESET_NAME: "Test",
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {"light.test": {"entity_id": "light.test", "state": "on"}},
+        }
+        result = await flow._create_preset_from_data()
+        assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    @pytest.mark.asyncio
+    async def test_create_preset_from_data_editing_existing(self, config_entry):
+        """Test editing an existing preset."""
+        mock_pm = MagicMock()
+        mock_pm.presets = {"old_id": MagicMock()}
+        mock_pm.delete_preset = AsyncMock()
+        mock_pm.create_preset = AsyncMock()
+
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = mock_pm
+        config_entry.runtime_data = runtime_data
+
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow._editing_preset_id = "old_id"
+        flow._preset_data = {
+            PRESET_NAME: "Updated",
+            PRESET_ENTITIES: ["light.test"],
+            "targets": {
+                "light.test": {
+                    "entity_id": "light.test",
+                    "state": "on",
+                    "brightness_pct": 80,
+                }
+            },
+            PRESET_SKIP_VERIFICATION: False,
+        }
+        await flow._create_preset_from_data()
+        mock_pm.delete_preset.assert_called_with("old_id")
+        mock_pm.create_preset.assert_called_once()
+
+    # =============================================================================
+    # Manage/Edit/Delete with no preset_manager
+    # =============================================================================
+
+    @pytest.mark.asyncio
+    async def test_manage_presets_no_runtime_data(self, config_entry):
+        """Test manage_presets when runtime_data is None."""
+        config_entry.runtime_data = None
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        result = await flow.async_step_manage_presets()
+        assert result.get("errors", {}).get("base") == "no_presets"
+
+    @pytest.mark.asyncio
+    async def test_edit_preset_no_runtime_data(self, config_entry):
+        """Test edit_preset when runtime_data is None."""
+        config_entry.runtime_data = None
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        result = await flow.async_step_edit_preset()
+        assert result.get("errors", {}).get("base") == "no_presets"
+
+    @pytest.mark.asyncio
+    async def test_edit_preset_with_target_without_entity_id(self, config_entry, hass):
+        """Test editing preset where targets have missing entity_id."""
+        mock_pm = MagicMock()
+        preset = MagicMock()
+        preset.name = "Test"
+        preset.entities = ["light.test"]
+        preset.skip_verification = False
+        preset.targets = [{"brightness_pct": 80}]  # No entity_id!
+        mock_pm.presets = {"p1": preset}
+
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = mock_pm
+        config_entry.runtime_data = runtime_data
+
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow.hass = hass
+
+        # Mock entity state for friendly name lookup
+        mock_state = MagicMock()
+        mock_state.attributes = {"friendly_name": "Test Light"}
+        hass.states.get = MagicMock(return_value=mock_state)
+
+        await flow.async_step_edit_preset({"preset_to_edit": "p1"})
+        # Should still work but targets dict should be empty (no entity_id to key on)
+        assert flow._preset_data["targets"] == {}
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_no_runtime_data(self, config_entry):
+        """Test delete_preset when runtime_data is None."""
+        config_entry.runtime_data = None
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        result = await flow.async_step_delete_preset()
+        # Should redirect to manage_presets which shows no_presets error
+        assert result.get("errors", {}).get("base") == "no_presets"
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_invalid_selection(self, config_entry):
+        """Test delete_preset with invalid preset selection."""
+        mock_pm = MagicMock()
+        mock_pm.presets = {"p1": MagicMock()}
+        runtime_data = MagicMock()
+        runtime_data.preset_manager = mock_pm
+        config_entry.runtime_data = runtime_data
+
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        result = await flow.async_step_delete_preset(
+            {"preset_to_delete": "nonexistent"}
+        )
+        # Should go back to manage_presets menu
+        # Since preset_manager exists and has presets, it shows the menu
+        assert result["type"] == FlowResultType.MENU
+
+    @pytest.mark.asyncio
+    async def test_confirm_delete_no_preset_manager(self, config_entry):
+        """Test confirm_delete when preset_manager is None."""
+        config_entry.runtime_data = None
+        flow = LightControllerOptionsFlow()
+        flow._config_entry = config_entry
+        flow._deleting_preset_id = "p1"
+        result = await flow.async_step_confirm_delete()
+        assert result.get("errors", {}).get("base") == "no_presets"

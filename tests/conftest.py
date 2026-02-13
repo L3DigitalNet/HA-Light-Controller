@@ -102,6 +102,10 @@ mock_entity_registry.async_remove = MagicMock()
 mock_ha.helpers.entity_registry = MagicMock()
 mock_ha.helpers.entity_registry.async_get = MagicMock(return_value=mock_entity_registry)
 
+# Mock device_registry
+mock_ha.helpers.device_registry = MagicMock()
+mock_ha.helpers.device_registry.DeviceInfo = dict
+
 mock_ha.components = MagicMock()
 mock_ha.components.light = MagicMock()
 mock_ha.components.light.DOMAIN = "light"
@@ -181,6 +185,7 @@ sys.modules["homeassistant.helpers.selector"] = mock_ha.helpers.selector
 sys.modules["homeassistant.helpers.entity"] = mock_ha.helpers.entity
 sys.modules["homeassistant.helpers.entity_platform"] = mock_ha.helpers.entity_platform
 sys.modules["homeassistant.helpers.entity_registry"] = mock_ha.helpers.entity_registry
+sys.modules["homeassistant.helpers.device_registry"] = mock_ha.helpers.device_registry
 sys.modules["homeassistant.components"] = mock_ha.components
 sys.modules["homeassistant.components.light"] = mock_ha.components.light
 sys.modules["homeassistant.components.group"] = mock_ha.components.group

@@ -1768,3 +1768,105 @@ class TestPerEntityTransition:
         # Verify per-entity transitions were used
         assert transitions_used.get("light.fast") == 0.5
         assert transitions_used.get("light.slow") == 3.0
+
+
+class TestCoverageGaps:
+    """Tests to cover remaining coverage gaps."""
+
+    def test_expand_entity_non_string_member(self, hass):
+        """Test that non-string members in a group are skipped during expansion.
+
+        Covers: line 244 (continue when member is not a string)
+        """
+        from tests.conftest import create_light_state
+
+        # Create a group that has a non-string member in its entity_id list
+        states = {
+            "light.test_group": create_light_state(
+                "light.test_group",
+                STATE_ON,
+                entity_ids=[123, "light.valid", None, 456.789],
+            ),
+            "light.valid": create_light_state("light.valid", STATE_ON, brightness=255),
+        }
+        hass.states.get = lambda eid: states.get(eid)
+        controller = LightController(hass)
+        valid, skipped = controller._expand_entity("light.test_group")
+        assert "light.valid" in valid
+        # Non-string members should be skipped silently
+        assert 123 not in valid
+        assert None not in valid
+        assert 456.789 not in valid
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_turn_off(self, hass, mock_light_states):
+        """Test ensure_state for turning lights off.
+
+        Covers: lines 549-554 (_send_commands with TargetState.OFF path)
+        """
+        from tests.conftest import create_light_state
+
+        controller = LightController(hass)
+        # After turn_off command, light becomes off
+        call_count = [0]
+        original_get = hass.states.get
+
+        def dynamic_get(entity_id):
+            if entity_id == "light.test_light_1" and call_count[0] > 0:
+                return create_light_state(entity_id, STATE_OFF)
+            return original_get(entity_id)
+
+        hass.states.get = dynamic_get
+
+        async def track_call(*args, **kwargs):
+            call_count[0] += 1
+
+        hass.services.async_call = AsyncMock(side_effect=track_call)
+
+        await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="off",
+            delay_after_send=0.001,
+            max_retries=2,
+            max_runtime_seconds=5,
+        )
+        # Verify turn_off was called
+        assert any(
+            c[0][1] == "turn_off" for c in hass.services.async_call.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_no_valid_entities_no_skipped(self, hass):
+        """Test ensure_state when no valid entities and none skipped.
+
+        Covers: branch 713→715 (no skipped_entities when no valid entities found)
+        """
+        # sensor.temp has no state and is not a light entity
+        hass.states.get = MagicMock(return_value=None)
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["sensor.temp"],
+            state_target="on",
+            delay_after_send=0.001,
+        )
+        assert result["success"] is False
+        assert "No valid light entities found" in result["message"]
+        # No "Skipped:" in message because nothing was skipped
+        assert "Skipped" not in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_targets_none(self, hass, mock_light_states):
+        """Test ensure_state with targets=None (default).
+
+        Covers: branch 735→734 (targets parameter is None/falsy)
+        """
+        controller = LightController(hass)
+        # Just verify it works without targets
+        result = await controller.ensure_state(
+            entities=["light.test_light_1"],
+            state_target="on",
+            targets=None,
+            skip_verification=True,
+            delay_after_send=0.001,
+        )
+        assert result["success"] is True

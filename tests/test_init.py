@@ -8,6 +8,7 @@ import pytest
 from homeassistant.core import ServiceCall
 
 from custom_components.ha_light_controller import (
+    _get_optional_str,
     async_reload_entry,
     async_setup,
     async_setup_entry,
@@ -737,3 +738,271 @@ class TestCreatePresetFromCurrentServiceAdvanced:
 
         assert result["success"] is False
         assert "Error creating preset" in result["message"]
+
+
+# =============================================================================
+# Service Handler Edge Cases (Coverage for __init__.py gaps)
+# =============================================================================
+
+
+class TestServiceHandlerEdgeCases:
+    """Tests for service handler edge cases to achieve full coverage."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_no_entries(self, hass):
+        """Test ensure_state when no config entries exist."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Mock async_entries to return empty list
+        hass.config_entries.async_entries = MagicMock(return_value=[])
+
+        # Get the service handler
+        ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            ATTR_ENTITIES: ["light.test"],
+            ATTR_STATE_TARGET: "on",
+        }
+
+        result = await ensure_state_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_no_loaded_entries(self, hass, config_entry):
+        """Test ensure_state when config entries exist but none are loaded."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Create entry with non-loaded state
+        config_entry.state = "not_loaded"
+
+        # Mock async_entries to return non-loaded entry
+        hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+        # Get the service handler
+        ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            ATTR_ENTITIES: ["light.test"],
+            ATTR_STATE_TARGET: "on",
+        }
+
+        result = await ensure_state_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_runtime_data_none(self, hass, config_entry):
+        """Test ensure_state when runtime_data is None."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Create entry with loaded state but None runtime_data
+        config_entry.state = "loaded"
+        config_entry.runtime_data = None
+
+        # Mock async_entries to return this entry
+        hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+        # Get the service handler
+        ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            ATTR_ENTITIES: ["light.test"],
+            ATTR_STATE_TARGET: "on",
+        }
+
+        result = await ensure_state_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_activate_preset_runtime_data_none(self, hass, config_entry):
+        """Test activate_preset when runtime_data is None."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Create entry with loaded state but None runtime_data
+        config_entry.state = "loaded"
+        config_entry.runtime_data = None
+
+        # Mock async_entries to return this entry
+        hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+        # Get the service handler
+        activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {ATTR_PRESET: "test_preset"}
+
+        result = await activate_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_create_preset_runtime_data_none(self, hass, config_entry):
+        """Test create_preset when runtime_data is None."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Create entry with loaded state but None runtime_data
+        config_entry.state = "loaded"
+        config_entry.runtime_data = None
+
+        # Mock async_entries to return this entry
+        hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+        # Get the service handler
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            ATTR_PRESET_NAME: "Test Preset",
+            ATTR_ENTITIES: ["light.test"],
+        }
+
+        result = await create_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_runtime_data_none(self, hass, config_entry):
+        """Test delete_preset when runtime_data is None."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Create entry with loaded state but None runtime_data
+        config_entry.state = "loaded"
+        config_entry.runtime_data = None
+
+        # Mock async_entries to return this entry
+        hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+        # Get the service handler
+        delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {ATTR_PRESET_ID: "test_id"}
+
+        result = await delete_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_create_preset_from_current_runtime_data_none(
+        self, hass, config_entry
+    ):
+        """Test create_preset_from_current when runtime_data is None."""
+        # Register services
+        await async_setup(hass, {})
+
+        # Create entry with loaded state but None runtime_data
+        config_entry.state = "loaded"
+        config_entry.runtime_data = None
+
+        # Mock async_entries to return this entry
+        hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
+
+        # Get the service handler
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
+
+        # Create a service call
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            ATTR_PRESET_NAME: "From Current",
+            ATTR_ENTITIES: ["light.test"],
+        }
+
+        result = await create_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert "not configured or not loaded" in result["message"]
+
+    def test_get_optional_str_empty_strings(self):
+        """Test _get_optional_str with empty string handling."""
+        # Test empty string in call_data
+        result = _get_optional_str(
+            call_data={"effect": ""},
+            options={},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result is None
+
+        # Test empty string in options
+        result = _get_optional_str(
+            call_data={},
+            options={"default_effect": ""},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result is None
+
+        # Test both empty strings
+        result = _get_optional_str(
+            call_data={"effect": ""},
+            options={"default_effect": ""},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result is None
+
+        # Test valid string value in call_data
+        result = _get_optional_str(
+            call_data={"effect": "strobe"},
+            options={},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result == "strobe"
+
+        # Test valid string value in options
+        result = _get_optional_str(
+            call_data={},
+            options={"default_effect": "rainbow"},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result == "rainbow"
+
+        # Test call_data takes precedence over options
+        result = _get_optional_str(
+            call_data={"effect": "strobe"},
+            options={"default_effect": "rainbow"},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result == "strobe"
+
+        # Test empty call_data falls back to options
+        result = _get_optional_str(
+            call_data={"effect": ""},
+            options={"default_effect": "rainbow"},
+            attr="effect",
+            conf="default_effect",
+        )
+        assert result == "rainbow"

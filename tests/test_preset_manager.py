@@ -751,3 +751,90 @@ class TestPresetManagerErrorHandling:
         unsubscribe()
 
         assert callback not in manager._listeners
+
+
+class TestCoverageGaps:
+    """Tests to close coverage gaps in preset_manager.py."""
+
+    def test_find_preset_by_name(self, hass, config_entry_with_presets):
+        """Test find_preset falls back to get_preset_by_name when ID lookup fails.
+
+        Covers line 212: the 'or' short-circuit in find_preset().
+        When given a name instead of ID, get_preset() returns None,
+        so find_preset() falls through to get_preset_by_name().
+        """
+        manager = PresetManager(hass, config_entry_with_presets)
+        # "Test Preset" is the name of preset_1 in config_entry_with_presets
+        result = manager.find_preset("Test Preset")
+        assert result is not None
+        assert result.name == "Test Preset"
+        assert result.id == "preset_1"
+
+    @pytest.mark.asyncio
+    async def test_activate_preset_with_options(self, hass, config_entry_with_presets):
+        """Test activate_preset_with_options calls controller.ensure_state.
+
+        Covers line 410: return await controller.ensure_state(...)
+        """
+        from unittest.mock import AsyncMock
+
+        manager = PresetManager(hass, config_entry_with_presets)
+        preset = manager.get_preset("preset_1")
+
+        mock_controller = MagicMock()
+        mock_controller.ensure_state = AsyncMock(
+            return_value={"success": True, "result": "success"}
+        )
+
+        result = await manager.activate_preset_with_options(
+            preset, mock_controller, config_entry_with_presets.options
+        )
+
+        assert result["success"] is True
+        mock_controller.ensure_state.assert_called_once()
+        call_kwargs = mock_controller.ensure_state.call_args[1]
+        assert call_kwargs["entities"] == preset.entities
+        assert call_kwargs["state_target"] == preset.state
+        assert call_kwargs["default_brightness_pct"] == preset.brightness_pct
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_entity_not_in_registry(
+        self, hass, config_entry_with_presets
+    ):
+        """Test delete_preset when button/sensor entities not in registry.
+
+        Covers branches 315→320 and 324→330: the False path when
+        ent_reg.async_get_entity_id returns None (entity not in registry).
+        The conftest already configures async_get_entity_id to return None.
+        """
+        manager = PresetManager(hass, config_entry_with_presets)
+        # Entity registry returns None by default (from conftest)
+        result = await manager.delete_preset("preset_1")
+        assert result is True
+        assert "preset_1" not in manager.presets
+
+    @pytest.mark.asyncio
+    async def test_create_preset_from_current_light_on_no_brightness(
+        self, hass, config_entry
+    ):
+        """Test create_preset_from_current when light is ON but has no brightness.
+
+        Covers branch 354→359: the False path when "brightness" not in attrs.
+        Light is on but doesn't have a brightness attribute.
+        """
+        from tests.conftest import State
+
+        manager = PresetManager(hass, config_entry)
+        # Light is ON but has no brightness attribute
+        state = State("light.test", STATE_ON, {})
+        hass.states.get = MagicMock(return_value=state)
+
+        preset = await manager.create_preset_from_current(
+            "No Brightness", ["light.test"]
+        )
+
+        assert preset is not None
+        # Verify no brightness_pct in target since source had none
+        target = preset.targets[0]
+        assert "brightness_pct" not in target
+        assert target["entity_id"] == "light.test"
