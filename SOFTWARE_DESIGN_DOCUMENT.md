@@ -153,13 +153,13 @@ The integration sits between Home Assistant's service layer and the underlying l
 
 | Component | File | Lines | Responsibility |
 |-----------|------|-------|---------------|
-| Entry Point | `__init__.py` | 647 | Service registration, parameter merging, lifecycle management |
-| Controller | `controller.py` | 888 | Core light control: expand, target, group, send, verify, retry |
-| Preset Manager | `preset_manager.py` | 442 | Preset CRUD, storage, status tracking, activation delegation |
-| Config Flow | `config_flow.py` | 1027 | UI-based setup and options: settings, preset creation/editing |
-| Constants | `const.py` | 119 | All `CONF_*`, `ATTR_*`, `DEFAULT_*`, `PRESET_*` constants |
-| Button Platform | `button.py` | 201 | Preset activation button entities |
-| Sensor Platform | `sensor.py` | 197 | Preset status sensor entities |
+| Entry Point | `__init__.py` | 692 | Service registration, parameter merging, lifecycle management |
+| Controller | `controller.py` | 909 | Core light control: expand, target, group, send, verify, retry |
+| Preset Manager | `preset_manager.py` | 418 | Preset storage, status tracking, activation delegation |
+| Config Flow | `config_flow.py` | 1026 | UI-based setup and options: settings, preset creation/editing |
+| Constants | `const.py` | 118 | All `CONF_*`, `ATTR_*`, `DEFAULT_*`, `PRESET_*` constants |
+| Button Platform | `button.py` | 200 | Preset activation button entities |
+| Sensor Platform | `sensor.py` | 196 | Preset status sensor entities |
 
 ### 3.3 Dependency Graph
 
@@ -212,6 +212,10 @@ class LightControllerData:
 
 type LightControllerConfigEntry = ConfigEntry[LightControllerData]
 ```
+
+**Response Building** — The `_service_response()` helper constructs standardized response dicts for all non-controller service responses (errors, preset operations, create/delete results). It mirrors the `OperationResult.to_dict()` structure, ensuring a consistent response schema regardless of whether the response originates from the controller or a service handler.
+
+**Optional String Helper** — `_get_optional_str()` retrieves optional string parameters, treating empty strings as `None`. Used for parameters where the absence of a value is semantically different from an empty string (e.g., effect names).
 
 #### Service Schema Validation
 All service inputs are validated through Voluptuous schemas at the HA service layer boundary. Once data passes schema validation, internal code trusts it without redundant checks.
@@ -271,7 +275,9 @@ The `ensure_state()` method implements a linear pipeline:
    │   ├─ _send_commands_per_target() (transition on first attempt only)
    │   ├─ await asyncio.sleep(delay)
    │   ├─ _verify_light() for each target
-   │   └─ Filter: keep only targets not yet SUCCESS or UNAVAILABLE
+   │   ├─ _build_dispatch_batches() → rebuild batch groupings
+   │   └─ Filter at batch level: if ANY target in a batch failed,
+   │      retry the ENTIRE batch (minus unavailable entities)
    │
 6. Result Assembly
    │
@@ -294,6 +300,14 @@ Result: 2 service calls instead of 3
 
 For ON targets, grouping uses a composite key of `(brightness_pct, rgb_color, color_temp_kelvin, effect, transition)`. For OFF targets, all entities are batched into a single `turn_off` call regardless of original settings.
 
+#### Batch-Level Retry
+
+During the retry loop, `_build_dispatch_batches()` reconstructs the batch groupings used during dispatch. Verification is then applied at batch granularity: if **any** target in a batch fails verification, the **entire batch** is re-sent (excluding unavailable entities). This avoids sending partial groups, which could cause visual inconsistencies when lights in the same batch should have identical settings.
+
+#### Logbook Integration
+
+`_log_to_logbook()` writes operation results to Home Assistant's logbook service. Logbook entries are written for failures (always) and successes (when `log_success` is enabled). Calls are non-blocking (`blocking=False`) to avoid delaying the response.
+
 #### Verification Logic
 
 Verification checks are layered:
@@ -312,7 +326,7 @@ This prevents false failures for lights that don't support the requested color m
 ### 4.3 Preset Manager (`preset_manager.py`)
 
 #### Purpose
-Manages the full lifecycle of presets: creation, storage, retrieval, activation, and deletion.
+Manages presets: creation, storage, retrieval, activation, and deletion. Lookup by ID or name is provided via `find_preset()`, which first tries by ID then falls back to case-insensitive name matching.
 
 #### Storage Design
 
@@ -684,8 +698,10 @@ Three-option menu:
 │  2. Send commands (transition 1st only)  │
 │  3. Sleep(delay)                         │
 │  4. Verify each target                   │
-│  5. Filter out SUCCESS/UNAVAILABLE       │
-│  6. attempt++                            │
+│  5. Rebuild dispatch batches             │
+│  6. For each batch: if ANY target failed │
+│     → retry entire batch (skip unavail)  │
+│  7. attempt++                            │
 │                                          │
 └──────────────────┬───────────────────────┘
                    │

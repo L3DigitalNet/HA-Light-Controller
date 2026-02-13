@@ -135,21 +135,6 @@ class TestPresetConfig:
         assert data[PRESET_TRANSITION] == 1.0
         assert data[PRESET_SKIP_VERIFICATION] is True
 
-    def test_to_slug_simple(self):
-        """Test slug generation from simple name."""
-        preset = PresetConfig(id="1", name="Living Room", entities=[])
-        assert preset.to_slug() == "living_room"
-
-    def test_to_slug_special_chars(self):
-        """Test slug generation removes special characters."""
-        preset = PresetConfig(id="1", name="Evening Scene (Warm)", entities=[])
-        assert preset.to_slug() == "evening_scene_warm"
-
-    def test_to_slug_multiple_spaces(self):
-        """Test slug generation handles multiple spaces."""
-        preset = PresetConfig(id="1", name="My   Preset   Name", entities=[])
-        assert preset.to_slug() == "my_preset_name"
-
 
 # =============================================================================
 # PresetStatus Tests
@@ -239,43 +224,6 @@ class TestPresetManagerCRUD:
         )
 
         hass.config_entries.async_update_entry.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_update_preset(self, hass, config_entry_with_presets):
-        """Test updating an existing preset."""
-        manager = PresetManager(hass, config_entry_with_presets)
-
-        updated = await manager.update_preset(
-            "preset_1",
-            name="Updated Name",
-            brightness_pct=50,
-        )
-
-        assert updated is not None
-        assert updated.name == "Updated Name"
-        assert updated.brightness_pct == 50
-
-    @pytest.mark.asyncio
-    async def test_update_preset_not_found(self, hass, config_entry):
-        """Test updating a non-existent preset."""
-        manager = PresetManager(hass, config_entry)
-        result = await manager.update_preset("nonexistent", name="Test")
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_update_preset_cannot_change_id(
-        self, hass, config_entry_with_presets
-    ):
-        """Test that preset ID cannot be changed via update."""
-        manager = PresetManager(hass, config_entry_with_presets)
-        original_id = "preset_1"
-
-        await manager.update_preset(original_id, id="new_id")
-
-        # ID should remain unchanged
-        preset = manager.get_preset(original_id)
-        assert preset is not None
-        assert preset.id == original_id
 
     @pytest.mark.asyncio
     async def test_delete_preset(self, hass, config_entry_with_presets):
@@ -555,7 +503,8 @@ class TestPresetManagerCreateFromCurrent:
 
         assert preset is not None
         assert preset.state == "off"
-        assert preset.targets == []
+        assert len(preset.targets) == 2
+        assert all(target.get("state") == "off" for target in preset.targets)
 
     @pytest.mark.asyncio
     async def test_create_from_current_mixed_states(self, hass, config_entry):
@@ -581,6 +530,7 @@ class TestPresetManagerCreateFromCurrent:
         assert preset is not None
         assert preset.state == "on"  # any_on = True
         assert len(preset.targets) == 2
+        assert {target.get("state") for target in preset.targets} == {"on", "off"}
 
     @pytest.mark.asyncio
     async def test_create_from_current_no_entities(self, hass, config_entry):
@@ -668,6 +618,7 @@ class TestPresetManagerCreateFromCurrent:
         # Should only have target for existing entity
         assert len(preset.targets) == 1
         assert preset.targets[0]["entity_id"] == "light.test_1"
+        assert preset.targets[0]["state"] == "on"
 
     @pytest.mark.asyncio
     async def test_create_from_current_color_temperature_kelvin_attr(

@@ -34,7 +34,6 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 LIGHT_DOMAIN = "light"
 
-type GroupSettingsKey = tuple[int, tuple[int, ...] | None, int | None, str | None]
 type GroupTransitionKey = tuple[
     int,
     tuple[int, ...] | None,
@@ -324,32 +323,6 @@ class LightController:
 
         return targets
 
-    def _group_by_settings(self, targets: list[LightTarget]) -> list[LightGroup]:
-        """Group targets with identical settings for batched commands."""
-        groups: dict[GroupSettingsKey, LightGroup] = {}
-
-        for target in targets:
-            rgb_key = tuple(target.rgb_color) if target.rgb_color else None
-            key = (
-                target.brightness_pct,
-                rgb_key,
-                target.color_temp_kelvin,
-                target.effect,
-            )
-
-            if key not in groups:
-                groups[key] = LightGroup(
-                    entities=[target.entity_id],
-                    brightness_pct=target.brightness_pct,
-                    rgb_color=target.rgb_color,
-                    color_temp_kelvin=target.color_temp_kelvin,
-                    effect=target.effect,
-                )
-            else:
-                groups[key].entities.append(target.entity_id)
-
-        return list(groups.values())
-
     # =========================================================================
     # Verification
     # =========================================================================
@@ -539,24 +512,11 @@ class LightController:
         except Exception as e:
             _LOGGER.error("Error sending turn_on: %s", e)
 
-    async def _send_commands(
-        self,
-        groups: list[LightGroup],
-        target_state: TargetState,
-        transition: float | None = None,
-    ) -> None:
-        """Send commands to all light groups concurrently."""
-        if target_state == TargetState.OFF:
-            all_entities = [e for group in groups for e in group.entities]
-            await self._send_turn_off(all_entities)
-        else:
-            tasks = [self._send_turn_on(group, transition) for group in groups]
-            await asyncio.gather(*tasks)
-
     async def _send_commands_per_target(
         self,
         targets: list[LightTarget],
         global_transition: float | None = None,
+        use_target_transitions: bool = True,
     ) -> None:
         """Send commands to targets, respecting per-entity state and transition.
 
@@ -572,10 +532,12 @@ class LightController:
 
         if on_targets:
             groups = self._group_by_settings_with_transition(
-                on_targets, global_transition
+                on_targets,
+                global_transition,
+                use_target_transitions=use_target_transitions,
             )
             tasks = [
-                self._send_turn_on(group, transition) for group, transition in groups
+                self._send_turn_on(group, transition) for group, transition, _ in groups
             ]
             await asyncio.gather(*tasks)
 
@@ -583,14 +545,17 @@ class LightController:
         self,
         targets: list[LightTarget],
         global_transition: float | None,
-    ) -> list[tuple[LightGroup, float | None]]:
-        """Group targets by settings, returning groups with their transition values."""
-        groups: dict[GroupTransitionKey, tuple[LightGroup, float | None]] = {}
+        use_target_transitions: bool = True,
+    ) -> list[tuple[LightGroup, float | None, list[LightTarget]]]:
+        """Group targets by settings, returning groups with transition and members."""
+        groups: dict[
+            GroupTransitionKey, tuple[LightGroup, float | None, list[LightTarget]]
+        ] = {}
 
         for target in targets:
             transition = (
                 target.transition
-                if target.transition is not None
+                if use_target_transitions and target.transition is not None
                 else global_transition
             )
 
@@ -611,11 +576,38 @@ class LightController:
                     color_temp_kelvin=target.color_temp_kelvin,
                     effect=target.effect,
                 )
-                groups[key] = (group, transition)
+                groups[key] = (group, transition, [target])
             else:
                 groups[key][0].entities.append(target.entity_id)
+                groups[key][2].append(target)
 
         return list(groups.values())
+
+    def _build_dispatch_batches(
+        self,
+        targets: list[LightTarget],
+        global_transition: float | None = None,
+        use_target_transitions: bool = True,
+    ) -> list[list[LightTarget]]:
+        """Build command batches matching the current dispatch strategy."""
+        batches: list[list[LightTarget]] = []
+        off_targets = [t for t in targets if t.state == "off"]
+        on_targets = [t for t in targets if t.state == "on"]
+
+        if off_targets:
+            # OFF targets are always sent as a single batched turn_off call.
+            batches.append(off_targets)
+
+        if on_targets:
+            grouped_on = self._group_by_settings_with_transition(
+                on_targets,
+                global_transition,
+                use_target_transitions=use_target_transitions,
+            )
+            for _, _, group_targets in grouped_on:
+                batches.append(group_targets)
+
+        return batches
 
     # =========================================================================
     # Logging and Notifications
@@ -744,7 +736,7 @@ class LightController:
             default_color_temp_kelvin,
             default_effect,
             default_state=state_target,
-            default_transition=transition if transition > 0 else None,
+            default_transition=None,
         )
 
         # Fire-and-forget mode
@@ -753,6 +745,7 @@ class LightController:
             await self._send_commands_per_target(
                 pending_targets,
                 global_transition=transition if transition > 0 else None,
+                use_target_transitions=True,
             )
 
             elapsed = monotonic() - script_start
@@ -792,31 +785,60 @@ class LightController:
 
             # Transition only on first attempt - retries should be instant for quick recovery
             use_transition = None
+            use_target_transitions = attempt == 0
             if target_state == TargetState.ON and attempt == 0 and transition > 0:
                 use_transition = transition
 
             await self._send_commands_per_target(
                 pending_targets,
                 global_transition=use_transition,
+                use_target_transitions=use_target_transitions,
             )
 
             await asyncio.sleep(current_delay)
 
-            # Verify and filter
-            still_pending = [
-                target
-                for target in pending_targets
-                if self._verify_light(
+            # Verify and filter at dispatch-batch granularity.
+            # If any target in a batch fails verification, the full batch is retried.
+            dispatch_batches = self._build_dispatch_batches(
+                pending_targets,
+                global_transition=use_transition,
+                use_target_transitions=use_target_transitions,
+            )
+            verification_results: dict[str, VerificationResult] = {}
+            for target in pending_targets:
+                verification_results[target.entity_id] = self._verify_light(
                     target,
                     TargetState.from_string(target.state),
                     tolerances,
                 )
-                not in [VerificationResult.SUCCESS, VerificationResult.UNAVAILABLE]
-            ]
+
+            still_pending: list[LightTarget] = []
+            for batch in dispatch_batches:
+                if any(
+                    verification_results[t.entity_id]
+                    not in [VerificationResult.SUCCESS, VerificationResult.UNAVAILABLE]
+                    for t in batch
+                ):
+                    # Don't retry entities that are unavailable.
+                    still_pending.extend(
+                        [
+                            t
+                            for t in batch
+                            if verification_results[t.entity_id]
+                            != VerificationResult.UNAVAILABLE
+                        ]
+                    )
+
+            resolved_count = sum(
+                1
+                for result in verification_results.values()
+                if result
+                in [VerificationResult.SUCCESS, VerificationResult.UNAVAILABLE]
+            )
 
             _LOGGER.debug(
-                "Verification: %d succeeded, %d pending",
-                len(pending_targets) - len(still_pending),
+                "Verification: %d resolved, %d pending",
+                resolved_count,
                 len(still_pending),
             )
 

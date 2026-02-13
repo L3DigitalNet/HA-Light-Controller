@@ -68,6 +68,16 @@ from .const import (
     PRESET_STATUS_ACTIVATING,
     PRESET_STATUS_FAILED,
     PRESET_STATUS_SUCCESS,
+    RESULT_ATTEMPTS,
+    RESULT_CODE,
+    RESULT_CODE_ERROR,
+    RESULT_CODE_SUCCESS,
+    RESULT_ELAPSED_SECONDS,
+    RESULT_FAILED_LIGHTS,
+    RESULT_MESSAGE,
+    RESULT_SKIPPED_LIGHTS,
+    RESULT_SUCCESS,
+    RESULT_TOTAL_LIGHTS,
     SERVICE_ACTIVATE_PRESET,
     SERVICE_CREATE_PRESET,
     SERVICE_CREATE_PRESET_FROM_CURRENT,
@@ -117,6 +127,34 @@ def _get_optional_str(
     return val if val else None
 
 
+def _service_response(
+    *,
+    success: bool,
+    result_code: str,
+    message: str,
+    attempts: int = 0,
+    total_lights: int = 0,
+    failed_lights: list[str] | None = None,
+    skipped_lights: list[str] | None = None,
+    elapsed_seconds: float = 0.0,
+    extra: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build standardized service response payload."""
+    response: dict[str, Any] = {
+        RESULT_SUCCESS: success,
+        RESULT_CODE: result_code,
+        RESULT_MESSAGE: message,
+        RESULT_ATTEMPTS: attempts,
+        RESULT_TOTAL_LIGHTS: total_lights,
+        RESULT_FAILED_LIGHTS: failed_lights or [],
+        RESULT_SKIPPED_LIGHTS: skipped_lights or [],
+        RESULT_ELAPSED_SECONDS: elapsed_seconds,
+    }
+    if extra:
+        response.update(extra)
+    return response
+
+
 # Reusable RGB color validation schema
 RGB_COLOR_SCHEMA = vol.All(
     vol.ExactSequence(
@@ -127,6 +165,25 @@ RGB_COLOR_SCHEMA = vol.All(
         ]
     )
 )
+
+TARGET_OVERRIDE_SCHEMA = vol.Schema(
+    {
+        vol.Required("entity_id"): cv.entity_id,
+        vol.Optional("state"): vol.In(["on", "off"]),
+        vol.Optional("brightness_pct"): vol.All(
+            vol.Coerce(int), vol.Range(min=1, max=100)
+        ),
+        vol.Optional("rgb_color"): RGB_COLOR_SCHEMA,
+        vol.Optional("color_temp_kelvin"): vol.All(
+            vol.Coerce(int), vol.Range(min=1000, max=10000)
+        ),
+        vol.Optional("effect"): cv.string,
+        vol.Optional("transition"): vol.All(
+            vol.Coerce(float), vol.Range(min=0, max=300)
+        ),
+    }
+)
+TARGET_OVERRIDES_SCHEMA = vol.All(cv.ensure_list, [TARGET_OVERRIDE_SCHEMA])
 
 
 @dataclass
@@ -152,25 +209,7 @@ SERVICE_ENSURE_STATE_SCHEMA = vol.Schema(
             vol.Coerce(int), vol.Range(min=1000, max=10000)
         ),
         vol.Optional(ATTR_DEFAULT_EFFECT): cv.string,
-        vol.Optional(ATTR_TARGETS): vol.All(
-            cv.ensure_list,
-            [
-                vol.Schema(
-                    {
-                        vol.Required("entity_id"): cv.entity_id,
-                        vol.Optional("brightness_pct"): vol.All(
-                            vol.Coerce(int), vol.Range(min=1, max=100)
-                        ),
-                        vol.Optional("rgb_color"): RGB_COLOR_SCHEMA,
-                        vol.Optional("color_temp_kelvin"): vol.All(
-                            vol.Coerce(int), vol.Range(min=1000, max=10000)
-                        ),
-                        vol.Optional("effect"): cv.string,
-                    },
-                    extra=vol.ALLOW_EXTRA,
-                )
-            ],
-        ),
+        vol.Optional(ATTR_TARGETS): TARGET_OVERRIDES_SCHEMA,
         vol.Optional(ATTR_BRIGHTNESS_TOLERANCE): vol.All(
             vol.Coerce(int), vol.Range(min=0, max=50)
         ),
@@ -222,7 +261,7 @@ SERVICE_CREATE_PRESET_SCHEMA = vol.Schema(
             vol.Coerce(int), vol.Range(min=1000, max=10000)
         ),
         vol.Optional(ATTR_DEFAULT_EFFECT): cv.string,
-        vol.Optional(ATTR_TARGETS): vol.All(cv.ensure_list),
+        vol.Optional(ATTR_TARGETS): TARGET_OVERRIDES_SCHEMA,
         vol.Optional(ATTR_TRANSITION, default=0): vol.All(
             vol.Coerce(float), vol.Range(min=0, max=300)
         ),
@@ -261,11 +300,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             _LOGGER.error("Light Controller is not configured or not loaded")
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Light Controller is not configured or not loaded",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Light Controller is not configured or not loaded",
+            )
 
         controller = entry.runtime_data.controller
         options = entry.options
@@ -335,11 +374,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             return result
         except Exception as e:
             _LOGGER.exception("Error in ensure_state service: %s", e)
-            return {
-                "success": False,
-                "result": "error",
-                "message": f"Service error: {str(e)}",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message=f"Service error: {str(e)}",
+            )
 
     # =========================================================================
     # Service: activate_preset
@@ -350,11 +389,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             _LOGGER.error("Light Controller is not configured or not loaded")
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Light Controller is not configured or not loaded",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Light Controller is not configured or not loaded",
+            )
 
         preset_manager = entry.runtime_data.preset_manager
         controller = entry.runtime_data.controller
@@ -365,11 +404,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         preset = preset_manager.find_preset(preset_name_or_id)
         if not preset:
             _LOGGER.error("Preset not found: %s", preset_name_or_id)
-            return {
-                "success": False,
-                "result": "error",
-                "message": f"Preset not found: {preset_name_or_id}",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message=f"Preset not found: {preset_name_or_id}",
+            )
 
         _LOGGER.info("Activating preset: %s", preset.name)
         await preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
@@ -390,11 +429,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             await preset_manager.set_status(
                 preset.id, PRESET_STATUS_FAILED, {"message": str(e)}
             )
-            return {
-                "success": False,
-                "result": "error",
-                "message": f"Error activating preset: {str(e)}",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message=f"Error activating preset: {str(e)}",
+            )
 
     # =========================================================================
     # Service: create_preset
@@ -405,11 +444,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             _LOGGER.error("Light Controller is not configured or not loaded")
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Light Controller is not configured or not loaded",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Light Controller is not configured or not loaded",
+            )
 
         preset_manager = entry.runtime_data.preset_manager
 
@@ -417,11 +456,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entities = call.data.get(ATTR_ENTITIES, [])
 
         if not name or not entities:
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Name and entities are required",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Name and entities are required",
+            )
 
         try:
             preset = await preset_manager.create_preset(
@@ -439,19 +478,22 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
 
             _LOGGER.info("Created preset: %s (%s)", preset.name, preset.id)
 
-            return {
-                "success": True,
-                "result": "created",
-                "preset_id": preset.id,
-                "preset_name": preset.name,
-            }
+            return _service_response(
+                success=True,
+                result_code=RESULT_CODE_SUCCESS,
+                message=f"Created preset: {preset.name}",
+                extra={
+                    "preset_id": preset.id,
+                    "preset_name": preset.name,
+                },
+            )
         except Exception as e:
             _LOGGER.exception("Error creating preset: %s", e)
-            return {
-                "success": False,
-                "result": "error",
-                "message": f"Error creating preset: {str(e)}",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message=f"Error creating preset: {str(e)}",
+            )
 
     # =========================================================================
     # Service: delete_preset
@@ -462,45 +504,46 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             _LOGGER.error("Light Controller is not configured or not loaded")
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Light Controller is not configured or not loaded",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Light Controller is not configured or not loaded",
+            )
 
         preset_manager = entry.runtime_data.preset_manager
         preset_id = call.data.get(ATTR_PRESET_ID, "")
 
         if not preset_id:
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Preset ID is required",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Preset ID is required",
+            )
 
         try:
             success = await preset_manager.delete_preset(preset_id)
 
             if success:
                 _LOGGER.info("Deleted preset: %s", preset_id)
-                return {
-                    "success": True,
-                    "result": "deleted",
-                    "preset_id": preset_id,
-                }
+                return _service_response(
+                    success=True,
+                    result_code=RESULT_CODE_SUCCESS,
+                    message=f"Deleted preset: {preset_id}",
+                    extra={"preset_id": preset_id},
+                )
             else:
-                return {
-                    "success": False,
-                    "result": "error",
-                    "message": f"Preset not found: {preset_id}",
-                }
+                return _service_response(
+                    success=False,
+                    result_code=RESULT_CODE_ERROR,
+                    message=f"Preset not found: {preset_id}",
+                )
         except Exception as e:
             _LOGGER.exception("Error deleting preset: %s", e)
-            return {
-                "success": False,
-                "result": "error",
-                "message": f"Error deleting preset: {str(e)}",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message=f"Error deleting preset: {str(e)}",
+            )
 
     # =========================================================================
     # Service: create_preset_from_current
@@ -513,11 +556,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             _LOGGER.error("Light Controller is not configured or not loaded")
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Light Controller is not configured or not loaded",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Light Controller is not configured or not loaded",
+            )
 
         preset_manager = entry.runtime_data.preset_manager
 
@@ -525,11 +568,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entities = call.data.get(ATTR_ENTITIES, [])
 
         if not name or not entities:
-            return {
-                "success": False,
-                "result": "error",
-                "message": "Name and entities are required",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message="Name and entities are required",
+            )
 
         try:
             preset = await preset_manager.create_preset_from_current(name, entities)
@@ -538,25 +581,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                 _LOGGER.info(
                     "Created preset from current state: %s (%s)", preset.name, preset.id
                 )
-                return {
-                    "success": True,
-                    "result": "created",
-                    "preset_id": preset.id,
-                    "preset_name": preset.name,
-                }
+                return _service_response(
+                    success=True,
+                    result_code=RESULT_CODE_SUCCESS,
+                    message=f"Created preset from current state: {preset.name}",
+                    extra={
+                        "preset_id": preset.id,
+                        "preset_name": preset.name,
+                    },
+                )
             else:
-                return {
-                    "success": False,
-                    "result": "error",
-                    "message": "Failed to create preset",
-                }
+                return _service_response(
+                    success=False,
+                    result_code=RESULT_CODE_ERROR,
+                    message="Failed to create preset",
+                )
         except Exception as e:
             _LOGGER.exception("Error creating preset from current state: %s", e)
-            return {
-                "success": False,
-                "result": "error",
-                "message": f"Error creating preset: {str(e)}",
-            }
+            return _service_response(
+                success=False,
+                result_code=RESULT_CODE_ERROR,
+                message=f"Error creating preset: {str(e)}",
+            )
 
     # =========================================================================
     # Register all services

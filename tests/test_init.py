@@ -580,7 +580,7 @@ class TestCreatePresetServiceAdvanced:
         result = await create_handler(call)
 
         assert result["success"] is True
-        assert result["result"] == "created"
+        assert result["result"] == "success"
         assert result["preset_id"] == "new_preset_id"
         assert result["preset_name"] == "New Preset"
 
@@ -607,6 +607,40 @@ class TestCreatePresetServiceAdvanced:
         assert result["success"] is False
         assert "Error creating preset" in result["message"]
 
+    @pytest.mark.asyncio
+    async def test_create_preset_success_includes_standard_result_fields(
+        self, hass, config_entry, mock_controller, mock_preset_manager
+    ):
+        """Test create_preset returns standardized response fields."""
+        from custom_components.ha_light_controller.preset_manager import PresetConfig
+
+        created_preset = PresetConfig(
+            id="new_preset_id",
+            name="New Preset",
+            entities=["light.test"],
+        )
+        mock_preset_manager.create_preset = AsyncMock(return_value=created_preset)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
+
+        create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
+        call = MagicMock(spec=ServiceCall)
+        call.data = {
+            ATTR_PRESET_NAME: "New Preset",
+            ATTR_ENTITIES: ["light.test"],
+        }
+
+        result = await create_handler(call)
+
+        assert result["success"] is True
+        assert result["result"] == "success"
+        assert result["attempts"] == 0
+        assert result["total_lights"] == 0
+        assert result["failed_lights"] == []
+        assert result["skipped_lights"] == []
+        assert result["elapsed_seconds"] == 0.0
+
 
 class TestDeletePresetServiceAdvanced:
     """Advanced tests for delete_preset service handler."""
@@ -629,7 +663,7 @@ class TestDeletePresetServiceAdvanced:
         result = await delete_handler(call)
 
         assert result["success"] is True
-        assert result["result"] == "deleted"
+        assert result["result"] == "success"
         assert result["preset_id"] == "preset_to_delete"
 
     @pytest.mark.asyncio
@@ -651,6 +685,30 @@ class TestDeletePresetServiceAdvanced:
 
         assert result["success"] is False
         assert "Error deleting preset" in result["message"]
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_not_found_includes_standard_result_fields(
+        self, hass, config_entry, mock_controller, mock_preset_manager
+    ):
+        """Test delete_preset error response includes standardized fields."""
+        mock_preset_manager.delete_preset = AsyncMock(return_value=False)
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
+
+        delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
+        call = MagicMock(spec=ServiceCall)
+        call.data = {ATTR_PRESET_ID: "unknown"}
+
+        result = await delete_handler(call)
+
+        assert result["success"] is False
+        assert result["result"] == "error"
+        assert result["attempts"] == 0
+        assert result["total_lights"] == 0
+        assert result["failed_lights"] == []
+        assert result["skipped_lights"] == []
+        assert result["elapsed_seconds"] == 0.0
 
 
 class TestCreatePresetFromCurrentServiceAdvanced:
@@ -687,7 +745,7 @@ class TestCreatePresetFromCurrentServiceAdvanced:
         result = await create_handler(call)
 
         assert result["success"] is True
-        assert result["result"] == "created"
+        assert result["result"] == "success"
         assert result["preset_id"] == "from_current_id"
         assert result["preset_name"] == "From Current"
 

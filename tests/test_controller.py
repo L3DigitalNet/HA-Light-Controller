@@ -519,24 +519,6 @@ class TestLightControllerTargetBuilding:
         # Second light uses default
         assert targets[1].transition is None
 
-    def test_group_by_settings(self, hass, mock_light_states):
-        """Test grouping targets by identical settings."""
-        controller = LightController(hass)
-        targets = [
-            LightTarget("light.a", brightness_pct=75, color_temp_kelvin=4000),
-            LightTarget("light.b", brightness_pct=75, color_temp_kelvin=4000),
-            LightTarget("light.c", brightness_pct=50, color_temp_kelvin=4000),
-        ]
-        groups = controller._group_by_settings(targets)
-        # Should have 2 groups: one with 75% brightness, one with 50%
-        assert len(groups) == 2
-
-        # Find the group with 2 entities
-        large_group = next(g for g in groups if len(g.entities) == 2)
-        assert large_group.brightness_pct == 75
-        assert "light.a" in large_group.entities
-        assert "light.b" in large_group.entities
-
 
 class TestLightControllerVerification:
     """Tests for verification methods."""
@@ -1453,19 +1435,22 @@ class TestLightControllerEnsureStateAdvanced:
 
         # First call fails verification, second succeeds
         call_count = [0]
-        states = {
-            0: create_light_state("light.test_light_1", STATE_OFF),
-            1: create_light_state("light.test_light_1", STATE_ON, brightness=255),
-        }
+        transitions_used: list[float | None] = []
 
         def get_state(entity_id):
             if entity_id == "light.test_light_1":
-                return states.get(min(call_count[0], 1))
+                if call_count[0] < 2:
+                    return create_light_state("light.test_light_1", STATE_OFF)
+                return create_light_state(
+                    "light.test_light_1", STATE_ON, brightness=255
+                )
             return mock_light_states.get(entity_id)
 
         async def mark_call(*args, **kwargs):
             if args[1] == "turn_on":
                 call_count[0] += 1
+                service_data = args[2]
+                transitions_used.append(service_data.get("transition"))
 
         hass.states.get = MagicMock(side_effect=get_state)
         hass.services.async_call = AsyncMock(side_effect=mark_call)
@@ -1481,6 +1466,53 @@ class TestLightControllerEnsureStateAdvanced:
         )
 
         assert result["success"] is True
+        assert transitions_used == [2.5, None]
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_retries_entire_failed_batch(
+        self, hass, mock_light_states
+    ):
+        """Test retry behavior re-sends the full batch if one light fails."""
+        from tests.conftest import create_light_state
+
+        turn_on_calls = 0
+        sent_batches: list[list[str]] = []
+
+        def get_state(entity_id):
+            nonlocal turn_on_calls
+            if entity_id == "light.group_ok":
+                return create_light_state(entity_id, STATE_ON, brightness=255)
+            if entity_id == "light.group_flaky":
+                if turn_on_calls < 2:
+                    return create_light_state(entity_id, STATE_OFF)
+                return create_light_state(entity_id, STATE_ON, brightness=255)
+            return mock_light_states.get(entity_id)
+
+        async def mock_call(domain, service, data, **kwargs):
+            nonlocal turn_on_calls
+            if service == "turn_on":
+                turn_on_calls += 1
+                entities = data.get("entity_id", [])
+                if not isinstance(entities, list):
+                    entities = [entities]
+                sent_batches.append(entities)
+
+        hass.states.get = MagicMock(side_effect=get_state)
+        hass.services.async_call = AsyncMock(side_effect=mock_call)
+
+        controller = LightController(hass)
+        result = await controller.ensure_state(
+            entities=["light.group_ok", "light.group_flaky"],
+            state_target="on",
+            default_brightness_pct=100,
+            max_retries=3,
+            delay_after_send=0.001,
+        )
+
+        assert result["success"] is True
+        assert len(sent_batches) == 2
+        assert set(sent_batches[0]) == {"light.group_ok", "light.group_flaky"}
+        assert set(sent_batches[1]) == {"light.group_ok", "light.group_flaky"}
 
 
 class TestMixedStateHandling:
@@ -1802,7 +1834,7 @@ class TestCoverageGaps:
     async def test_ensure_state_turn_off(self, hass, mock_light_states):
         """Test ensure_state for turning lights off.
 
-        Covers: lines 549-554 (_send_commands with TargetState.OFF path)
+        Covers: turn_off path through _send_commands_per_target
         """
         from tests.conftest import create_light_state
 

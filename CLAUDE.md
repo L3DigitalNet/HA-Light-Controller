@@ -65,9 +65,9 @@ Tests mock the entire `homeassistant` module in `tests/conftest.py` and don't re
 
 | File | Purpose |
 |------|---------|
-| `__init__.py` | Entry point: registers services via loop, initializes `LightController` and `PresetManager`, uses `_get_param()` helper for call/options merging |
-| `controller.py` | Light control: `ensure_state()` → `_expand_entities()` → `_build_targets()` → `_group_by_settings()` → send → verify → retry |
-| `preset_manager.py` | Preset CRUD, stores in `ConfigEntry.data[CONF_PRESETS]`, `activate_preset_with_options()` for shared activation logic |
+| `__init__.py` | Entry point: registers services individually in `async_setup()`, initializes `LightController` and `PresetManager`, uses `_get_param()` and `_service_response()` helpers |
+| `controller.py` | Light control: `ensure_state()` → `_expand_entities()` → `_build_targets()` → `_group_by_settings_with_transition()` → send → verify → retry |
+| `preset_manager.py` | Preset storage in `ConfigEntry.data[CONF_PRESETS]`, `activate_preset_with_options()` for shared activation logic |
 | `config_flow.py` | Menu-based options flow: settings (collapsible sections), add_preset (multi-step with per-entity config), manage_presets (edit/delete with confirmation) |
 | `button.py` / `sensor.py` | Preset entities: button activates preset via `preset_manager.activate_preset_with_options()`, sensor tracks status |
 | `const.py` | All `CONF_*`, `ATTR_*`, `DEFAULT_*`, `PRESET_*` constants |
@@ -118,20 +118,15 @@ brightness_tolerance = _get_param(data, options, ATTR_BRIGHTNESS_TOLERANCE, CONF
 
 `_expand_entity()` resolves `light.*` groups and `group.*` helper groups to individual `light.` entities. Uses `_get_state()` directly for attribute access.
 
-### Service Registration Loop
+### Service Registration
 
-Services registered via loop with lambda capture for cleanup:
+Services are registered individually in `async_setup()` (not `async_setup_entry()`). This ensures they persist across config entry reloads. Each handler resolves the active entry at call time via `_get_loaded_entry()`:
 
 ```python
-services = [
-    (SERVICE_ENSURE_STATE, async_handle_ensure_state, SERVICE_ENSURE_STATE_SCHEMA),
-    (SERVICE_ACTIVATE_PRESET, async_handle_activate_preset, SERVICE_ACTIVATE_PRESET_SCHEMA),
-    # ...
-]
-
-for service_name, handler, schema in services:
-    hass.services.async_register(DOMAIN, service_name, handler, schema=schema, supports_response=SupportsResponse.OPTIONAL)
-    entry.async_on_unload(lambda svc=service_name: hass.services.async_remove(DOMAIN, svc))
+hass.services.async_register(
+    DOMAIN, SERVICE_ENSURE_STATE, async_handle_ensure_state,
+    schema=SERVICE_ENSURE_STATE_SCHEMA, supports_response=SupportsResponse.OPTIONAL,
+)
 ```
 
 ### Preset Activation Helper

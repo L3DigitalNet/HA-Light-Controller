@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -106,14 +105,6 @@ class PresetConfig:
             PRESET_TRANSITION: self.transition,
             PRESET_SKIP_VERIFICATION: self.skip_verification,
         }
-
-    def to_slug(self) -> str:
-        """Generate a slug from the preset name."""
-        # Convert to lowercase, replace spaces with underscores, remove special chars
-        slug = self.name.lower()
-        slug = re.sub(r"[^\w\s-]", "", slug)
-        slug = re.sub(r"[\s-]+", "_", slug)
-        return slug
 
 
 @dataclass
@@ -273,24 +264,6 @@ class PresetManager:
         _LOGGER.info("Created preset: %s (%s)", name, preset_id)
         return preset
 
-    async def update_preset(self, preset_id: str, **kwargs: Any) -> PresetConfig | None:
-        """Update an existing preset."""
-        if preset_id not in self._presets:
-            _LOGGER.warning("Preset not found: %s", preset_id)
-            return None
-
-        preset = self._presets[preset_id]
-
-        # Update fields
-        for key, value in kwargs.items():
-            if hasattr(preset, key) and key != "id":
-                setattr(preset, key, value)
-
-        await self._save_presets()
-
-        _LOGGER.info("Updated preset: %s", preset_id)
-        return preset
-
     async def delete_preset(self, preset_id: str) -> bool:
         """Delete a preset and its associated entities."""
         if preset_id not in self._presets:
@@ -345,9 +318,13 @@ class PresetManager:
             if not state:
                 continue
 
-            target: dict[str, Any] = {"entity_id": entity_id}
+            is_on = state.state == "on"
+            target: dict[str, Any] = {
+                "entity_id": entity_id,
+                "state": "on" if is_on else "off",
+            }
 
-            if state.state == "on":
+            if is_on:
                 attrs = state.attributes
 
                 # Brightness
@@ -380,7 +357,7 @@ class PresetManager:
             name=name,
             entities=entities,
             state="on" if any_on else "off",
-            targets=targets if any_on else [],
+            targets=targets,
         )
 
         _LOGGER.info(
