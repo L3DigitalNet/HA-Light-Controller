@@ -1,6 +1,8 @@
 # Security Best Practices for Home Assistant Integrations
 
-Security is critical for Home Assistant integrations. This guide provides patterns and practices to protect user credentials, prevent vulnerabilities, and handle sensitive data properly.
+Security is critical for Home Assistant integrations. This guide provides patterns and
+practices to protect user credentials, prevent vulnerabilities, and handle sensitive
+data properly.
 
 ## Table of Contents
 
@@ -60,6 +62,7 @@ return self.async_show_form(
 ```
 
 **Home Assistant automatically masks** fields named with these constants:
+
 - `CONF_PASSWORD`
 - `CONF_API_KEY`
 - `CONF_TOKEN`
@@ -216,7 +219,8 @@ async with aiohttp.ClientSession(
 
 ### ⚠️ CAUTION: Disabling SSL Verification
 
-Only disable SSL verification for local devices with self-signed certificates, and make it user-configurable:
+Only disable SSL verification for local devices with self-signed certificates, and make
+it user-configurable:
 
 ```python
 import ssl
@@ -549,6 +553,7 @@ api_key = config_entry.data[CONF_API_KEY]
 Use this checklist before releasing your integration:
 
 ### Credential Security
+
 - [ ] Credentials stored in `ConfigEntry.data` (not options)
 - [ ] Password fields use `CONF_PASSWORD`, `CONF_API_KEY`, or similar
 - [ ] No credentials in entity attributes
@@ -556,30 +561,35 @@ Use this checklist before releasing your integration:
 - [ ] Token refresh implemented (if applicable)
 
 ### Network Security
+
 - [ ] HTTPS used for all external API calls
 - [ ] SSL certificates validated (or user-configurable)
 - [ ] SSL errors handled gracefully with clear messages
 - [ ] Timeouts configured for all network requests
 
 ### Input Validation
+
 - [ ] All user inputs validated with voluptuous schemas
 - [ ] External API data sanitized before use
 - [ ] Path traversal attacks prevented
 - [ ] Type validation on all external data
 
 ### Logging Security
+
 - [ ] No credentials logged at any log level
 - [ ] Sensitive data masked in URLs/logs
 - [ ] Debug logging doesn't expose secrets
 - [ ] Error messages don't reveal system internals
 
 ### Authentication
+
 - [ ] Authentication errors raise `ConfigEntryAuthFailed`
 - [ ] Reauth flow implemented for expired credentials
 - [ ] Session management secure (if applicable)
 - [ ] No plaintext credential transmission
 
 ### General Security
+
 - [ ] No hardcoded secrets in code
 - [ ] Dependencies reviewed for known vulnerabilities
 - [ ] No dangerous deserialization (pickle) of untrusted data
@@ -591,9 +601,12 @@ Use this checklist before releasing your integration:
 ## Resources
 
 - **OWASP Top 10**: https://owasp.org/www-project-top-ten/
-- **Home Assistant Security**: https://www.home-assistant.io/docs/configuration/securing/
-- **Python Security Best Practices**: https://python.readthedocs.io/en/stable/library/security_warnings.html
-- **aiohttp Security**: https://docs.aiohttp.org/en/stable/client_advanced.html#ssl-control-for-tcp-sockets
+- **Home Assistant Security**:
+  https://www.home-assistant.io/docs/configuration/securing/
+- **Python Security Best Practices**:
+  https://python.readthedocs.io/en/stable/library/security_warnings.html
+- **aiohttp Security**:
+  https://docs.aiohttp.org/en/stable/client_advanced.html#ssl-control-for-tcp-sockets
 
 ## Reporting Security Issues
 
@@ -607,4 +620,5 @@ If you discover a security vulnerability in your integration:
 
 ---
 
-**Remember:** Security is not optional. Protect your users' credentials and data with the same care you'd want for your own.
+**Remember:** Security is not optional. Protect your users' credentials and data with
+the same care you'd want for your own.

@@ -1,6 +1,8 @@
 # Integration Quality Scale Checklist
 
-Use this checklist to track your progress toward achieving [Home Assistant's Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/) tiers.
+Use this checklist to track your progress toward achieving
+[Home Assistant's Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
+tiers.
 
 ## How to Use This Checklist
 
@@ -9,27 +11,32 @@ Use this checklist to track your progress toward achieving [Home Assistant's Int
 3. **Refer to linked resources** for implementation guidance
 4. **Validate completion** by running quality checks before marking items complete
 
-**Remember:** Higher tiers build on lower tiers. Achieve Bronze before targeting Silver, etc.
+**Remember:** Higher tiers build on lower tiers. Achieve Bronze before targeting Silver,
+etc.
 
 ---
 
 ## Bronze Tier (Minimum Requirements)
 
-Bronze tier is the **minimum acceptable quality** for custom integrations. All items must be completed.
+Bronze tier is the **minimum acceptable quality** for custom integrations. All items
+must be completed.
 
-###  Configuration & Setup
+### Configuration & Setup
 
 - [ ] **Config flow UI setup implemented** (`config_flow.py`)
   - No YAML configuration required
   - User can add integration via HA UI (Settings → Devices & Services)
-  - See: [../custom_components/ha_light_controller/config_flow.py](../custom_components/ha_light_controller/config_flow.py)
+  - See:
+    [../custom_components/ha_light_controller/config_flow.py](../custom_components/ha_light_controller/config_flow.py)
 
 - [ ] **`manifest.json` properly configured**
   - Required fields: domain, name, version, codeowners, documentation, issue_tracker
   - Correct `integration_type` (device, hub, service, virtual, helper)
-  - Correct `iot_class` (local_polling, local_push, cloud_polling, cloud_push, calculated, assumed_state)
+  - Correct `iot_class` (local_polling, local_push, cloud_polling, cloud_push,
+    calculated, assumed_state)
   - Python 3.13+ and Home Assistant 2025.2.0+ requirements met
-  - See: [../custom_components/ha_light_controller/manifest.json](../custom_components/ha_light_controller/manifest.json)
+  - See:
+    [../custom_components/ha_light_controller/manifest.json](../custom_components/ha_light_controller/manifest.json)
 
 - [ ] **`async_setup_entry()` with automated tests**
   - Integration loads successfully from config entry
@@ -49,14 +56,15 @@ Bronze tier is the **minimum acceptable quality** for custom integrations. All i
   - Every entity has a stable `unique_id` property
   - IDs don't change between restarts
   - Format: `{DOMAIN}_{preset_id}_{entity_type}`
-  - See: [../custom_components/ha_light_controller/button.py](../custom_components/ha_light_controller/button.py)
+  - See:
+    [../custom_components/ha_light_controller/button.py](../custom_components/ha_light_controller/button.py)
 
 - [ ] **At least one entity platform implemented**
   - Minimum one platform file (sensor.py, switch.py, etc.)
   - Entities properly registered and discoverable
   - Platform added to `PLATFORMS` in `__init__.py`
 
-###  Documentation
+### Documentation
 
 - [ ] **Basic README.md with setup instructions**
   - How to install the integration
@@ -70,7 +78,8 @@ Bronze tier is the **minimum acceptable quality** for custom integrations. All i
 
 ## Silver Tier (Reliability)
 
-Silver tier focuses on **reliability and error handling**. Integrations should gracefully handle common failure scenarios.
+Silver tier focuses on **reliability and error handling**. Integrations should
+gracefully handle common failure scenarios.
 
 ### Error Handling
 
@@ -88,7 +97,8 @@ Silver tier focuses on **reliability and error handling**. Integrations should g
   - Entities show as "unavailable" when device is offline
   - Availability restored when device comes back online
   - Uses proper availability patterns for service-based integrations
-  - See: [../custom_components/ha_light_controller/button.py](../custom_components/ha_light_controller/button.py)
+  - See:
+    [../custom_components/ha_light_controller/button.py](../custom_components/ha_light_controller/button.py)
 
 - [ ] **Coordinator handles offline devices gracefully**
   - No exceptions bubble up to HA core
@@ -112,7 +122,8 @@ Silver tier focuses on **reliability and error handling**. Integrations should g
   - Debug logging instructions provided
   - Contact/support information included
 
-**Silver Tier Complete?** ✅ Bronze + all Silver items checked → You've achieved Silver tier!
+**Silver Tier Complete?** ✅ Bronze + all Silver items checked → You've achieved Silver
+tier!
 
 ---
 
@@ -168,13 +179,15 @@ Gold tier represents **feature-complete, production-quality** integrations.
   - Options stored in `ConfigEntry.options`
   - Changes apply without reload when possible
 
-**Gold Tier Complete?** ✅ Bronze + Silver + all Gold items checked → You've achieved Gold tier!
+**Gold Tier Complete?** ✅ Bronze + Silver + all Gold items checked → You've achieved
+Gold tier!
 
 ---
 
 ## Platinum Tier (Excellence)
 
-Platinum tier represents **exceptional quality** suitable for Home Assistant core integrations.
+Platinum tier represents **exceptional quality** suitable for Home Assistant core
+integrations.
 
 ### Code Excellence
 
@@ -182,7 +195,8 @@ Platinum tier represents **exceptional quality** suitable for Home Assistant cor
   - Docstrings on all public classes/functions
   - Consistent naming conventions
   - No dead code or commented-out blocks
-  - Follows [HA Code Review Guidelines](https://developers.home-assistant.io/docs/development_checklist)
+  - Follows
+    [HA Code Review Guidelines](https://developers.home-assistant.io/docs/development_checklist)
 
 - [ ] **Clear docstrings and comments**
   - Module-level docstrings explain purpose
@@ -222,7 +236,8 @@ Platinum tier represents **exceptional quality** suitable for Home Assistant cor
   - `async_get_config_entry_diagnostics()` implemented
   - Diagnostic data helps troubleshooting
   - No sensitive data in diagnostics
-  - See: [Home Assistant Diagnostics](https://developers.home-assistant.io/docs/integration_fetching_data#diagnostics)
+  - See:
+    [Home Assistant Diagnostics](https://developers.home-assistant.io/docs/integration_fetching_data#diagnostics)
 
 **Platinum Tier Complete?** ✅ All tiers checked → You've achieved Platinum tier! 🎉
 
@@ -255,14 +270,18 @@ pre-commit run --all-files
 ## Tier Progression Tips
 
 ### Bronze → Silver
+
 **Focus on:** Error handling and user experience
+
 - Add try/except blocks in coordinator
 - Implement `ConfigEntryAuthFailed` for auth issues
 - Test offline device scenarios
 - Write clear error messages
 
 ### Silver → Gold
+
 **Focus on:** Testing and efficiency
+
 - Achieve 90% test coverage
 - Ensure all code is async
 - Add type hints everywhere
@@ -270,7 +289,9 @@ pre-commit run --all-files
 - Add options flow
 
 ### Gold → Platinum
+
 **Focus on:** Polish and maintenance
+
 - Add comprehensive docstrings
 - Optimize performance
 - Add localization
@@ -279,17 +300,23 @@ pre-commit run --all-files
 
 ## Resources
 
-- **Home Assistant Quality Scale**: https://developers.home-assistant.io/docs/core/integration-quality-scale/
-- **Integration Checklist**: https://developers.home-assistant.io/docs/development_checklist
+- **Home Assistant Quality Scale**:
+  https://developers.home-assistant.io/docs/core/integration-quality-scale/
+- **Integration Checklist**:
+  https://developers.home-assistant.io/docs/development_checklist
 - **Testing**: https://developers.home-assistant.io/docs/development_testing
-- **Coordinator Pattern**: https://developers.home-assistant.io/docs/integration_fetching_data
+- **Coordinator Pattern**:
+  https://developers.home-assistant.io/docs/integration_fetching_data
 
 ## Questions?
 
 - Review [CLAUDE.md](../CLAUDE.md) for mandatory patterns
 - Check [REFERENCE_GUIDE.md](../REFERENCE_GUIDE.md) for technical details
-- See [HA Light Controller code](../custom_components/ha_light_controller/) for working examples
+- See [HA Light Controller code](../custom_components/ha_light_controller/) for working
+  examples
 
 ---
 
-**Remember:** Quality is a journey, not a destination. Start with Bronze and progressively enhance your integration over time. Each tier makes your integration more reliable and user-friendly.
+**Remember:** Quality is a journey, not a destination. Start with Bronze and
+progressively enhance your integration over time. Each tier makes your integration more
+reliable and user-friendly.

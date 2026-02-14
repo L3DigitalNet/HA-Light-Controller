@@ -6,15 +6,20 @@
   <img alt="HA Light Controller" src="brand-images/logo.png" width="200">
 </picture>
 
-
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/releases)
 [![License](https://img.shields.io/github/license/L3DigitalNet/HA-Light-Controller.svg)](LICENSE)
 [![Issues](https://img.shields.io/github/issues/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
 
-HA Light Controller adds state verification and automatic retries to light commands. When you call `light.turn_on`, Home Assistant sends the command once and assumes success. This integration verifies that entities actually reached the target state and retries if they didn't.
+HA Light Controller adds state verification and automatic retries to light commands.
+When you call `light.turn_on`, Home Assistant sends the command once and assumes
+success. This integration verifies that entities actually reached the target state and
+retries if they didn't.
 
-This solves the common problem of lights occasionally missing commands due to network congestion, Zigbee/Z-Wave mesh issues, or unresponsive devices. Instead of building retry logic into every script and automation, HA Light Controller handles verification centrally with configurable tolerances and backoff strategies.
+This solves the common problem of lights occasionally missing commands due to network
+congestion, Zigbee/Z-Wave mesh issues, or unresponsive devices. Instead of building
+retry logic into every script and automation, HA Light Controller handles verification
+centrally with configurable tolerances and backoff strategies.
 
 ### How It Works
 
@@ -26,30 +31,37 @@ This solves the common problem of lights occasionally missing commands due to ne
 
 ## Key Features
 
-- **State verification** - Confirms entities reached target brightness, color, and temperature within configurable tolerances
+- **State verification** - Confirms entities reached target brightness, color, and
+  temperature within configurable tolerances
 - **Automatic retries** - Configurable retry attempts with exponential backoff
-- **Group expansion** - Automatically expands `light.*` and `group.*` entities to individual lights
-- **Per-entity overrides** - Set different attributes for each light in a single service call via the `targets` parameter
+- **Group expansion** - Automatically expands `light.*` and `group.*` entities to
+  individual lights
+- **Per-entity overrides** - Set different attributes for each light in a single service
+  call via the `targets` parameter
 - **Presets** - Store light configurations as button entities for one-tap activation
 
 ## Installation
 
 ### HACS
 
-1. Add `https://github.com/L3DigitalNet/HA-Light-Controller` as a custom repository (Integration)
+1. Add `https://github.com/L3DigitalNet/HA-Light-Controller` as a custom repository
+   (Integration)
 2. Install "HA Light Controller"
 3. Restart Home Assistant
 
 ### Manual
 
-1. Copy `custom_components/ha_light_controller` to your `config/custom_components/` directory
+1. Copy `custom_components/ha_light_controller` to your `config/custom_components/`
+   directory
 2. Restart Home Assistant
 
 ## Configuration
 
-Add the integration via **Settings** → **Devices & Services** → **Add Integration** → "Light Controller".
+Add the integration via **Settings** → **Devices & Services** → **Add Integration** →
+"Light Controller".
 
-Configuration options include default brightness, transition time, verification tolerances (brightness, RGB, Kelvin), retry settings, and success logging.
+Configuration options include default brightness, transition time, verification
+tolerances (brightness, RGB, Kelvin), retry settings, and success logging.
 
 ## Usage
 
@@ -61,7 +73,7 @@ data:
   entities:
     - light.living_room_ceiling
     - light.living_room_lamp
-  state: "off"
+  state: 'off'
 ```
 
 ### Per-Entity Overrides
@@ -84,12 +96,14 @@ data:
 
 ### Presets
 
-Create and edit presets via the integration options UI or programmatically. The UI supports per-entity configuration - set different brightness, color, and state for each light in the preset. Preset deletion includes a confirmation step.
+Create and edit presets via the integration options UI or programmatically. The UI
+supports per-entity configuration - set different brightness, color, and state for each
+light in the preset. Preset deletion includes a confirmation step.
 
 ```yaml
 service: ha_light_controller.create_preset
 data:
-  name: "Movie Night"
+  name: 'Movie Night'
   entities:
     - light.living_room
     - light.tv_backlight
@@ -97,11 +111,13 @@ data:
   color_temp_kelvin: 2700
 ```
 
-Each preset creates a `button.*` entity for activation and a `sensor.*` entity for status tracking.
+Each preset creates a `button.*` entity for activation and a `sensor.*` entity for
+status tracking.
 
 ## Documentation
 
-See the **[Usage Guide](USAGE.md)** for complete service parameters, configuration options, and examples.
+See the **[Usage Guide](USAGE.md)** for complete service parameters, configuration
+options, and examples.
 
 ## Links
 

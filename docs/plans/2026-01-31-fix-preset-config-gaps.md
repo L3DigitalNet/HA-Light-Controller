@@ -3,6 +3,7 @@
 > ✅ **STATUS: COMPLETED** (implemented in v0.2.1)
 >
 > **Implementation:**
+>
 > - Commits 787e429 through 3ab3816 (2026-01-31) completed all 8 tasks
 > - LightTarget now has `state` and `transition` fields with proper defaults
 > - Per-entity state and transition overrides fully functional
@@ -10,16 +11,23 @@
 > - Preset creation derives state/transition from per-entity configs
 > - Full test coverage added for new functionality
 >
-> **Note:**
-> This plan was created and executed on 2026-01-31 alongside the scope simplification work (v0.2.0). The implementation completed all tasks as specified, adding per-entity state and transition support to the backend to match the UI capabilities.
+> **Note:** This plan was created and executed on 2026-01-31 alongside the scope
+> simplification work (v0.2.0). The implementation completed all tasks as specified,
+> adding per-entity state and transition support to the backend to match the UI
+> capabilities.
 
 ---
 
-> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this
+> plan task-by-task.
 
-**Goal:** Fix 4 gaps where per-entity preset configuration is collected by UI but not used by controller.
+**Goal:** Fix 4 gaps where per-entity preset configuration is collected by UI but not
+used by controller.
 
-**Architecture:** Add `state` and `transition` fields to `LightTarget` dataclass, modify `_build_targets()` to read these from overrides, update `_send_commands()` to handle per-entity state splitting, and fix `_create_preset_from_data()` to derive preset-level state/transition from per-entity configs.
+**Architecture:** Add `state` and `transition` fields to `LightTarget` dataclass, modify
+`_build_targets()` to read these from overrides, update `_send_commands()` to handle
+per-entity state splitting, and fix `_create_preset_from_data()` to derive preset-level
+state/transition from per-entity configs.
 
 **Tech Stack:** Python, Home Assistant integration framework, pytest
 
@@ -27,31 +35,38 @@
 
 ## Background
 
-The UI allows users to configure per-entity state (on/off) and transition for each light in a preset. However:
+The UI allows users to configure per-entity state (on/off) and transition for each light
+in a preset. However:
+
 1. `LightTarget` doesn't have `state` or `transition` fields
 2. `_build_targets()` ignores `state` and `transition` from overrides
 3. `_create_preset_from_data()` hardcodes `state="on"` and `transition=0.0`
 
 ## Design Decision: Per-Entity State Handling
 
-When a preset has mixed per-entity states (some lights "on", some "off"), the controller needs to:
+When a preset has mixed per-entity states (some lights "on", some "off"), the controller
+needs to:
+
 1. Split targets into two groups: on-targets and off-targets
 2. Send turn_on commands to on-targets
 3. Send turn_off commands to off-targets
 
-This is a significant architectural change to `ensure_state()` which currently assumes all lights have the same target state.
+This is a significant architectural change to `ensure_state()` which currently assumes
+all lights have the same target state.
 
 ---
 
 ## Task 1: Add state and transition fields to LightTarget
 
 **Files:**
+
 - Modify: `custom_components/ha_light_controller/controller.py:128-136`
 - Test: `tests/test_controller.py`
 
 **Step 1: Write failing test for LightTarget with state field**
 
-Add to `tests/test_controller.py` after the existing LightTarget tests (around line 150):
+Add to `tests/test_controller.py` after the existing LightTarget tests (around line
+150):
 
 ```python
 class TestLightTargetStateAndTransition:
@@ -80,12 +95,13 @@ class TestLightTargetStateAndTransition:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/test_controller.py::TestLightTargetStateAndTransition -v`
-Expected: FAIL with "LightTarget() got an unexpected keyword argument 'state'"
+Run: `pytest tests/test_controller.py::TestLightTargetStateAndTransition -v` Expected:
+FAIL with "LightTarget() got an unexpected keyword argument 'state'"
 
 **Step 3: Add state and transition fields to LightTarget**
 
-In `custom_components/ha_light_controller/controller.py`, update `LightTarget` (lines 128-136):
+In `custom_components/ha_light_controller/controller.py`, update `LightTarget` (lines
+128-136):
 
 ```python
 @dataclass
@@ -103,13 +119,13 @@ class LightTarget(LightSettingsMixin):
 
 **Step 4: Run test to verify it passes**
 
-Run: `pytest tests/test_controller.py::TestLightTargetStateAndTransition -v`
-Expected: PASS
+Run: `pytest tests/test_controller.py::TestLightTargetStateAndTransition -v` Expected:
+PASS
 
 **Step 5: Run full test suite**
 
-Run: `pytest tests/test_controller.py -v`
-Expected: All tests PASS (existing tests should still work with defaults)
+Run: `pytest tests/test_controller.py -v` Expected: All tests PASS (existing tests
+should still work with defaults)
 
 **Step 6: Commit**
 
@@ -124,15 +140,17 @@ git commit -m "feat: add state and transition fields to LightTarget
 
 ---
 
-## Task 2: Update _build_targets to read state and transition from overrides
+## Task 2: Update \_build_targets to read state and transition from overrides
 
 **Files:**
+
 - Modify: `custom_components/ha_light_controller/controller.py:281-308`
 - Test: `tests/test_controller.py`
 
-**Step 1: Write failing test for _build_targets with state/transition overrides**
+**Step 1: Write failing test for \_build_targets with state/transition overrides**
 
-Add to `tests/test_controller.py` in `TestLightControllerTargetBuilding` class (around line 450):
+Add to `tests/test_controller.py` in `TestLightControllerTargetBuilding` class (around
+line 450):
 
 ```python
     def test_build_targets_with_state_override(self, hass, mock_light_states):
@@ -182,12 +200,14 @@ Add to `tests/test_controller.py` in `TestLightControllerTargetBuilding` class (
 
 **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/test_controller.py::TestLightControllerTargetBuilding::test_build_targets_with_state_override -v`
+Run:
+`pytest tests/test_controller.py::TestLightControllerTargetBuilding::test_build_targets_with_state_override -v`
 Expected: FAIL - state will be "on" (default) instead of "off"
 
-**Step 3: Update _build_targets to read state and transition**
+**Step 3: Update \_build_targets to read state and transition**
 
-In `custom_components/ha_light_controller/controller.py`, update `_build_targets()` (lines 281-308):
+In `custom_components/ha_light_controller/controller.py`, update `_build_targets()`
+(lines 281-308):
 
 ```python
     def _build_targets(
@@ -244,13 +264,12 @@ Find the `_build_targets` call and update it:
 
 **Step 5: Run tests to verify they pass**
 
-Run: `pytest tests/test_controller.py::TestLightControllerTargetBuilding -v`
-Expected: All PASS
+Run: `pytest tests/test_controller.py::TestLightControllerTargetBuilding -v` Expected:
+All PASS
 
 **Step 6: Run full test suite**
 
-Run: `pytest tests/test_controller.py -v`
-Expected: All tests PASS
+Run: `pytest tests/test_controller.py -v` Expected: All tests PASS
 
 **Step 7: Commit**
 
@@ -269,6 +288,7 @@ git commit -m "feat: _build_targets reads state and transition from overrides
 ## Task 3: Implement per-entity state handling in command sending
 
 **Files:**
+
 - Modify: `custom_components/ha_light_controller/controller.py:514-526`
 - Test: `tests/test_controller.py`
 
@@ -320,12 +340,13 @@ class TestMixedStateHandling:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/test_controller.py::TestMixedStateHandling -v`
-Expected: FAIL - `_send_commands_per_target` doesn't exist
+Run: `pytest tests/test_controller.py::TestMixedStateHandling -v` Expected: FAIL -
+`_send_commands_per_target` doesn't exist
 
-**Step 3: Implement _send_commands_per_target**
+**Step 3: Implement \_send_commands_per_target**
 
-In `custom_components/ha_light_controller/controller.py`, add new method after `_send_commands` (around line 527):
+In `custom_components/ha_light_controller/controller.py`, add new method after
+`_send_commands` (around line 527):
 
 ```python
     async def _send_commands_per_target(
@@ -394,8 +415,7 @@ In `custom_components/ha_light_controller/controller.py`, add new method after `
 
 **Step 4: Run test to verify it passes**
 
-Run: `pytest tests/test_controller.py::TestMixedStateHandling -v`
-Expected: PASS
+Run: `pytest tests/test_controller.py::TestMixedStateHandling -v` Expected: PASS
 
 **Step 5: Commit**
 
@@ -413,6 +433,7 @@ git commit -m "feat: add _send_commands_per_target for mixed state handling
 ## Task 4: Wire up per-entity handling in ensure_state
 
 **Files:**
+
 - Modify: `custom_components/ha_light_controller/controller.py:652-700`
 - Test: `tests/test_controller.py`
 
@@ -471,14 +492,16 @@ class TestEnsureStateMixedTargets:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/test_controller.py::TestEnsureStateMixedTargets -v`
-Expected: FAIL - current code doesn't use per-entity state
+Run: `pytest tests/test_controller.py::TestEnsureStateMixedTargets -v` Expected: FAIL -
+current code doesn't use per-entity state
 
-**Step 3: Update ensure_state to use _send_commands_per_target**
+**Step 3: Update ensure_state to use \_send_commands_per_target**
 
-In `custom_components/ha_light_controller/controller.py`, update the fire-and-forget section (around line 652):
+In `custom_components/ha_light_controller/controller.py`, update the fire-and-forget
+section (around line 652):
 
 Replace:
+
 ```python
         # Fire-and-forget mode
         if skip_verification:
@@ -489,6 +512,7 @@ Replace:
 ```
 
 With:
+
 ```python
         # Fire-and-forget mode
         if skip_verification:
@@ -503,12 +527,14 @@ With:
 **Step 4: Update the main retry loop (around line 699)**
 
 Replace:
+
 ```python
             groups = self._group_by_settings(pending_targets)
             await self._send_commands(groups, target_state, use_transition)
 ```
 
 With:
+
 ```python
             # Use per-target command sending for mixed states
             await self._send_commands_per_target(
@@ -522,6 +548,7 @@ With:
 In the verification section (around line 708), update:
 
 Replace:
+
 ```python
             still_pending = [
                 target
@@ -532,6 +559,7 @@ Replace:
 ```
 
 With:
+
 ```python
             still_pending = [
                 target
@@ -547,13 +575,11 @@ With:
 
 **Step 6: Run tests to verify they pass**
 
-Run: `pytest tests/test_controller.py::TestEnsureStateMixedTargets -v`
-Expected: PASS
+Run: `pytest tests/test_controller.py::TestEnsureStateMixedTargets -v` Expected: PASS
 
 **Step 7: Run full test suite**
 
-Run: `pytest tests/test_controller.py -v`
-Expected: All tests PASS
+Run: `pytest tests/test_controller.py -v` Expected: All tests PASS
 
 **Step 8: Commit**
 
@@ -569,9 +595,10 @@ git commit -m "feat: ensure_state uses per-entity state and transition
 
 ---
 
-## Task 5: Fix preset-level state/transition in _create_preset_from_data
+## Task 5: Fix preset-level state/transition in \_create_preset_from_data
 
 **Files:**
+
 - Modify: `custom_components/ha_light_controller/config_flow.py:750-797`
 - Test: `tests/test_config_flow.py`
 
@@ -659,12 +686,13 @@ class TestPresetCreationStateDerivation:
 
 **Step 2: Run test to verify it fails**
 
-Run: `pytest tests/test_config_flow.py::TestPresetCreationStateDerivation -v`
-Expected: FAIL - state is always "on"
+Run: `pytest tests/test_config_flow.py::TestPresetCreationStateDerivation -v` Expected:
+FAIL - state is always "on"
 
-**Step 3: Update _create_preset_from_data to derive state**
+**Step 3: Update \_create_preset_from_data to derive state**
 
-In `custom_components/ha_light_controller/config_flow.py`, update `_create_preset_from_data()`:
+In `custom_components/ha_light_controller/config_flow.py`, update
+`_create_preset_from_data()`:
 
 ```python
     async def _create_preset_from_data(self) -> ConfigFlowResult:
@@ -729,13 +757,12 @@ In `custom_components/ha_light_controller/config_flow.py`, update `_create_prese
 
 **Step 4: Run tests to verify they pass**
 
-Run: `pytest tests/test_config_flow.py::TestPresetCreationStateDerivation -v`
-Expected: PASS
+Run: `pytest tests/test_config_flow.py::TestPresetCreationStateDerivation -v` Expected:
+PASS
 
 **Step 5: Run full test suite**
 
-Run: `pytest -v`
-Expected: All tests PASS
+Run: `pytest -v` Expected: All tests PASS
 
 **Step 6: Commit**
 
@@ -753,6 +780,7 @@ git commit -m "fix: derive preset state/transition from per-entity configs
 ## Task 6: Add test for preset activation with per-entity transition
 
 **Files:**
+
 - Test: `tests/test_controller.py`
 
 **Step 1: Write test for per-entity transition**
@@ -806,8 +834,8 @@ class TestPerEntityTransition:
 
 **Step 2: Run test to verify it passes**
 
-Run: `pytest tests/test_controller.py::TestPerEntityTransition -v`
-Expected: PASS (should work after Task 3-4 implementation)
+Run: `pytest tests/test_controller.py::TestPerEntityTransition -v` Expected: PASS
+(should work after Task 3-4 implementation)
 
 **Step 3: Commit**
 
@@ -822,8 +850,7 @@ git commit -m "test: add test for per-entity transition handling"
 
 **Step 1: Run all tests**
 
-Run: `pytest -v`
-Expected: All tests PASS
+Run: `pytest -v` Expected: All tests PASS
 
 **Step 2: Check coverage**
 
@@ -847,6 +874,7 @@ If any tests failed or coverage gaps exist, fix and commit.
 ## Task 8: Update documentation
 
 **Files:**
+
 - Modify: `USAGE.md`
 - Modify: `README.md` (if needed)
 
@@ -864,6 +892,7 @@ When creating a preset via the UI, you can configure each light individually:
 - **Brightness/Color**: Already supported per-entity
 
 This allows creating complex presets like "Movie Mode" where:
+
 - Main ceiling light is off
 - TV backlight is on at 20% with warm color
 - Accent lights are on at 10%
@@ -883,6 +912,7 @@ git commit -m "docs: document per-entity state and transition in presets"
 ## Summary
 
 After completing all tasks:
+
 1. ✅ `LightTarget` has `state` and `transition` fields
 2. ✅ `_build_targets()` reads per-entity state/transition from overrides
 3. ✅ `_send_commands_per_target()` handles mixed on/off states
@@ -891,4 +921,5 @@ After completing all tasks:
 6. ✅ Full test coverage for new functionality
 7. ✅ Documentation updated
 
-The integration now fully supports per-entity state and transition configuration as the UI allows.
+The integration now fully supports per-entity state and transition configuration as the
+UI allows.

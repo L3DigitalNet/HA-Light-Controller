@@ -2,7 +2,10 @@
 
 ## About This Integration
 
-This is a **custom integration** for Home Assistant providing reliable light control with state verification, automatic retries, and preset management. Security considerations apply to:
+This is a **custom integration** for Home Assistant providing reliable light control
+with state verification, automatic retries, and preset management. Security
+considerations apply to:
+
 1. The integration code itself (services, entities, controllers)
 2. User data stored in ConfigEntry (presets, settings)
 
@@ -10,10 +13,10 @@ This is a **custom integration** for Home Assistant providing reliable light con
 
 This integration follows a rolling release model. Security updates are applied to:
 
-| Version | Supported          | Status |
-| ------- | ------------------ | ------ |
-| Latest (main branch) | ✅ | Active development |
-| Previous commits | ❌ | Use latest instead |
+| Version              | Supported | Status             |
+| -------------------- | --------- | ------------------ |
+| Latest (main branch) | ✅        | Active development |
+| Previous commits     | ❌        | Use latest instead |
 
 **Recommendation:** Always use the latest version from the `main` branch.
 
@@ -24,13 +27,16 @@ This integration follows a rolling release model. Security updates are applied t
 When using this integration:
 
 **✅ DO:**
+
 - Store credentials in `ConfigEntry.data` (encrypted by Home Assistant)
 - Use HTTPS for all external API communications
 - Validate all user inputs in config flows
 - Handle authentication errors properly (`ConfigEntryAuthFailed`)
-- Follow the security best practices in [docs/SECURITY_BEST_PRACTICES.md](docs/SECURITY_BEST_PRACTICES.md)
+- Follow the security best practices in
+  [docs/SECURITY_BEST_PRACTICES.md](docs/SECURITY_BEST_PRACTICES.md)
 
 **❌ DON'T:**
+
 - Log credentials, API keys, or tokens
 - Store sensitive data in entity attributes
 - Hardcode secrets in source code
@@ -42,6 +48,7 @@ When using this integration:
 Security concerns for the integration repository itself:
 
 **Protected:**
+
 - ✅ GitHub Actions workflows use explicit permissions
 - ✅ Dependabot enabled for dependency updates
 - ✅ Code scanning enabled
@@ -52,10 +59,12 @@ Security concerns for the integration repository itself:
 
 ### Integration Security Issues
 
-If you discover a security vulnerability in **the integration itself** (services, entities, controller logic):
+If you discover a security vulnerability in **the integration itself** (services,
+entities, controller logic):
 
 1. **DO NOT** open a public issue
-2. **Email:** Create a [security advisory](https://github.com/L3DigitalNet/HA-Light-Controller/security/advisories/new)
+2. **Email:** Create a
+   [security advisory](https://github.com/L3DigitalNet/HA-Light-Controller/security/advisories/new)
 3. **Include:**
    - Description of the vulnerability
    - Steps to reproduce
@@ -63,6 +72,7 @@ If you discover a security vulnerability in **the integration itself** (services
    - Suggested fix (if any)
 
 **Response time:**
+
 - Initial response: Within 48 hours
 - Status update: Within 7 days
 - Fix timeline: Depends on severity (critical issues prioritized)
@@ -71,7 +81,8 @@ If you discover a security vulnerability in **the integration itself** (services
 
 If you discover a vulnerability in **Home Assistant core** or **related integrations**:
 
-**Report to the appropriate repository**, not here. Each component has its own maintainers and security process.
+**Report to the appropriate repository**, not here. Each component has its own
+maintainers and security process.
 
 ## Security Updates
 
@@ -88,20 +99,24 @@ If you discover a vulnerability in **Home Assistant core** or **related integrat
 ### Severity Levels
 
 **Critical:** Immediate action required
+
 - Credential exposure
 - Remote code execution
 - Authentication bypass
 
 **High:** Fix in next release (within 7 days)
+
 - Privilege escalation
 - Data leakage
 - Injection vulnerabilities
 
 **Medium:** Fix in upcoming release (within 30 days)
+
 - Denial of service
 - Information disclosure
 
 **Low:** Fix in regular maintenance
+
 - Security hardening
 - Best practice improvements
 
@@ -163,7 +178,9 @@ except Exception as err:
 
 ## Acknowledgments
 
-We appreciate responsible disclosure of security vulnerabilities. Contributors who report valid security issues will be acknowledged in:
+We appreciate responsible disclosure of security vulnerabilities. Contributors who
+report valid security issues will be acknowledged in:
+
 - Security advisories
 - CHANGELOG.md
 - GitHub Security Hall of Fame (if applicable)
@@ -171,13 +188,14 @@ We appreciate responsible disclosure of security vulnerabilities. Contributors w
 ## Questions?
 
 For security-related questions (not vulnerabilities):
+
 - [Discussions](https://github.com/L3DigitalNet/HA-Light-Controller/discussions)
 - [Security Best Practices Guide](docs/SECURITY_BEST_PRACTICES.md)
 
 For non-security bugs:
+
 - [Issues](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
 
 ---
 
-**Last Updated:** 2026-02-07
-**Security Contact:** Use GitHub Security Advisories
+**Last Updated:** 2026-02-07 **Security Contact:** Use GitHub Security Advisories

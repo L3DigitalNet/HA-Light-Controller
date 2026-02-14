@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in
+this repository.
 
 ## Git Workflow
 
@@ -9,9 +10,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HA-Light-Controller is a Home Assistant custom integration providing reliable light control with state verification, automatic retries, and preset management. It ensures lights actually reach their target state after commands are sent. Distributed via HACS.
+HA-Light-Controller is a Home Assistant custom integration providing reliable light
+control with state verification, automatic retries, and preset management. It ensures
+lights actually reach their target state after commands are sent. Distributed via HACS.
 
-**Scope**: Focused on core light control with verification/retry and preset management. Notification feature and blueprints removed in v0.2.0.
+**Scope**: Focused on core light control with verification/retry and preset management.
+Notification feature and blueprints removed in v0.2.0.
 
 ## Environment
 
@@ -20,14 +24,15 @@ HA-Light-Controller is a Home Assistant custom integration providing reliable li
 
 ## Home Assistant Environment Constraints
 
-**Blocking calls freeze the entire HA instance.** All I/O must be async or use `hass.async_add_executor_job()`.
+**Blocking calls freeze the entire HA instance.** All I/O must be async or use
+`hass.async_add_executor_job()`.
 
-| Constraint | Rule |
-|------------|------|
+| Constraint | Rule                                                                                |
+| ---------- | ----------------------------------------------------------------------------------- |
 | Event loop | Single-threaded asyncio. Never use `time.sleep()`, sync `requests`, or blocking I/O |
-| Resources | HA runs on RPi-class hardware. Poll 30-60s minimum, prefer listeners over polling |
-| Sandbox | No filesystem access outside `config/`. Dependencies must be PyPI + `manifest.json` |
-| APIs | Use `hass.services.async_call`, `hass.states.get`. Never bypass HA's state machine |
+| Resources  | HA runs on RPi-class hardware. Poll 30-60s minimum, prefer listeners over polling   |
+| Sandbox    | No filesystem access outside `config/`. Dependencies must be PyPI + `manifest.json` |
+| APIs       | Use `hass.services.async_call`, `hass.states.get`. Never bypass HA's state machine  |
 
 ## Commands
 
@@ -57,20 +62,21 @@ logger:
     custom_components.ha_light_controller: debug
 ```
 
-Tests mock the entire `homeassistant` module in `tests/conftest.py` and don't require a running HA instance.
+Tests mock the entire `homeassistant` module in `tests/conftest.py` and don't require a
+running HA instance.
 
 ## Architecture
 
 ### Core Components
 
-| File | Purpose |
-|------|---------|
-| `__init__.py` | Entry point: registers services individually in `async_setup()`, initializes `LightController` and `PresetManager`, uses `_get_param()` and `_service_response()` helpers |
-| `controller.py` | Light control: `ensure_state()` → `_expand_entities()` → `_build_targets()` → `_group_by_settings_with_transition()` → send → verify → retry |
-| `preset_manager.py` | Preset storage in `ConfigEntry.data[CONF_PRESETS]`, `activate_preset_with_options()` for shared activation logic |
-| `config_flow.py` | Menu-based options flow: settings (collapsible sections), add_preset (multi-step with per-entity config), manage_presets (edit/delete with confirmation) |
-| `button.py` / `sensor.py` | Preset entities: button activates preset via `preset_manager.activate_preset_with_options()`, sensor tracks status |
-| `const.py` | All `CONF_*`, `ATTR_*`, `DEFAULT_*`, `PRESET_*` constants |
+| File                      | Purpose                                                                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `__init__.py`             | Entry point: registers services individually in `async_setup()`, initializes `LightController` and `PresetManager`, uses `_get_param()` and `_service_response()` helpers |
+| `controller.py`           | Light control: `ensure_state()` → `_expand_entities()` → `_build_targets()` → `_group_by_settings_with_transition()` → send → verify → retry                              |
+| `preset_manager.py`       | Preset storage in `ConfigEntry.data[CONF_PRESETS]`, `activate_preset_with_options()` for shared activation logic                                                          |
+| `config_flow.py`          | Menu-based options flow: settings (collapsible sections), add_preset (multi-step with per-entity config), manage_presets (edit/delete with confirmation)                  |
+| `button.py` / `sensor.py` | Preset entities: button activates preset via `preset_manager.activate_preset_with_options()`, sensor tracks status                                                        |
+| `const.py`                | All `CONF_*`, `ATTR_*`, `DEFAULT_*`, `PRESET_*` constants                                                                                                                 |
 
 ### Key Classes
 
@@ -82,13 +88,13 @@ Tests mock the entire `homeassistant` module in `tests/conftest.py` and don't re
 
 ### Services
 
-| Service | Description |
-|---------|-------------|
-| `ensure_state` | Control lights with verification and retries |
-| `activate_preset` | Activate preset by name or ID |
-| `create_preset` | Create preset programmatically |
-| `create_preset_from_current` | Capture current light states as preset |
-| `delete_preset` | Delete preset by ID |
+| Service                      | Description                                  |
+| ---------------------------- | -------------------------------------------- |
+| `ensure_state`               | Control lights with verification and retries |
+| `activate_preset`            | Activate preset by name or ID                |
+| `create_preset`              | Create preset programmatically               |
+| `create_preset_from_current` | Capture current light states as preset       |
+| `delete_preset`              | Delete preset by ID                          |
 
 ## Key Patterns
 
@@ -116,11 +122,14 @@ brightness_tolerance = _get_param(data, options, ATTR_BRIGHTNESS_TOLERANCE, CONF
 
 ### Entity Expansion
 
-`_expand_entity()` resolves `light.*` groups and `group.*` helper groups to individual `light.` entities. Uses `_get_state()` directly for attribute access.
+`_expand_entity()` resolves `light.*` groups and `group.*` helper groups to individual
+`light.` entities. Uses `_get_state()` directly for attribute access.
 
 ### Service Registration
 
-Services are registered individually in `async_setup()` (not `async_setup_entry()`). This ensures they persist across config entry reloads. Each handler resolves the active entry at call time via `_get_loaded_entry()`:
+Services are registered individually in `async_setup()` (not `async_setup_entry()`).
+This ensures they persist across config entry reloads. Each handler resolves the active
+entry at call time via `_get_loaded_entry()`:
 
 ```python
 hass.services.async_register(
@@ -159,7 +168,7 @@ entry.runtime_data = LightControllerData(...)
 ## Adding New Service Parameters
 
 1. **const.py** - Add `ATTR_*` constant (and `CONF_*`/`DEFAULT_*` if configurable)
-2. ****init**.py** - Add to voluptuous schema, use `_get_param()` helper in handler
+2. \***\*init**.py\*\* - Add to voluptuous schema, use `_get_param()` helper in handler
 3. **services.yaml** - Add field definition with HA selector
 4. **controller.py** - Add to `ensure_state()` signature if needed
 5. **preset_manager.py** - Add to `activate_preset_with_options()` if preset-relevant
@@ -190,14 +199,19 @@ Two requirements govern all code in this repository:
 - **Prefer flat over nested** - Avoid deep nesting (3+ levels). Extract helpers instead.
 - **Name for intent** - Variables and functions should describe what they do, not how.
 - **Consistent patterns** - Similar operations should use identical patterns throughout.
-- **Minimal comments** - Code should be self-explanatory. Comments explain "why", not "what".
+- **Minimal comments** - Code should be self-explanatory. Comments explain "why", not
+  "what".
 
 ### 2. Simplicity
 
-- **No speculative handling** - Only handle edge cases that actually occur. Delete code for hypothetical scenarios.
-- **DRY without over-abstraction** - Extract repeated code, but don't create abstractions for single-use cases.
-- **Delete, don't deprecate** - Remove unused code entirely. No commented-out code or compatibility shims.
-- **Fail early, fail clearly** - Validate inputs at boundaries, then trust internal state.
+- **No speculative handling** - Only handle edge cases that actually occur. Delete code
+  for hypothetical scenarios.
+- **DRY without over-abstraction** - Extract repeated code, but don't create
+  abstractions for single-use cases.
+- **Delete, don't deprecate** - Remove unused code entirely. No commented-out code or
+  compatibility shims.
+- **Fail early, fail clearly** - Validate inputs at boundaries, then trust internal
+  state.
 
 ### Anti-patterns to Avoid
 
@@ -210,7 +224,9 @@ Two requirements govern all code in this repository:
 ## Resources
 
 - [AGENTS.md](AGENTS.md) — Codex agent instructions and architecture details
-- [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md) — Comprehensive integration development reference
-- [resources/](resources/) — HA development skills, agent specifications, and best practices
+- [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md) — Comprehensive integration development
+  reference
+- [resources/](resources/) — HA development skills, agent specifications, and best
+  practices
   - `skills/ha-skills/` — Claude Code skills for HA integration development
   - `agents/` — Agent specifications for ha-integration-dev, debugger, and reviewer

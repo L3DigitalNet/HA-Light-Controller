@@ -1,6 +1,8 @@
 # HACS Integration Guide
 
-This guide explains how to publish your Home Assistant custom integration to [HACS (Home Assistant Community Store)](https://hacs.xyz/), the most popular distribution method for custom integrations.
+This guide explains how to publish your Home Assistant custom integration to
+[HACS (Home Assistant Community Store)](https://hacs.xyz/), the most popular
+distribution method for custom integrations.
 
 ## Table of Contents
 
@@ -70,7 +72,8 @@ your-integration-repo/
 └── .gitignore
 ```
 
-**Important:** All integration code must be inside `custom_components/your_domain/`. HACS will reject repositories with code outside this directory.
+**Important:** All integration code must be inside `custom_components/your_domain/`.
+HACS will reject repositories with code outside this directory.
 
 ---
 
@@ -105,16 +108,16 @@ Create a `hacs.json` file in your repository root to configure HACS integration:
 
 ### Field Descriptions
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Display name shown in HACS (can differ from domain) |
-| `content_in_root` | Yes | Always `false` for integrations (code is in `custom_components/`) |
-| `homeassistant` | Yes | Minimum Home Assistant version required (e.g., "2025.2.0") |
-| `country` | No | List of country codes where integration is relevant |
-| `render_readme` | No | Set to `true` to render README.md in HACS UI |
-| `persistent_directory` | No | Directory name for persistent data storage |
-| `iot_class` | No | IoT class from manifest.json (for display) |
-| `zip_release` | No | Set to `true` if you provide ZIP releases |
+| Field                  | Required | Description                                                       |
+| ---------------------- | -------- | ----------------------------------------------------------------- |
+| `name`                 | Yes      | Display name shown in HACS (can differ from domain)               |
+| `content_in_root`      | Yes      | Always `false` for integrations (code is in `custom_components/`) |
+| `homeassistant`        | Yes      | Minimum Home Assistant version required (e.g., "2025.2.0")        |
+| `country`              | No       | List of country codes where integration is relevant               |
+| `render_readme`        | No       | Set to `true` to render README.md in HACS UI                      |
+| `persistent_directory` | No       | Directory name for persistent data storage                        |
+| `iot_class`            | No       | IoT class from manifest.json (for display)                        |
+| `zip_release`          | No       | Set to `true` if you provide ZIP releases                         |
 
 ### Determining homeassistant Version
 
@@ -132,7 +135,8 @@ Use the **oldest Home Assistant version** your integration supports:
 # HA Light Controller requires 2025.2.0+ (Python 3.13+)
 ```
 
-**Tip:** Use `homeassistant >= MAJOR.MINOR.0` format (patch version 0) unless you need a specific patch.
+**Tip:** Use `homeassistant >= MAJOR.MINOR.0` format (patch version 0) unless you need a
+specific patch.
 
 ---
 
@@ -164,6 +168,7 @@ Format: `MAJOR.MINOR.PATCH` (e.g., `1.2.3`)
 ### Creating GitHub Releases
 
 1. **Tag your commit** with the version number:
+
    ```bash
    git tag -a v1.2.3 -m "Release v1.2.3"
    git push origin v1.2.3
@@ -176,12 +181,16 @@ Format: `MAJOR.MINOR.PATCH` (e.g., `1.2.3`)
    - Description: Changelog for this version
 
 3. **Update CHANGELOG.md** (recommended):
+
    ```markdown
    ## [1.2.3] - 2026-02-07
+
    ### Added
+
    - New temperature sensor entity
 
    ### Fixed
+
    - Connection timeout handling
    ```
 
@@ -248,6 +257,7 @@ Respond promptly and make requested changes.
 ### Step 4: Approval
 
 Once approved:
+
 - Your integration appears in HACS
 - Users can install via HACS UI
 - Automatic update notifications for new releases
@@ -271,6 +281,7 @@ After HACS approval, users install via:
 ### Monitoring Usage
 
 HACS provides download statistics:
+
 - Check https://github.com/hacs/integration for metrics
 - Monitor issues for user feedback
 - Track release downloads on GitHub
@@ -284,6 +295,7 @@ HACS provides download statistics:
 **Error:** "Integration does not have a version in manifest.json"
 
 **Fix:**
+
 ```json
 {
   "domain": "your_integration",
@@ -296,6 +308,7 @@ HACS provides download statistics:
 **Error:** "Repository has no releases"
 
 **Fix:**
+
 ```bash
 git tag -a v1.0.0 -m "Initial release"
 git push origin v1.0.0
@@ -313,6 +326,7 @@ git push origin v1.0.0
 **Error:** "Breaking change requires migration path or major version bump"
 
 **Fix:**
+
 - Implement `async_migrate_entry()` in `__init__.py`
 - **OR** bump major version (e.g., 1.x.x → 2.0.0)
 - Document migration in release notes
@@ -322,6 +336,7 @@ git push origin v1.0.0
 **Error:** "Security issue found: credentials logged"
 
 **Fix:** Review [SECURITY_BEST_PRACTICES.md](SECURITY_BEST_PRACTICES.md) and fix:
+
 - Remove credential logging
 - Mask sensitive data
 - Use proper secret storage
@@ -331,6 +346,7 @@ git push origin v1.0.0
 **Error:** "README.md lacks installation/configuration instructions"
 
 **Fix:** Add sections:
+
 - Installation via HACS
 - Configuration via UI
 - Troubleshooting
@@ -341,6 +357,7 @@ git push origin v1.0.0
 **Error:** "Integration fails to load in Home Assistant"
 
 **Fix:**
+
 - Test installation on clean HA instance
 - Fix import errors
 - Resolve missing dependencies
@@ -374,6 +391,7 @@ HACS users will automatically see update notifications.
 If you introduce breaking changes:
 
 **Option 1: Provide Migration**
+
 ```python
 async def async_migrate_entry(hass, config_entry):
     """Migrate old entry."""
@@ -391,6 +409,7 @@ async def async_migrate_entry(hass, config_entry):
 ```
 
 **Option 2: Bump Major Version**
+
 - Increment major version (e.g., 1.x.x → 2.0.0)
 - Document breaking changes in release notes
 - Provide migration instructions for users
@@ -404,6 +423,7 @@ When removing features:
 3. **Remove feature** in version N+1 (minimum 6 months later)
 
 Example:
+
 ```python
 _LOGGER.warning(
     "The 'old_field' configuration is deprecated and will be "
@@ -440,7 +460,8 @@ Use this checklist before submitting:
 - **HACS Action**: https://github.com/hacs/action
 - **HACS Default Repository**: https://github.com/hacs/default
 - **Semantic Versioning**: https://semver.org/
-- **GitHub Releases**: https://docs.github.com/en/repositories/releasing-projects-on-github
+- **GitHub Releases**:
+  https://docs.github.com/en/repositories/releasing-projects-on-github
 
 ## Getting Help
 
@@ -450,4 +471,5 @@ Use this checklist before submitting:
 
 ---
 
-**Ready to publish?** Follow this guide step-by-step, and your integration will be available to thousands of Home Assistant users through HACS!
+**Ready to publish?** Follow this guide step-by-step, and your integration will be
+available to thousands of Home Assistant users through HACS!

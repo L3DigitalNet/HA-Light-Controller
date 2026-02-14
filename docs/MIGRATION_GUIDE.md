@@ -1,6 +1,7 @@
 # Config Entry Migration Guide
 
-This guide explains how to handle config entry migrations when you need to change the structure of stored configuration data in your Home Assistant integration.
+This guide explains how to handle config entry migrations when you need to change the
+structure of stored configuration data in your Home Assistant integration.
 
 ## Table of Contents
 
@@ -100,7 +101,8 @@ class YourConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 2  ← Config entry version (for migrations)
 ```
 
-**Important:** Only increment `VERSION` when the data structure changes, not for every integration release.
+**Important:** Only increment `VERSION` when the data structure changes, not for every
+integration release.
 
 ---
 
@@ -483,6 +485,7 @@ def _migrate_v1_to_v2(config_entry: ConfigEntry) -> None:
 ### Migration Fails
 
 If `async_migrate_entry()` returns `False`:
+
 - Integration won't load
 - User must delete and re-add integration
 - **Avoid this!** Always return `True` even if migration isn't perfect
@@ -503,6 +506,7 @@ async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) ->
 ### Data Loss
 
 If migration loses user data:
+
 - Check you're using `{**config_entry.data}` to copy
 - Verify you're not overwriting with empty dict
 - Test migration with real user data
@@ -510,6 +514,7 @@ If migration loses user data:
 ### Infinite Migration Loop
 
 If HA keeps running migration:
+
 - Ensure you're updating `config_entry.version`
 - Verify version matches `ConfigFlow.VERSION`
 - Check you're calling `async_update_entry()`
@@ -518,10 +523,12 @@ If HA keeps running migration:
 
 ## Resources
 
-- **HA Developer Docs**: https://developers.home-assistant.io/docs/config_entries_config_flow_handler#migrating-config-entries
+- **HA Developer Docs**:
+  https://developers.home-assistant.io/docs/config_entries_config_flow_handler#migrating-config-entries
 - **ConfigEntry API**: https://developers.home-assistant.io/docs/config_entries_index/
 - **Example Migrations**: Search HA core for `async_migrate_entry` examples
 
 ---
 
-**Remember:** Migrations run once per user per version. Test thoroughly before releasing!
+**Remember:** Migrations run once per user per version. Test thoroughly before
+releasing!

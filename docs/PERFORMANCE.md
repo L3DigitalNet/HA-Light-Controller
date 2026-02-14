@@ -1,6 +1,8 @@
 # Performance Best Practices
 
-This guide provides patterns and strategies to optimize Home Assistant integration performance, focusing on efficient data fetching, coordinator usage, and resource management.
+This guide provides patterns and strategies to optimize Home Assistant integration
+performance, focusing on efficient data fetching, coordinator usage, and resource
+management.
 
 ## Table of Contents
 
@@ -87,13 +89,13 @@ class MyCoordinator(DataUpdateCoordinator):
 
 ### Choose Appropriate Intervals
 
-| Device Type | Recommended Interval | Rationale |
-|-------------|---------------------|-----------|
-| Temperature sensors | 30-60 seconds | Temperature changes slowly |
-| Energy monitors | 10-30 seconds | Real-time usage tracking |
-| Light switches | Push updates | State changes via webhooks/callbacks |
-| Weather data | 5-15 minutes | External API rate limits |
-| Stock prices | 1-5 minutes | Market data doesn't change that fast |
+| Device Type         | Recommended Interval | Rationale                            |
+| ------------------- | -------------------- | ------------------------------------ |
+| Temperature sensors | 30-60 seconds        | Temperature changes slowly           |
+| Energy monitors     | 10-30 seconds        | Real-time usage tracking             |
+| Light switches      | Push updates         | State changes via webhooks/callbacks |
+| Weather data        | 5-15 minutes         | External API rate limits             |
+| Stock prices        | 1-5 minutes          | Market data doesn't change that fast |
 
 ### Dynamic Update Intervals
 
@@ -532,4 +534,5 @@ class ProfilingCoordinator(DataUpdateCoordinator):
 
 ---
 
-**Remember:** Performance optimization is about finding the right balance between responsiveness and resource usage. Measure first, optimize second!
+**Remember:** Performance optimization is about finding the right balance between
+responsiveness and resource usage. Measure first, optimize second!

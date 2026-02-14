@@ -1,10 +1,11 @@
 # HA-Light-Controller - Complete Reference Guide
 
-**Version:** 0.2.1
-**Date:** February 7, 2026
-**Python Version:** 3.14.2 (minimum 3.13) | Home Assistant 2025.2.0+
+**Version:** 0.2.1 **Date:** February 7, 2026 **Python Version:** 3.14.2 (minimum 3.13)
+| Home Assistant 2025.2.0+
 
-This comprehensive guide documents the complete setup and usage of the HA-Light-Controller Home Assistant custom integration, including AI agents, automation, and best practices.
+This comprehensive guide documents the complete setup and usage of the
+HA-Light-Controller Home Assistant custom integration, including AI agents, automation,
+and best practices.
 
 ---
 
@@ -39,21 +40,21 @@ HA-Light-Controller is a production-ready Home Assistant custom integration prov
 
 ### Key Features
 
-| Feature | Description | Status |
-|---------|-------------|--------|
-| **Python Environment** | Python 3.14.2 (minimum 3.13) | ✅ Ready |
-| **Home Assistant** | Custom integration with config flow (2025.2.0+) | ✅ Ready |
-| **Light Control** | ensure_state service with verification/retry | ✅ Ready |
-| **Preset System** | Create, activate, manage presets via UI/service | ✅ Ready |
-| **Testing** | pytest + mocked HA environment | ✅ Ready |
-| **Linting** | Ruff (official HA standard) | ✅ Ready |
-| **Type Checking** | mypy with strict mode | ✅ Ready |
-| **Pre-commit** | Git hooks for quality gates | ✅ Ready |
-| **CI/CD** | GitHub Actions pipeline | ✅ Ready |
-| **AI Agents** | Claude, Copilot, Codex integration | ✅ Ready |
-| **VS Code Tasks** | Interactive development tasks | ✅ Ready |
-| **Makefile** | Comprehensive development commands | ✅ Ready |
-| **Documentation** | Complete guides and examples | ✅ Ready |
+| Feature                | Description                                     | Status   |
+| ---------------------- | ----------------------------------------------- | -------- |
+| **Python Environment** | Python 3.14.2 (minimum 3.13)                    | ✅ Ready |
+| **Home Assistant**     | Custom integration with config flow (2025.2.0+) | ✅ Ready |
+| **Light Control**      | ensure_state service with verification/retry    | ✅ Ready |
+| **Preset System**      | Create, activate, manage presets via UI/service | ✅ Ready |
+| **Testing**            | pytest + mocked HA environment                  | ✅ Ready |
+| **Linting**            | Ruff (official HA standard)                     | ✅ Ready |
+| **Type Checking**      | mypy with strict mode                           | ✅ Ready |
+| **Pre-commit**         | Git hooks for quality gates                     | ✅ Ready |
+| **CI/CD**              | GitHub Actions pipeline                         | ✅ Ready |
+| **AI Agents**          | Claude, Copilot, Codex integration              | ✅ Ready |
+| **VS Code Tasks**      | Interactive development tasks                   | ✅ Ready |
+| **Makefile**           | Comprehensive development commands              | ✅ Ready |
+| **Documentation**      | Complete guides and examples                    | ✅ Ready |
 
 ---
 
@@ -125,30 +126,30 @@ HA-Light-Controller/
 
 #### Configuration Files
 
-| File | Purpose | When to Edit |
-|------|---------|--------------|
-| `pyproject.toml` | Ruff, mypy, pytest config | Rarely - already optimized |
-| `.pre-commit-config.yaml` | Git hook configuration | When adding new hooks |
-| `.vscode/settings.json` | VS Code editor settings | Personal preference |
-| `CLAUDE.md` | Instructions for Claude Code | When patterns change |
+| File                      | Purpose                      | When to Edit               |
+| ------------------------- | ---------------------------- | -------------------------- |
+| `pyproject.toml`          | Ruff, mypy, pytest config    | Rarely - already optimized |
+| `.pre-commit-config.yaml` | Git hook configuration       | When adding new hooks      |
+| `.vscode/settings.json`   | VS Code editor settings      | Personal preference        |
+| `CLAUDE.md`               | Instructions for Claude Code | When patterns change       |
 
 #### Documentation Files
 
-| File | Purpose | Audience |
-|------|---------|----------|
-| `README.md` | Project overview | All developers |
-| `CLAUDE.md` | Claude Code instructions | AI assistant |
-| `REFERENCE_GUIDE.md` | Complete reference (this file) | All developers |
-| `.github/AUTOMATION_GUIDE.md` | Automation details | Maintainers |
+| File                          | Purpose                        | Audience       |
+| ----------------------------- | ------------------------------ | -------------- |
+| `README.md`                   | Project overview               | All developers |
+| `CLAUDE.md`                   | Claude Code instructions       | AI assistant   |
+| `REFERENCE_GUIDE.md`          | Complete reference (this file) | All developers |
+| `.github/AUTOMATION_GUIDE.md` | Automation details             | Maintainers    |
 
 #### Automation Files
 
-| File | Purpose | Tool |
-|------|---------|------|
-| `.github/workflows/ci.yml` | CI/CD pipeline | GitHub Actions |
-| `.vscode/tasks.json` | Interactive tasks | VS Code |
-| `.pre-commit-config.yaml` | Git hooks | Pre-commit |
-| `.github/dependabot.yml` | Dependency updates | Dependabot |
+| File                       | Purpose            | Tool           |
+| -------------------------- | ------------------ | -------------- |
+| `.github/workflows/ci.yml` | CI/CD pipeline     | GitHub Actions |
+| `.vscode/tasks.json`       | Interactive tasks  | VS Code        |
+| `.pre-commit-config.yaml`  | Git hooks          | Pre-commit     |
+| `.github/dependabot.yml`   | Dependency updates | Dependabot     |
 
 ---
 
@@ -156,7 +157,8 @@ HA-Light-Controller/
 
 ### Overview
 
-HA-Light-Controller includes specialized AI agents to assist with Home Assistant integration development.
+HA-Light-Controller includes specialized AI agents to assist with Home Assistant
+integration development.
 
 ### Installed Agents
 
@@ -165,6 +167,7 @@ HA-Light-Controller includes specialized AI agents to assist with Home Assistant
 **Location:** `~/.claude/agents/ha-integration-agent.md`
 
 **Capabilities:**
+
 - Generates complete integration structure
 - Creates DataUpdateCoordinator implementations
 - Builds config flows with all steps
@@ -189,6 +192,7 @@ I need to modify the preset manager to support...
 ```
 
 **When to Use:**
+
 - Adding new features (service parameters, entity types)
 - Implementing patterns (async operations, error handling)
 - Code review (Quality Scale compliance)
@@ -202,6 +206,7 @@ I need to modify the preset manager to support...
 **Auto-Detection:** GitHub Copilot automatically reads this file
 
 **What It Does:**
+
 - Suggests async-first code patterns
 - Generates proper config flows
 - Follows HA type hint conventions
@@ -209,6 +214,7 @@ I need to modify the preset manager to support...
 - Creates unique IDs for entities
 
 **How to Use:**
+
 ```python
 # Just start typing, Copilot suggests HA-compliant code
 async def _expand_entity(self, entity_id: str) -> list[str]:
@@ -220,6 +226,7 @@ async def _expand_entity(self, entity_id: str) -> list[str]:
 **Location:** `.vscode/codex-instructions.md`
 
 **How to Use:**
+
 ```python
 # Add comment referencing pattern
 # Generate async light control following HA Quality Scale Bronze tier
@@ -230,9 +237,11 @@ async def ensure_state(self, ...):
 ### Agent Documentation
 
 #### Complete Installation Guide
+
 **File:** `resources/agents/ha-integration-agent/README.md` (655 lines)
 
 **Contents:**
+
 - Installation instructions for all 3 platforms
 - Usage examples with code
 - Agent capabilities reference
@@ -244,9 +253,12 @@ async def ensure_state(self, ...):
 - Best practices
 
 #### Comprehensive Specification
-**File:** `resources/agents/ha-integration-agent/ha_integration_agent_spec.md` (750 lines)
+
+**File:** `resources/agents/ha-integration-agent/ha_integration_agent_spec.md` (750
+lines)
 
 **Contents:**
+
 - Executive summary
 - Core knowledge base (Python versions, Quality Scale)
 - Critical development patterns
@@ -258,9 +270,12 @@ async def ensure_state(self, ...):
 - Community resources
 
 #### Agent System Prompt
-**File:** `resources/agents/ha-integration-agent/ha_integration_agent_system_prompt.md` (190 lines)
+
+**File:** `resources/agents/ha-integration-agent/ha_integration_agent_system_prompt.md`
+(190 lines)
 
 **Contents:**
+
 - Agent core identity
 - Structured workflow (Discovery → Implementation → Quality)
 - Technical requirements enforcement
@@ -306,26 +321,29 @@ This integration provides **four complementary automation systems**:
 **File:** `.github/workflows/ci.yml`
 
 **Triggers:**
+
 - Push to `main` or `testing` branches
 - Pull requests to `main` or `testing`
 - Manual workflow dispatch
 
 **Jobs:**
 
-| Job | Command | Duration | Required |
-|-----|---------|----------|----------|
-| **Lint** | `ruff check` + `ruff format --check` | ~30s | ✅ |
-| **Type Check** | `mypy custom_components/` | ~45s | ✅ |
-| **Test** | `pytest tests/` (Python 3.14) | ~2min | ✅ |
-| **All Checks** | Gate job (all must pass) | ~1s | ✅ |
+| Job            | Command                              | Duration | Required |
+| -------------- | ------------------------------------ | -------- | -------- |
+| **Lint**       | `ruff check` + `ruff format --check` | ~30s     | ✅       |
+| **Type Check** | `mypy custom_components/`            | ~45s     | ✅       |
+| **Test**       | `pytest tests/` (Python 3.14)        | ~2min    | ✅       |
+| **All Checks** | Gate job (all must pass)             | ~1s      | ✅       |
 
 **Features:**
+
 - Pip dependency caching
 - Coverage report generation
 - Codecov upload (optional)
 - Detailed error reporting
 
 **Setup Codecov (Optional):**
+
 1. Sign up: https://codecov.io/
 2. Add repository
 3. Get token
@@ -339,24 +357,26 @@ This integration provides **four complementary automation systems**:
 
 **Available Tasks:**
 
-| Task | Shortcut | Description |
-|------|----------|-------------|
+| Task                    | Shortcut       | Description                             |
+| ----------------------- | -------------- | --------------------------------------- |
 | **Quality Check (All)** | `Ctrl+Shift+B` | Default: lint, format, type-check, test |
-| Run All Tests | Task menu | pytest tests/ -v |
-| Run Tests with Coverage | Task menu | pytest with HTML report |
-| Lint with Ruff | Task menu | Check code for issues |
-| Lint and Fix with Ruff | Task menu | Auto-fix linting issues |
-| Format with Ruff | Task menu | Format code |
-| Type Check with mypy | Task menu | Check type hints |
-| Run Pre-commit Hooks | Task menu | Run all hooks |
-| Open Coverage Report | Task menu | Open htmlcov/index.html |
+| Run All Tests           | Task menu      | pytest tests/ -v                        |
+| Run Tests with Coverage | Task menu      | pytest with HTML report                 |
+| Lint with Ruff          | Task menu      | Check code for issues                   |
+| Lint and Fix with Ruff  | Task menu      | Auto-fix linting issues                 |
+| Format with Ruff        | Task menu      | Format code                             |
+| Type Check with mypy    | Task menu      | Check type hints                        |
+| Run Pre-commit Hooks    | Task menu      | Run all hooks                           |
+| Open Coverage Report    | Task menu      | Open htmlcov/index.html                 |
 
 **How to Use:**
+
 1. Press `Ctrl+Shift+P` → "Tasks: Run Task"
 2. Or press `Ctrl+Shift+B` for default build
 3. Or Terminal menu → "Run Task..."
 
 **Problem Matchers:**
+
 - Ruff errors show inline
 - mypy errors show inline
 - pytest failures show in Problems panel
@@ -416,16 +436,16 @@ find custom_components tests -name "*.py" | entr -c pytest tests/
 
 **Installed Hooks:**
 
-| Hook | Purpose | Auto-Fix |
-|------|---------|----------|
-| trailing-whitespace | Remove trailing spaces | ✅ |
-| end-of-file-fixer | Ensure newline at EOF | ✅ |
-| check-yaml | Validate YAML syntax | ❌ |
-| check-added-large-files | Prevent files >500KB | ❌ |
-| check-merge-conflict | Detect conflict markers | ❌ |
-| ruff | Lint Python code | ✅ |
-| ruff-format | Format Python code | ✅ |
-| mypy | Type check Python code | ❌ |
+| Hook                    | Purpose                 | Auto-Fix |
+| ----------------------- | ----------------------- | -------- |
+| trailing-whitespace     | Remove trailing spaces  | ✅       |
+| end-of-file-fixer       | Ensure newline at EOF   | ✅       |
+| check-yaml              | Validate YAML syntax    | ❌       |
+| check-added-large-files | Prevent files >500KB    | ❌       |
+| check-merge-conflict    | Detect conflict markers | ❌       |
+| ruff                    | Lint Python code        | ✅       |
+| ruff-format             | Format Python code      | ✅       |
+| mypy                    | Type check Python code  | ❌       |
 
 **Manual Execution:**
 
@@ -448,6 +468,7 @@ pre-commit install
 ```
 
 **Skip Hooks (Emergency Only):**
+
 ```bash
 # NOT RECOMMENDED
 git commit --no-verify -m "Emergency fix"
@@ -465,32 +486,36 @@ git commit -m "Fixed issues"
 **Schedule:** Weekly on Mondays at 9:00 AM
 
 **Monitors:**
+
 - Python packages (pip)
 - GitHub Actions versions
 
 **Dependency Groups:**
 
-| Group | Packages |
-|-------|----------|
-| **Home Assistant** | homeassistant, aiohttp, voluptuous |
-| **Testing** | pytest, pytest-asyncio, pytest-homeassistant-custom-component, pytest-cov |
-| **Code Quality** | ruff, mypy, pre-commit |
+| Group              | Packages                                                                  |
+| ------------------ | ------------------------------------------------------------------------- |
+| **Home Assistant** | homeassistant, aiohttp, voluptuous                                        |
+| **Testing**        | pytest, pytest-asyncio, pytest-homeassistant-custom-component, pytest-cov |
+| **Code Quality**   | ruff, mypy, pre-commit                                                    |
 
 **Configuration:**
+
 - Max 10 open PRs for pip
 - Max 5 open PRs for GitHub Actions
 - Auto-labels: `dependencies`, `python`, `github-actions`
 - Commit prefix: `deps:` or `ci:`
 
-**⚠️ Action Required:**
-Edit `.github/dependabot.yml` and replace `your-github-username` with your actual GitHub username in the `reviewers` and `assignees` fields.
+**⚠️ Action Required:** Edit `.github/dependabot.yml` and replace `your-github-username`
+with your actual GitHub username in the `reviewers` and `assignees` fields.
 
 ### 6. Issue & PR Templates
 
 #### Bug Report Template
+
 **File:** `.github/ISSUE_TEMPLATE/bug_report.yml`
 
 **Collects:**
+
 - Bug description
 - Steps to reproduce
 - Expected behavior
@@ -500,9 +525,11 @@ Edit `.github/dependabot.yml` and replace `your-github-username` with your actua
 - Additional context
 
 #### Feature Request Template
+
 **File:** `.github/ISSUE_TEMPLATE/feature_request.yml`
 
 **Collects:**
+
 - Problem description
 - Proposed solution
 - Alternatives considered
@@ -511,9 +538,11 @@ Edit `.github/dependabot.yml` and replace `your-github-username` with your actua
 - Additional context
 
 #### PR Template
+
 **File:** `.github/pull_request_template.md`
 
 **Sections:**
+
 - Description & issue reference
 - Type of change
 - Quality tier target
@@ -523,6 +552,7 @@ Edit `.github/dependabot.yml` and replace `your-github-username` with your actua
 - Additional notes
 
 **Checklist Categories:**
+
 - Code Quality
 - Testing
 - Async Requirements
@@ -678,7 +708,9 @@ async def test_setup():
     assert async_setup_entry is not None
 ```
 
-**Why:** Pytest imports test modules during collection, before fixtures run. Module-level imports work correctly, but imports inside functions can fail with path resolution issues.
+**Why:** Pytest imports test modules during collection, before fixtures run.
+Module-level imports work correctly, but imports inside functions can fail with path
+resolution issues.
 
 #### ✅ DO: Clear Caches When Type Checking Fails
 
@@ -692,7 +724,8 @@ pre-commit clean
 pre-commit install
 ```
 
-**Why:** Mypy caches type information for performance. Stale caches cause confusing, inconsistent errors.
+**Why:** Mypy caches type information for performance. Stale caches cause confusing,
+inconsistent errors.
 
 #### ✅ DO: Test Both Ways
 
@@ -705,7 +738,8 @@ pytest tests/ -v
 pre-commit run --all-files
 ```
 
-**Why:** Pre-commit and CI run in isolated environments that can behave differently than your local setup.
+**Why:** Pre-commit and CI run in isolated environments that can behave differently than
+your local setup.
 
 #### ✅ DO: Ensure Package Structure
 
@@ -716,7 +750,8 @@ custom_components/ha_light_controller/     # The integration
 tests/conftest.py                          # Adds path to sys.path
 ```
 
-**Why:** Without `__init__.py`, Python won't treat custom_components as a package, causing import errors.
+**Why:** Without `__init__.py`, Python won't treat custom_components as a package,
+causing import errors.
 
 #### ❌ DON'T: Override Tool Configs in Pre-commit
 
@@ -731,7 +766,8 @@ tests/conftest.py                          # Adds path to sys.path
     - homeassistant
 ```
 
-**Why:** Command-line args override config files, causing inconsistent behavior between manual runs and pre-commit.
+**Why:** Command-line args override config files, causing inconsistent behavior between
+manual runs and pre-commit.
 
 ### Quality Check Workflows
 
@@ -801,6 +837,7 @@ git push origin feature/new-parameter
 #### Pre-commit Hooks
 
 Hooks run automatically on commit:
+
 - Remove trailing whitespace
 - Fix end-of-file
 - Validate YAML
@@ -809,6 +846,7 @@ Hooks run automatically on commit:
 - Type check with mypy
 
 **If hooks fail:**
+
 ```bash
 # Hooks auto-fix what they can
 # Review changes
@@ -827,12 +865,14 @@ git commit -m "Add new service parameter"
 #### Bronze Tier (Minimum Required)
 
 **Requirements:**
+
 - ✅ Config flow UI setup
 - ✅ Automated setup tests
 - ✅ Basic coding standards (Ruff passes)
 - ✅ Proper manifest.json
 
 **How to Achieve:**
+
 ```bash
 # Must pass these checks
 ruff check custom_components/           # Ruff must pass
@@ -841,6 +881,7 @@ mypy custom_components/                 # No critical type errors
 ```
 
 **Example:**
+
 ```python
 # Config flow required
 class LightControllerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -856,6 +897,7 @@ async def test_form(hass):
 #### Silver Tier (Reliability)
 
 **Requirements:**
+
 - ✅ All Bronze requirements
 - ✅ Proper error handling (auth failures, offline devices)
 - ✅ Entity availability management
@@ -863,6 +905,7 @@ async def test_form(hass):
 - ✅ Log-once patterns for connection issues
 
 **How to Achieve:**
+
 ```python
 # Proper error handling in services
 async def async_handle_ensure_state(call: ServiceCall) -> ServiceResponse:
@@ -882,6 +925,7 @@ def available(self) -> bool:
 #### Gold Tier (Feature Complete)
 
 **Requirements:**
+
 - ✅ All Silver requirements
 - ✅ Full async codebase (no blocking operations)
 - ✅ Comprehensive test coverage (>80%)
@@ -889,6 +933,7 @@ def available(self) -> bool:
 - ✅ Efficient data handling
 
 **How to Achieve:**
+
 ```bash
 # Must pass these checks
 mypy custom_components/                 # mypy must pass with 0 errors
@@ -902,6 +947,7 @@ pytest tests/ --cov=custom_components   # Coverage >80%
 #### Platinum Tier (Excellence)
 
 **Requirements:**
+
 - ✅ All Gold requirements
 - ✅ All coding standards and best practices
 - ✅ Clear code comments and documentation
@@ -909,6 +955,7 @@ pytest tests/ --cov=custom_components   # Coverage >80%
 - ✅ Active code ownership and maintenance
 
 **How to Achieve:**
+
 - Document all complex logic
 - Optimize performance (minimal API calls)
 - Respond to issues promptly
@@ -947,7 +994,8 @@ class MyConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 ```
 
-**Why:** Provides consistent UI experience, required for Bronze tier, mandatory for core integrations.
+**Why:** Provides consistent UI experience, required for Bronze tier, mandatory for core
+integrations.
 
 #### 2. Async-First Architecture (REQUIRED)
 
@@ -1151,12 +1199,12 @@ git push                              # Push (CI runs)
 
 ### Keyboard Shortcuts (VS Code)
 
-| Shortcut | Action |
-|----------|--------|
+| Shortcut       | Action                                     |
+| -------------- | ------------------------------------------ |
 | `Ctrl+Shift+B` | Run default build task (Quality Check All) |
-| `Ctrl+Shift+P` | Command palette → "Tasks: Run Task" |
-| `Ctrl+`\` | Toggle terminal |
-| `Ctrl+Shift+M` | Show problems panel |
+| `Ctrl+Shift+P` | Command palette → "Tasks: Run Task"        |
+| `Ctrl+`\`      | Toggle terminal                            |
+| `Ctrl+Shift+M` | Show problems panel                        |
 
 ### File Locations Cheat Sheet
 
@@ -1184,18 +1232,19 @@ pyproject.toml                                      # Tool config
 
 ### Common Issues & Solutions
 
-| Issue | Solution |
-|-------|----------|
-| Import errors | `source venv/bin/activate` (if using venv) |
-| Tests failing | `pytest tests/ -v` to see detailed output |
-| Linting errors | `ruff check --fix custom_components/` |
-| Type errors | `mypy custom_components/` |
+| Issue                      | Solution                                       |
+| -------------------------- | ---------------------------------------------- |
+| Import errors              | `source venv/bin/activate` (if using venv)     |
+| Tests failing              | `pytest tests/ -v` to see detailed output      |
+| Linting errors             | `ruff check --fix custom_components/`          |
+| Type errors                | `mypy custom_components/`                      |
 | CI failing locally passing | Clear caches, run `pre-commit run --all-files` |
-| Pre-commit failing | `pre-commit run --all-files` |
+| Pre-commit failing         | `pre-commit run --all-files`                   |
 
 ### Quality Checklist
 
 Before committing:
+
 - [ ] `ruff check custom_components/` passes
 - [ ] `ruff format custom_components/` passes
 - [ ] `mypy custom_components/` passes
@@ -1206,6 +1255,7 @@ Before committing:
 - [ ] Docstrings on public API
 
 Before creating PR:
+
 - [ ] All quality checks pass
 - [ ] Coverage hasn't decreased
 - [ ] PR template filled out
@@ -1245,17 +1295,20 @@ pip install -e .
 #### Problem: Tests Can't Import custom_components
 
 **Symptoms:**
+
 ```bash
 ModuleNotFoundError: No module named 'custom_components'
 ModuleNotFoundError: No module named 'custom_components.ha_light_controller'
 ```
 
 **Root Causes:**
+
 1. Missing `custom_components/__init__.py` - Python doesn't treat it as a package
 2. Project root not in Python path during tests
 3. Imports placed inside test functions instead of module level
 
 **Solution:**
+
 ```bash
 # 1. Ensure __init__.py exists
 touch custom_components/__init__.py
@@ -1284,11 +1337,14 @@ async def test_platforms():
 pytest tests/ -v
 ```
 
-**Why:** Pytest imports test modules during collection phase, before fixtures run. Module-level imports work correctly, but imports inside test functions execute after fixture setup, which can cause path resolution issues.
+**Why:** Pytest imports test modules during collection phase, before fixtures run.
+Module-level imports work correctly, but imports inside test functions execute after
+fixture setup, which can cause path resolution issues.
 
 #### Problem: Mypy Type Check Failures
 
 **Symptoms:**
+
 ```bash
 error: Cannot find implementation or library stub for module named "homeassistant.config_entries"
 error: Returning Any from function declared to return "bool"
@@ -1296,11 +1352,13 @@ KeyError: 'setter_type'  # Cache corruption
 ```
 
 **Root Causes:**
+
 1. Home Assistant type stubs not found by mypy
 2. Corrupted mypy cache
 3. Pre-commit mypy config differs from mypy.ini
 
 **Solution:**
+
 ```bash
 # 1. Clear mypy cache (fixes most issues)
 rm -rf .mypy_cache
@@ -1331,7 +1389,9 @@ mypy custom_components/              # Direct mypy
 pre-commit run mypy --all-files      # Pre-commit mypy
 ```
 
-**Why:** Mypy caches type information for performance. Stale caches cause confusing errors. Pre-commit runs mypy in an isolated environment that needs homeassistant installed separately.
+**Why:** Mypy caches type information for performance. Stale caches cause confusing
+errors. Pre-commit runs mypy in an isolated environment that needs homeassistant
+installed separately.
 
 #### Problem: Coverage Decreased
 
@@ -1484,13 +1544,13 @@ pytest tests/ -m "not slow"
 
 ### Integration Documentation
 
-| Document | Purpose |
-|----------|---------|
-| [README.md](README.md) | Project overview and quick start |
-| [CLAUDE.md](CLAUDE.md) | Instructions for Claude Code |
-| [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md) | Complete reference (this file) |
-| [.github/AUTOMATION_GUIDE.md](.github/AUTOMATION_GUIDE.md) | Detailed automation documentation |
-| [resources/agents/.../README.md](resources/agents/ha-integration-agent/README.md) | Agent installation and usage |
+| Document                                                                                              | Purpose                             |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| [README.md](README.md)                                                                                | Project overview and quick start    |
+| [CLAUDE.md](CLAUDE.md)                                                                                | Instructions for Claude Code        |
+| [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md)                                                              | Complete reference (this file)      |
+| [.github/AUTOMATION_GUIDE.md](.github/AUTOMATION_GUIDE.md)                                            | Detailed automation documentation   |
+| [resources/agents/.../README.md](resources/agents/ha-integration-agent/README.md)                     | Agent installation and usage        |
 | [resources/agents/.../...spec.md](resources/agents/ha-integration-agent/ha_integration_agent_spec.md) | Comprehensive patterns and examples |
 
 ### Getting Help
@@ -1501,12 +1561,14 @@ pytest tests/ -m "not slow"
    - Official HA docs
 
 2. **Use the agent**
+
    ```
    @agent ha-integration-agent
    I'm having trouble with [specific issue]
    ```
 
 3. **Run verification**
+
    ```bash
    make verify         # Verify environment
    make quality        # Run all checks
@@ -1514,6 +1576,7 @@ pytest tests/ -m "not slow"
    ```
 
 4. **Use Makefile commands**
+
    ```bash
    make info           # Show environment information
    make verify         # Verify development environment
@@ -1534,12 +1597,12 @@ pytest tests/ -m "not slow"
 
 ## Version History
 
-| Date | Version | Changes |
-|------|---------|---------|
-| 2026-02-07 | 1.0.0 | Initial reference guide created for HA-Light-Controller |
-| 2026-02-07 | 1.0.0 | Added AI agent system documentation |
-| 2026-02-07 | 1.0.0 | Added complete automation infrastructure |
-| 2026-02-07 | 1.0.0 | Added development workflows and troubleshooting |
+| Date       | Version | Changes                                                 |
+| ---------- | ------- | ------------------------------------------------------- |
+| 2026-02-07 | 1.0.0   | Initial reference guide created for HA-Light-Controller |
+| 2026-02-07 | 1.0.0   | Added AI agent system documentation                     |
+| 2026-02-07 | 1.0.0   | Added complete automation infrastructure                |
+| 2026-02-07 | 1.0.0   | Added development workflows and troubleshooting         |
 
 ---
 
@@ -1548,39 +1611,46 @@ pytest tests/ -m "not slow"
 HA-Light-Controller is a production-ready Home Assistant custom integration providing:
 
 ✅ **Reliable Light Control**
+
 - State verification and automatic retries
 - Comprehensive light parameter support
 - Error handling and logging
 
 ✅ **Preset Management**
+
 - Create, activate, manage lighting presets
 - UI-based configuration flow
 - Service-based API for automation
 
 ✅ **AI Agent Assistance**
+
 - Claude Code agent installed
 - GitHub Copilot integration
 - VS Code Codex integration
 
 ✅ **Four-Layer Automation**
+
 - GitHub Actions CI/CD
 - Pre-commit Git hooks
 - VS Code interactive tasks
 - Direct CLI commands
 
 ✅ **Quality Enforcement**
+
 - Bronze tier minimum enforced
 - Automatic linting & formatting
 - Type checking with mypy
 - Test coverage tracking
 
 ✅ **Complete Documentation**
+
 - Agent guides (655 lines)
 - Comprehensive spec (750 lines)
 - Automation guide (detailed)
 - This reference guide
 
 ✅ **Best Practices Built-In**
+
 - Config flow requirement
 - Async-first architecture
 - Full type hints
@@ -1591,6 +1661,7 @@ HA-Light-Controller is a production-ready Home Assistant custom integration prov
 ---
 
 **Quick Start:**
+
 ```bash
 make setup          # Initial setup
 make quality        # Run all quality checks
@@ -1598,6 +1669,7 @@ make ci             # Simulate CI locally
 ```
 
 **Need Help?** See [Troubleshooting](#troubleshooting) or ask the agent:
+
 ```
 @agent ha-integration-agent
 Help me with [your task]
@@ -1605,7 +1677,5 @@ Help me with [your task]
 
 ---
 
-*Last Updated: February 7, 2026*
-*Integration Version: 0.2.1*
-*Home Assistant Version: 2025.2.0+*
-*Python Version: 3.14.2 (minimum 3.13)*
+_Last Updated: February 7, 2026_ _Integration Version: 0.2.1_ _Home Assistant Version:
+2025.2.0+_ _Python Version: 3.14.2 (minimum 3.13)_

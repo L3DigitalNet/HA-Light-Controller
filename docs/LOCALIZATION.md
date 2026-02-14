@@ -1,6 +1,7 @@
 # Localization Guide
 
-This guide explains how to add multi-language support to your Home Assistant integration, making it accessible to users worldwide.
+This guide explains how to add multi-language support to your Home Assistant
+integration, making it accessible to users worldwide.
 
 ## Table of Contents
 
@@ -16,7 +17,8 @@ This guide explains how to add multi-language support to your Home Assistant int
 
 ## Overview
 
-Home Assistant uses a translation system that separates user-visible strings from code logic. All text shown in the UI should be translatable.
+Home Assistant uses a translation system that separates user-visible strings from code
+logic. All text shown in the UI should be translatable.
 
 ### What Gets Translated?
 
@@ -56,7 +58,8 @@ custom_components/your_integration/
 │   └── zh-Hans.json                # Chinese (Simplified)
 ```
 
-**Important:** `strings.json` is the source of truth. Translation files are copies with translated values.
+**Important:** `strings.json` is the source of truth. Translation files are copies with
+translated values.
 
 ---
 
@@ -200,7 +203,8 @@ Defines abort/completion messages:
 
 ### Creating Translation Files
 
-Translation files in `translations/` are JSON files with the same structure as `strings.json` but with translated values.
+Translation files in `translations/` are JSON files with the same structure as
+`strings.json` but with translated values.
 
 **Example: translations/de.json (German)**
 
@@ -404,12 +408,12 @@ if device_count > 1:
     "step": {
       "user": {
         "data": {
-          "api_key": "API Key"  // Always "API Key"
+          "api_key": "API Key" // Always "API Key"
         }
       }
     },
     "error": {
-      "invalid_auth": "Invalid API Key"  // Not "Invalid Key" or "Bad Token"
+      "invalid_auth": "Invalid API Key" // Not "Invalid Key" or "Bad Token"
     }
   }
 }
@@ -442,6 +446,7 @@ if device_count > 1:
    - Change language to test translation
 
 2. **Verify placeholders work:**
+
    ```python
    # Trigger error with placeholder
    errors["base"] = "device_offline"
@@ -465,16 +470,19 @@ python -m json.tool custom_components/your_integration/translations/de.json
 ### Common Issues
 
 **Issue: Strings not translating**
+
 - Check language code matches (e.g., `de` not `german`)
 - Verify JSON structure matches `strings.json`
 - Restart Home Assistant after changes
 
 **Issue: Placeholder not replaced**
+
 - Ensure placeholder name matches exactly
 - Check `description_placeholders` is passed correctly
 - Verify placeholder syntax: `{placeholder_name}`
 
 **Issue: Missing translation**
+
 - Check translation file exists in `translations/`
 - Verify key path matches `strings.json`
 - Falls back to English if translation missing
@@ -500,6 +508,7 @@ python -m json.tool custom_components/your_integration/translations/de.json
 ### Language Codes
 
 Common language codes:
+
 - `de` - German (Deutsch)
 - `es` - Spanish (Español)
 - `fr` - French (Français)
@@ -512,7 +521,8 @@ Common language codes:
 - `zh-Hans` - Chinese Simplified (简体中文)
 - `zh-Hant` - Chinese Traditional (繁體中文)
 
-Full list: https://github.com/home-assistant/core/tree/dev/homeassistant/components/frontend/translations
+Full list:
+https://github.com/home-assistant/core/tree/dev/homeassistant/components/frontend/translations
 
 ---
 
@@ -583,9 +593,11 @@ Full list: https://github.com/home-assistant/core/tree/dev/homeassistant/compone
 ## Resources
 
 - **HA Translations**: https://developers.home-assistant.io/docs/internationalization/
-- **Translation Guidelines**: https://developers.home-assistant.io/docs/internationalization/translation_guidelines/
+- **Translation Guidelines**:
+  https://developers.home-assistant.io/docs/internationalization/translation_guidelines/
 - **Lokalise (HA's translation platform)**: https://lokalise.com/
 
 ---
 
-**Remember:** Good translations make your integration accessible to millions of non-English speakers worldwide. Invest time in clear, user-friendly strings!
+**Remember:** Good translations make your integration accessible to millions of
+non-English speakers worldwide. Invest time in clear, user-friendly strings!
