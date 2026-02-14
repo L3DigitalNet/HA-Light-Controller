@@ -49,12 +49,12 @@ ensure_state:
 
     color_temp_kelvin:
       name: Color Temperature
-      description: Default color temperature in Kelvin (2000K warm - 6500K cool)
+      description: Default color temperature in Kelvin (1000K-10000K, typical range 2000K warm - 6500K cool)
       selector:
         color_temp:
           unit: kelvin
-          min: 2000
-          max: 6500
+          min: 1000
+          max: 10000
 
     effect:
       name: Effect
@@ -68,7 +68,7 @@ ensure_state:
       selector:
         number:
           min: 0
-          max: 60
+          max: 300
           step: 0.5
           unit_of_measurement: "s"
           mode: slider
@@ -89,7 +89,7 @@ ensure_state:
       selector:
         number:
           min: 0
-          max: 20
+          max: 50
           step: 1
           unit_of_measurement: "%"
           mode: slider
@@ -100,7 +100,7 @@ ensure_state:
       selector:
         number:
           min: 0
-          max: 50
+          max: 100
           step: 1
           mode: slider
 
@@ -110,7 +110,7 @@ ensure_state:
       selector:
         number:
           min: 0
-          max: 500
+          max: 1000
           step: 10
           unit_of_measurement: "K"
           mode: slider
@@ -130,8 +130,8 @@ ensure_state:
       description: Seconds to wait after sending commands before verification
       selector:
         number:
-          min: 0.5
-          max: 30
+          min: 0.1
+          max: 60
           step: 0.5
           unit_of_measurement: "s"
           mode: slider
@@ -142,7 +142,7 @@ ensure_state:
       selector:
         number:
           min: 1
-          max: 10
+          max: 20
           step: 1
           mode: slider
 
@@ -151,8 +151,8 @@ ensure_state:
       description: Maximum total runtime before aborting (hard timeout)
       selector:
         number:
-          min: 10
-          max: 300
+          min: 5
+          max: 600
           step: 10
           unit_of_measurement: "s"
           mode: slider
@@ -168,8 +168,8 @@ ensure_state:
       description: Maximum delay when using exponential backoff
       selector:
         number:
-          min: 5
-          max: 120
+          min: 1
+          max: 300
           step: 5
           unit_of_measurement: "s"
           mode: slider
@@ -250,12 +250,12 @@ create_preset:
 
     color_temp_kelvin:
       name: Color Temperature
-      description: Color temperature for the preset (2000K warm - 6500K cool)
+      description: Color temperature for the preset (1000K-10000K, typical range 2000K warm - 6500K cool)
       selector:
         color_temp:
           unit: kelvin
-          min: 2000
-          max: 6500
+          min: 1000
+          max: 10000
 
     effect:
       name: Effect
@@ -279,7 +279,7 @@ create_preset:
       selector:
         number:
           min: 0
-          max: 60
+          max: 300
           step: 0.5
           unit_of_measurement: "s"
 

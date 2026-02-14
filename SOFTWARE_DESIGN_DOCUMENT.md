@@ -1,6 +1,6 @@
 # Software Design Document: HA-Light-Controller
 
-**Version:** 0.2.1 **Date:** February 13, 2026 **Status:** Current Implementation
+**Version:** 0.2.2 **Date:** February 14, 2026 **Status:** Current Implementation
 
 ---
 
@@ -1012,4 +1012,4 @@ Adding a new service parameter requires changes to five files in a predictable p
 
 ---
 
-_This document reflects the implementation as of version 0.2.1 (February 2026)._
+_This document reflects the implementation as of version 0.2.2 (February 2026)._

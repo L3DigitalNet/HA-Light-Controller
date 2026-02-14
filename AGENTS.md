@@ -228,7 +228,7 @@ management. It is distributed via HACS.
 
 **Current Status:**
 
-- Version: 0.2.1
+- Version: 0.2.2
 - Python: 3.14.2 (minimum 3.13)
 - Home Assistant: 2025.2.0+
 - Scope: Light control with verification/retry + presets only
