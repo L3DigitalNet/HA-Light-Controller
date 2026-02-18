@@ -979,3 +979,75 @@ class TestServiceHandlerEdgeCases:
             conf="default_effect",
         )
         assert result == "rainbow"
+
+
+class TestExceptionPassthrough:
+    """Test that HA-native exceptions pass through without wrapping."""
+
+    @pytest.mark.asyncio
+    async def test_ensure_state_passes_through_service_validation_error(
+        self, hass, config_entry, mock_controller, mock_preset_manager
+    ):
+        """Test ServiceValidationError from controller passes through."""
+        mock_controller.ensure_state = AsyncMock(
+            side_effect=ServiceValidationError("Controller validation error")
+        )
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
+
+        handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {ATTR_ENTITIES: ["light.test"], ATTR_STATE_TARGET: "on"}
+
+        with pytest.raises(ServiceValidationError, match="Controller validation error"):
+            await handler(call)
+
+    @pytest.mark.asyncio
+    async def test_activate_preset_passes_through_ha_error(
+        self, hass, config_entry, mock_controller, mock_preset_manager
+    ):
+        """Test HomeAssistantError from activate passes through."""
+        from custom_components.ha_light_controller.preset_manager import PresetConfig
+
+        preset = PresetConfig(
+            id="test_preset",
+            name="Test Preset",
+            entities=["light.test"],
+        )
+        mock_preset_manager.find_preset.return_value = preset
+        mock_preset_manager.activate_preset_with_options = AsyncMock(
+            side_effect=HomeAssistantError("Activation HA error")
+        )
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
+
+        handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {ATTR_PRESET: "test_preset"}
+
+        with pytest.raises(HomeAssistantError, match="Activation HA error"):
+            await handler(call)
+
+    @pytest.mark.asyncio
+    async def test_create_preset_passes_through_service_validation_error(
+        self, hass, config_entry, mock_controller, mock_preset_manager
+    ):
+        """Test ServiceValidationError from create passes through."""
+        mock_preset_manager.create_preset = AsyncMock(
+            side_effect=ServiceValidationError("Create validation error")
+        )
+        await _setup_services_with_entry(
+            hass, config_entry, mock_controller, mock_preset_manager
+        )
+
+        handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
+
+        call = MagicMock(spec=ServiceCall)
+        call.data = {ATTR_PRESET_NAME: "Test", ATTR_ENTITIES: ["light.test"]}
+
+        with pytest.raises(ServiceValidationError, match="Create validation error"):
+            await handler(call)
