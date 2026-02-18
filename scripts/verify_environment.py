@@ -181,9 +181,12 @@ def main() -> int:
     results["pre-commit-config"] = check_file_exists(
         project_root / ".pre-commit-config.yaml", ".pre-commit-config.yaml"
     )
-    results["vscode_settings"] = check_file_exists(
-        project_root / ".vscode" / "settings.json", "VS Code settings"
-    )
+    # VS Code settings - optional, not required for CI
+    vscode_path = project_root / ".vscode" / "settings.json"
+    if vscode_path.exists() and vscode_path.is_file():
+        print_success(f"VS Code settings: {vscode_path}")
+    else:
+        print_warning(f"VS Code settings: {vscode_path} - not found (optional)")
 
     # HA Light Controller Integration
     print_header("HA Light Controller Integration")
