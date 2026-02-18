@@ -40,6 +40,9 @@ async def async_setup_entry(
     @callback
     def async_add_preset_buttons() -> None:
         """Add button entities for new presets."""
+        # Clean up tracking for deleted presets
+        added_preset_ids.intersection_update(preset_manager.presets.keys())
+
         new_entities: list[PresetButton] = []
 
         for preset_id, preset in preset_manager.presets.items():
@@ -184,7 +187,9 @@ class PresetButton(ButtonEntity):
         if preset:
             self._preset = preset
             self._attr_translation_placeholders = {"name": preset.name}
-        self.async_write_ha_state()
+            self.async_write_ha_state()
+        elif self.hass:
+            self.hass.async_create_task(self.async_remove())
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""

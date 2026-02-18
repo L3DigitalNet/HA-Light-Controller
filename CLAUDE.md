@@ -175,12 +175,70 @@ entry.runtime_data = LightControllerData(...)
 
 ## Testing
 
+### Unit Tests
+
 Tests mock HA modules before import. Key fixtures in `conftest.py`:
 
 - `hass` - Mock HomeAssistant instance
 - `config_entry` / `config_entry_with_presets` - Mock config entries
 - `mock_light_states` - Pre-configured light states
 - `create_light_state()` - Helper for mock State objects
+
+### Live Testing with HA Dev Server
+
+A Docker-based HA instance lives at `~/ha-plugin-test-workspace/` for integration
+testing against a real Home Assistant runtime.
+
+**Setup:**
+
+```bash
+# Start the dev server (HA on http://localhost:8123)
+podman compose -f ~/ha-plugin-test-workspace/docker-compose.yml up -d
+
+# Deploy current integration code to the dev server
+cp -r custom_components/ha_light_controller/* \
+  ~/ha-plugin-test-workspace/ha-config/custom_components/ha_light_controller/
+
+# Restart HA to pick up changes
+podman restart ha-plugin-test
+
+# Tail logs to verify loading
+podman logs -f ha-plugin-test 2>&1 | grep ha_light_controller
+```
+
+**Environment details:**
+
+- Runtime: Podman (rootless containers)
+- Container: `ha-plugin-test` (image: `ghcr.io/home-assistant/home-assistant:stable`)
+- Config dir: `~/ha-plugin-test-workspace/ha-config/` (mounted as `/config`)
+- The `demo` integration provides test light entities (`light.ceiling_lights`, etc.)
+- REST API enabled on port 8123
+- Debug logging enabled for `custom_components.ha_light_controller`
+- Login: `admin` / `admin`
+- Long-lived access token name: `Claude Code Dev` (value stored in project memory)
+
+**Common verification commands:**
+
+```bash
+# Check integration loaded (HA_TOKEN is the long-lived access token)
+curl -s http://localhost:8123/api/states \
+  -H "Authorization: Bearer $HA_TOKEN" | python -m json.tool
+
+# Call a service
+curl -X POST http://localhost:8123/api/services/ha_light_controller/ensure_state \
+  -H "Authorization: Bearer $HA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"entity_id": "light.ceiling_lights", "state": "on", "brightness_pct": 50}'
+
+# Verify entity cleanup (e.g., after preset deletion)
+curl -s http://localhost:8123/api/states \
+  -H "Authorization: Bearer $HA_TOKEN" \
+  | python -c "import sys,json; [print(s['entity_id']) for s in json.load(sys.stdin) if 'preset' in s['entity_id']]"
+```
+
+**Workflow:** Unit tests (`make test`) validate logic in isolation. Live testing
+validates HA runtime behavior that mocks can't cover — entity lifecycle, service
+registration persistence across reloads, config flow UI, and entity registry cleanup.
 
 ## Documentation Style
 

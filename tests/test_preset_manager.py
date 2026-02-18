@@ -227,10 +227,9 @@ class TestPresetManagerCRUD:
 
     @pytest.mark.asyncio
     async def test_delete_preset(self, hass, config_entry_with_presets):
-        """Test deleting a preset removes data and entities."""
+        """Test deleting a preset removes data and entity registry entries."""
         from homeassistant.helpers import entity_registry as er
 
-        # Set up mock entity registry
         mock_ent_reg = MagicMock()
         mock_ent_reg.async_get_entity_id = MagicMock(
             side_effect=lambda domain, platform, unique_id: (
@@ -248,16 +247,9 @@ class TestPresetManagerCRUD:
         assert result is True
         assert "preset_1" not in manager.presets
 
-        # Verify entity registry was called to remove entities
-        assert mock_ent_reg.async_get_entity_id.call_count == 2  # button + sensor
+        # Verify entity registry cleanup for both button and sensor
+        assert mock_ent_reg.async_get_entity_id.call_count == 2
         assert mock_ent_reg.async_remove.call_count == 2
-
-    @pytest.mark.asyncio
-    async def test_delete_preset_not_found(self, hass, config_entry):
-        """Test deleting a non-existent preset."""
-        manager = PresetManager(hass, config_entry)
-        result = await manager.delete_preset("nonexistent")
-        assert result is False
 
     @pytest.mark.asyncio
     async def test_delete_preset_entity_registry_error(
@@ -266,7 +258,6 @@ class TestPresetManagerCRUD:
         """Test deleting a preset when entity registry raises an exception."""
         from homeassistant.helpers import entity_registry as er
 
-        # Set up mock entity registry that raises an exception
         mock_ent_reg = MagicMock()
         mock_ent_reg.async_get_entity_id = MagicMock(
             side_effect=Exception("Registry error")
@@ -274,13 +265,30 @@ class TestPresetManagerCRUD:
         er.async_get = MagicMock(return_value=mock_ent_reg)
 
         manager = PresetManager(hass, config_entry_with_presets)
-        assert "preset_1" in manager.presets
 
         # Should still succeed - exception is caught and logged
         result = await manager.delete_preset("preset_1")
 
         assert result is True
         assert "preset_1" not in manager.presets
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_entity_not_in_registry(
+        self, hass, config_entry_with_presets
+    ):
+        """Test delete_preset when entities are not in the registry."""
+        manager = PresetManager(hass, config_entry_with_presets)
+        # Entity registry returns None by default (from conftest)
+        result = await manager.delete_preset("preset_1")
+        assert result is True
+        assert "preset_1" not in manager.presets
+
+    @pytest.mark.asyncio
+    async def test_delete_preset_not_found(self, hass, config_entry):
+        """Test deleting a non-existent preset."""
+        manager = PresetManager(hass, config_entry)
+        result = await manager.delete_preset("nonexistent")
+        assert result is False
 
 
 class TestPresetManagerLookup:
@@ -747,22 +755,6 @@ class TestCoverageGaps:
         assert call_kwargs["entities"] == preset.entities
         assert call_kwargs["state_target"] == preset.state
         assert call_kwargs["default_brightness_pct"] == preset.brightness_pct
-
-    @pytest.mark.asyncio
-    async def test_delete_preset_entity_not_in_registry(
-        self, hass, config_entry_with_presets
-    ):
-        """Test delete_preset when button/sensor entities not in registry.
-
-        Covers branches 315→320 and 324→330: the False path when
-        ent_reg.async_get_entity_id returns None (entity not in registry).
-        The conftest already configures async_get_entity_id to return None.
-        """
-        manager = PresetManager(hass, config_entry_with_presets)
-        # Entity registry returns None by default (from conftest)
-        result = await manager.delete_preset("preset_1")
-        assert result is True
-        assert "preset_1" not in manager.presets
 
     @pytest.mark.asyncio
     async def test_create_preset_from_current_light_on_no_brightness(

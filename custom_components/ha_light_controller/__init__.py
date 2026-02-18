@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
@@ -299,11 +300,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         """Handle the ensure_state service call."""
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
-            _LOGGER.error("Light Controller is not configured or not loaded")
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Light Controller is not configured or not loaded",
+            raise ServiceValidationError(
+                "Light Controller is not configured or not loaded"
             )
 
         controller = entry.runtime_data.controller
@@ -315,7 +313,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             return _get_param(data, options, attr, conf, default)
 
         try:
-            result = await controller.ensure_state(
+            return await controller.ensure_state(
                 entities=data.get(ATTR_ENTITIES, []),
                 state_target=data.get(ATTR_STATE_TARGET, "on"),
                 default_brightness_pct=get(
@@ -371,14 +369,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                     ATTR_LOG_SUCCESS, CONF_LOG_SUCCESS, DEFAULT_LOG_SUCCESS
                 ),
             )
-            return result
+        except (HomeAssistantError, ServiceValidationError):
+            raise
         except Exception as e:
-            _LOGGER.exception("Error in ensure_state service: %s", e)
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message=f"Service error: {str(e)}",
-            )
+            raise HomeAssistantError(f"Error in ensure_state service: {e}") from e
 
     # =========================================================================
     # Service: activate_preset
@@ -388,11 +382,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         """Handle the activate_preset service call."""
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
-            _LOGGER.error("Light Controller is not configured or not loaded")
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Light Controller is not configured or not loaded",
+            raise ServiceValidationError(
+                "Light Controller is not configured or not loaded"
             )
 
         preset_manager = entry.runtime_data.preset_manager
@@ -403,12 +394,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
 
         preset = preset_manager.find_preset(preset_name_or_id)
         if not preset:
-            _LOGGER.error("Preset not found: %s", preset_name_or_id)
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message=f"Preset not found: {preset_name_or_id}",
-            )
+            raise ServiceValidationError(f"Preset not found: {preset_name_or_id}")
 
         _LOGGER.info("Activating preset: %s", preset.name)
         await preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
@@ -424,16 +410,15 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             await preset_manager.set_status(preset.id, status, result)
 
             return result
+        except (HomeAssistantError, ServiceValidationError):
+            raise
         except Exception as e:
-            _LOGGER.exception("Error activating preset %s: %s", preset.name, e)
             await preset_manager.set_status(
                 preset.id, PRESET_STATUS_FAILED, {"message": str(e)}
             )
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message=f"Error activating preset: {str(e)}",
-            )
+            raise HomeAssistantError(
+                f"Error activating preset {preset.name}: {e}"
+            ) from e
 
     # =========================================================================
     # Service: create_preset
@@ -443,11 +428,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         """Handle the create_preset service call."""
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
-            _LOGGER.error("Light Controller is not configured or not loaded")
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Light Controller is not configured or not loaded",
+            raise ServiceValidationError(
+                "Light Controller is not configured or not loaded"
             )
 
         preset_manager = entry.runtime_data.preset_manager
@@ -456,11 +438,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entities = call.data.get(ATTR_ENTITIES, [])
 
         if not name or not entities:
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Name and entities are required",
-            )
+            raise ServiceValidationError("Name and entities are required")
 
         try:
             preset = await preset_manager.create_preset(
@@ -487,13 +465,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                     "preset_name": preset.name,
                 },
             )
+        except (HomeAssistantError, ServiceValidationError):
+            raise
         except Exception as e:
-            _LOGGER.exception("Error creating preset: %s", e)
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message=f"Error creating preset: {str(e)}",
-            )
+            raise HomeAssistantError(f"Error creating preset: {e}") from e
 
     # =========================================================================
     # Service: delete_preset
@@ -503,47 +478,33 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         """Handle the delete_preset service call."""
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
-            _LOGGER.error("Light Controller is not configured or not loaded")
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Light Controller is not configured or not loaded",
+            raise ServiceValidationError(
+                "Light Controller is not configured or not loaded"
             )
 
         preset_manager = entry.runtime_data.preset_manager
         preset_id = call.data.get(ATTR_PRESET_ID, "")
 
         if not preset_id:
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Preset ID is required",
-            )
+            raise ServiceValidationError("Preset ID is required")
 
         try:
             success = await preset_manager.delete_preset(preset_id)
 
-            if success:
-                _LOGGER.info("Deleted preset: %s", preset_id)
-                return _service_response(
-                    success=True,
-                    result_code=RESULT_CODE_SUCCESS,
-                    message=f"Deleted preset: {preset_id}",
-                    extra={"preset_id": preset_id},
-                )
-            else:
-                return _service_response(
-                    success=False,
-                    result_code=RESULT_CODE_ERROR,
-                    message=f"Preset not found: {preset_id}",
-                )
-        except Exception as e:
-            _LOGGER.exception("Error deleting preset: %s", e)
+            if not success:
+                raise ServiceValidationError(f"Preset not found: {preset_id}")
+
+            _LOGGER.info("Deleted preset: %s", preset_id)
             return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message=f"Error deleting preset: {str(e)}",
+                success=True,
+                result_code=RESULT_CODE_SUCCESS,
+                message=f"Deleted preset: {preset_id}",
+                extra={"preset_id": preset_id},
             )
+        except (HomeAssistantError, ServiceValidationError):
+            raise
+        except Exception as e:
+            raise HomeAssistantError(f"Error deleting preset: {e}") from e
 
     # =========================================================================
     # Service: create_preset_from_current
@@ -555,11 +516,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         """Handle the create_preset_from_current service call."""
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
-            _LOGGER.error("Light Controller is not configured or not loaded")
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Light Controller is not configured or not loaded",
+            raise ServiceValidationError(
+                "Light Controller is not configured or not loaded"
             )
 
         preset_manager = entry.runtime_data.preset_manager
@@ -568,41 +526,32 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entities = call.data.get(ATTR_ENTITIES, [])
 
         if not name or not entities:
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message="Name and entities are required",
-            )
+            raise ServiceValidationError("Name and entities are required")
 
         try:
             preset = await preset_manager.create_preset_from_current(name, entities)
 
-            if preset:
-                _LOGGER.info(
-                    "Created preset from current state: %s (%s)", preset.name, preset.id
-                )
-                return _service_response(
-                    success=True,
-                    result_code=RESULT_CODE_SUCCESS,
-                    message=f"Created preset from current state: {preset.name}",
-                    extra={
-                        "preset_id": preset.id,
-                        "preset_name": preset.name,
-                    },
-                )
-            else:
-                return _service_response(
-                    success=False,
-                    result_code=RESULT_CODE_ERROR,
-                    message="Failed to create preset",
-                )
-        except Exception as e:
-            _LOGGER.exception("Error creating preset from current state: %s", e)
-            return _service_response(
-                success=False,
-                result_code=RESULT_CODE_ERROR,
-                message=f"Error creating preset: {str(e)}",
+            if not preset:
+                raise HomeAssistantError("Failed to create preset from current state")
+
+            _LOGGER.info(
+                "Created preset from current state: %s (%s)", preset.name, preset.id
             )
+            return _service_response(
+                success=True,
+                result_code=RESULT_CODE_SUCCESS,
+                message=f"Created preset from current state: {preset.name}",
+                extra={
+                    "preset_id": preset.id,
+                    "preset_name": preset.name,
+                },
+            )
+        except (HomeAssistantError, ServiceValidationError):
+            raise
+        except Exception as e:
+            raise HomeAssistantError(
+                f"Error creating preset from current state: {e}"
+            ) from e
 
     # =========================================================================
     # Register all services

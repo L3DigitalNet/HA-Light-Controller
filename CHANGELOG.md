@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-18
+
+### Added
+- Icon translations (`icons.json`) for sensor states and button default — IQS Gold compliance
+- HACS and Hassfest validation GitHub Actions workflow
+- Entity self-removal on preset deletion (stale entity cleanup)
+- Tracking set cleanup in button/sensor platform listeners to prevent unbounded growth
+
+### Changed
+- Service handlers now raise `ServiceValidationError`/`HomeAssistantError` instead of returning error dicts — IQS Silver compliance
+- Removed `STATUS_ICONS` dict and `icon` property from sensor (replaced by icon translations)
+- Updated documentation versions to 0.3.0
+- Updated GitHub repo description and added topics for HACS discoverability
+- Added `.claude/state/`, `.playwright-mcp/`, and `ui-test-*.png` to `.gitignore`
+
+### Removed
+- Notification feature and blueprints to simplify integration scope
+- Old `.claude/skills/` directory (migrated to plugin system)
+- `.vscode/settings.json` (consolidated to global settings)
+- Dead code: removed redundant entity registry cleanup tests
+
+
 ## [0.2.2] - 2026-02-14
 
 ### Fixed

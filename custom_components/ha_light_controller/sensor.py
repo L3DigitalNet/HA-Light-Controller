@@ -24,14 +24,6 @@ from .preset_manager import PresetConfig, PresetManager
 
 _LOGGER = logging.getLogger(__name__)
 
-# Map status to icons
-STATUS_ICONS = {
-    PRESET_STATUS_IDLE: "mdi:lightbulb-outline",
-    PRESET_STATUS_ACTIVATING: "mdi:lightbulb-on",
-    PRESET_STATUS_SUCCESS: "mdi:lightbulb-on-outline",
-    PRESET_STATUS_FAILED: "mdi:lightbulb-alert",
-}
-
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -48,6 +40,9 @@ async def async_setup_entry(
     @callback
     def async_add_preset_sensors() -> None:
         """Add sensor entities for new presets."""
+        # Clean up tracking for deleted presets
+        added_preset_ids.intersection_update(preset_manager.presets.keys())
+
         new_entities: list[PresetStatusSensor] = []
 
         for preset_id, preset in preset_manager.presets.items():
@@ -104,7 +99,6 @@ class PresetStatusSensor(SensorEntity):
         # Entity attributes
         self._attr_unique_id = f"{entry.entry_id}_preset_{preset_id}_status"
         self._attr_translation_placeholders = {"name": preset.name}
-        self._attr_icon = STATUS_ICONS.get(PRESET_STATUS_IDLE, "mdi:lightbulb-outline")
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -121,12 +115,6 @@ class PresetStatusSensor(SensorEntity):
         """Return the current status."""
         status = self._preset_manager.get_status(self._preset_id)
         return status.status
-
-    @property
-    def icon(self) -> str:
-        """Return the icon based on status."""
-        status = self._preset_manager.get_status(self._preset_id)
-        return STATUS_ICONS.get(status.status, "mdi:lightbulb-outline")
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -180,7 +168,9 @@ class PresetStatusSensor(SensorEntity):
         if preset:
             self._preset = preset
             self._attr_translation_placeholders = {"name": preset.name}
-        self.async_write_ha_state()
+            self.async_write_ha_state()
+        elif self.hass:
+            self.hass.async_create_task(self.async_remove())
 
     async def async_added_to_hass(self) -> None:
         """Run when entity is added to hass."""

@@ -1,6 +1,6 @@
 # HA-Light-Controller - Complete Reference Guide
 
-**Version:** 0.2.1 **Date:** February 7, 2026 **Python Version:** 3.14.2 (minimum 3.13)
+**Version:** 0.3.0 **Date:** February 18, 2026 **Python Version:** 3.14.2 (minimum 3.13)
 | Home Assistant 2025.2.0+
 
 This comprehensive guide documents the complete setup and usage of the
@@ -1677,5 +1677,5 @@ Help me with [your task]
 
 ---
 
-_Last Updated: February 7, 2026_ _Integration Version: 0.2.1_ _Home Assistant Version:
+_Last Updated: February 18, 2026_ _Integration Version: 0.3.0_ _Home Assistant Version:
 2025.2.0+_ _Python Version: 3.14.2 (minimum 3.13)_

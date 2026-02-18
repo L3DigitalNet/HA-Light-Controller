@@ -1,0 +1,20 @@
+{
+  "entity": {
+    "button": {
+      "preset": {
+        "default": "mdi:lightbulb-group"
+      }
+    },
+    "sensor": {
+      "preset_status": {
+        "default": "mdi:lightbulb-outline",
+        "state": {
+          "idle": "mdi:lightbulb-outline",
+          "activating": "mdi:lightbulb-on",
+          "success": "mdi:lightbulb-on-outline",
+          "failed": "mdi:lightbulb-alert"
+        }
+      }
+    }
+  }
+}

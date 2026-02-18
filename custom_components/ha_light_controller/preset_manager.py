@@ -275,28 +275,23 @@ class PresetManager:
 
         await self._save_presets()
 
-        # Remove associated entities from the entity registry
+        # Remove entity registry entries. The config entry reload (triggered by
+        # _save_presets → async_update_entry) unsubscribes entity listeners before
+        # _notify_listeners fires, so entity self-removal via _handle_preset_update
+        # cannot run. Manual registry cleanup is required here.
         try:
             ent_reg = er.async_get(self.hass)
             entry_id = self.entry.entry_id
 
-            # Remove button entity
-            button_unique_id = f"{entry_id}_preset_{preset_id}_button"
-            button_entity = ent_reg.async_get_entity_id(
-                "button", "ha_light_controller", button_unique_id
-            )
-            if button_entity:
-                ent_reg.async_remove(button_entity)
-                _LOGGER.debug("Removed button entity: %s", button_entity)
-
-            # Remove sensor entity
-            sensor_unique_id = f"{entry_id}_preset_{preset_id}_status"
-            sensor_entity = ent_reg.async_get_entity_id(
-                "sensor", "ha_light_controller", sensor_unique_id
-            )
-            if sensor_entity:
-                ent_reg.async_remove(sensor_entity)
-                _LOGGER.debug("Removed sensor entity: %s", sensor_entity)
+            for suffix in ("_button", "_status"):
+                unique_id = f"{entry_id}_preset_{preset_id}{suffix}"
+                domain = "button" if suffix == "_button" else "sensor"
+                entity_id = ent_reg.async_get_entity_id(
+                    domain, "ha_light_controller", unique_id
+                )
+                if entity_id:
+                    ent_reg.async_remove(entity_id)
+                    _LOGGER.debug("Removed %s entity: %s", domain, entity_id)
         except Exception as e:
             _LOGGER.warning("Error removing entities for preset %s: %s", preset_id, e)
 
