@@ -75,6 +75,7 @@ class PresetStatusSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "preset_status"
     _attr_options = [
         PRESET_STATUS_IDLE,

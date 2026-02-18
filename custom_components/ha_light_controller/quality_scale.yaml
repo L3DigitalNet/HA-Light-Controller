@@ -1,99 +1,120 @@
 # Quality Scale for Light Controller Integration
 # https://developers.home-assistant.io/docs/integration_quality_scale_index/
 #
+# All 52 official IQS rules across 4 tiers.
 # This integration is a "service" type that provides light control services
 # with verification and preset management. It doesn't poll devices or
 # communicate with external APIs.
 
 rules:
   # =========================================================================
-  # Bronze (Mandatory for all integrations)
+  # Bronze (18 rules) — Required for all integrations
   # =========================================================================
 
-  # Has config flow for UI setup
-  config-flow: done
-
-  # All entities have unique IDs for registry tracking
-  entity-unique-id: done
-
-  # Services are registered in async_setup, not async_setup_entry
+  # Services registered in async_setup, not async_setup_entry
   action-setup: done
 
-  # Services raise ServiceValidationError/HomeAssistantError
-  action-exceptions: done
-
-  # Has English translations in strings.json
-  has-translations: done
-
-  # Uses runtime_data pattern (HA 2024.4+)
-  runtime-data: done
-
-  # Properly unloads platforms in async_unload_entry
-  config-entry-unloading: done
-
-  # Uses appropriate logging (_LOGGER, no print statements)
-  log-when-unavailable:
+  # No polling; iot_class: calculated
+  appropriate-polling:
     status: exempt
-    comment: Integration doesn't communicate with devices directly.
+    comment: No polling; iot_class is calculated. Service-only integration.
+
+  # Logo/icon in home-assistant/brands repo
+  brands:
+    status: exempt
+    comment: Custom HACS integration; brands repo is for core integrations only.
 
   # Constants in const.py, logic in controller.py/preset_manager.py
   common-modules: done
 
-  # 315 tests, 98%+ coverage including config flow
+  # Has config flow for UI setup with data_description
+  config-flow: done
+
+  # Full test coverage for all config flow steps
   config-flow-test-coverage: done
 
   # requirements: [] in manifest.json, dependencies declared
   dependency-transparency: done
 
+  # All 5 services documented in USAGE.md with parameters
+  docs-actions: done
+
+  # README.md describes what the integration does
+  docs-high-level-description: done
+
   # README.md has HACS and manual installation instructions
   docs-installation-instructions: done
 
-  # No polling; iot_class: calculated
-  appropriate-polling:
-    status: exempt
-    comment: No polling; iot_class is calculated.
+  # README.md documents how to remove the integration
+  docs-removal-instructions: done
 
   # Listeners registered in async_added_to_hass with async_on_remove
   entity-event-setup: done
 
+  # Every entity has stable unique_id based on entry_id + preset_id
+  entity-unique-id: done
+
   # Both entities set _attr_has_entity_name = True with translation_key
   has-entity-name: done
 
-  # codeowners in manifest.json
-  integration-owner: done
-
-  # async_set_unique_id(DOMAIN) + _abort_if_unique_id_configured()
-  unique-config-entry: done
+  # Full strings.json with config, options, services, entity, exceptions
+  has-translations: done
 
   # No external connection to test
   test-before-configure:
     status: exempt
-    comment: Service integration with no external connections.
+    comment: Service integration with no external connections to validate.
 
+  # No external API/device to validate during setup
   test-before-setup:
     status: exempt
-    comment: No external API/device to validate during setup.
+    comment: No external API or device to validate during setup.
+
+  # async_set_unique_id(DOMAIN) + _abort_if_unique_id_configured()
+  unique-config-entry: done
+
+  # =========================================================================
+  # Silver (10 rules) — Reliability and maintainability
+  # =========================================================================
+
+  # Service handlers raise ServiceValidationError/HomeAssistantError
+  action-exceptions: done
+
+  # Properly unloads platforms in async_unload_entry
+  config-entry-unloading: done
+
+  # Options flow parameters documented in USAGE.md
+  docs-configuration-parameters: done
+
+  # Config flow parameters documented in USAGE.md
+  docs-installation-parameters: done
+
+  # Both entities implement available property checking preset existence
+  entity-unavailable: done
+
+  # @L3DigitalNet in manifest.json codeowners
+  integration-owner: done
+
+  # Integration doesn't communicate with devices directly
+  log-when-unavailable:
+    status: exempt
+    comment: >-
+      Integration orchestrates HA service calls, not direct device communication.
+      Individual light entities handle their own unavailability logging.
+
+  # PARALLEL_UPDATES = 0 set in both button.py and sensor.py
+  parallel-updates: done
+
+  # No authentication required; integration is local-only
+  reauthentication-flow:
+    status: exempt
+    comment: No authentication credentials to refresh.
 
   # 315 tests at 98%+ branch coverage
   test-coverage: done
 
   # =========================================================================
-  # Silver (Enhanced functionality)
-  # =========================================================================
-
-  # Both entities implement available property checking preset existence
-  entity-unavailable: done
-
-  # PARALLEL_UPDATES = 0 set in both platform files
-  parallel-updates: done
-
-  # Supports reauthentication flow
-  reauthentication-flow:
-    status: exempt
-    comment: No authentication required; integration is local-only.
-
-  # =========================================================================
-  # Gold (Advanced features)
+  # Gold (21 rules) — Best user experience
   # =========================================================================
 
   # Both entities return DeviceInfo with identifiers
@@ -102,53 +123,105 @@ rules:
   # diagnostics.py with config entry diagnostics
   diagnostics: done
 
-  # Supports device discovery (zeroconf, dhcp, etc.)
+  # No discoverable devices
   discovery:
     status: exempt
-    comment: No discoverable devices; service-only integration.
+    comment: Service-only integration with no discoverable hardware or network services.
 
-  # Dynamic entity addition when new devices appear
-  dynamic-devices:
-    status: done
-    comment: Preset entities are dynamically added/removed via listener pattern.
+  # No discovery to update from
+  discovery-update-info:
+    status: exempt
+    comment: No discovery mechanism; nothing to update.
 
-  # Supports options flow for reconfiguration
-  reconfiguration-flow: done
+  # USAGE.md documents event-driven data flow (no polling)
+  docs-data-update: done
 
-  # Entities have appropriate entity categories
+  # USAGE.md has example automations section
+  docs-examples: done
+
+  # USAGE.md documents known limitations
+  docs-known-limitations: done
+
+  # Works with any light.* entity; not device-specific
+  docs-supported-devices:
+    status: exempt
+    comment: >-
+      Service integration that works with any light.* or group.* entity.
+      Not tied to specific device models or manufacturers.
+
+  # USAGE.md documents all supported features/functions
+  docs-supported-functions: done
+
+  # USAGE.md has troubleshooting guide
+  docs-troubleshooting: done
+
+  # USAGE.md has use case examples
+  docs-use-cases: done
+
+  # Preset entities dynamically added/removed via listener pattern
+  dynamic-devices: done
+
+  # Preset buttons/sensors are user-facing primary entities, not diagnostic
   entity-category:
     status: exempt
-    comment: Preset buttons/sensors are user-facing, not diagnostic.
+    comment: >-
+      Preset buttons are primary user-facing controls. Status sensors are
+      disabled by default (entity-disabled-by-default) rather than categorized
+      as diagnostic, since they provide activation feedback when enabled.
 
-  # Entity translations in strings.json
+  # SensorDeviceClass.ENUM on status sensor
+  entity-device-class: done
+
+  # Status sensor disabled by default via _attr_entity_registry_enabled_default
+  entity-disabled-by-default: done
+
+  # Entity names use translation_key with translation_placeholders
   entity-translations: done
 
-  # Exception translations with translation_domain/translation_key
+  # All exceptions use translation_domain/translation_key/translation_placeholders
   exception-translations: done
 
   # icons.json provides state-based icons for sensor, default for button
   icon-translations: done
 
-  # =========================================================================
-  # Platinum (Highest quality)
-  # =========================================================================
-
-  # All dependencies are async
-  async-dependency:
+  # Options flow covers reconfiguration; no connection parameters to reconfigure
+  reconfiguration-flow:
     status: exempt
-    comment: No external dependencies; uses only HA core.
+    comment: >-
+      async_step_reconfigure is for changing connection parameters (host, port).
+      This integration has no connection parameters. All settings are managed
+      via the comprehensive options flow (settings, presets).
 
-  # Strict typing with py.typed marker
-  strict-typing:
-    status: todo
-    comment: Could add py.typed and ensure mypy strict compliance.
-
-  # Injects web session to dependencies
-  inject-websession:
+  # No persistent error states requiring user intervention
+  repair-issues:
     status: exempt
-    comment: No HTTP communication required.
+    comment: >-
+      No credentials to expire, no devices to go offline permanently, no
+      configuration states that require repair-style user intervention.
+      Transient errors (lights not responding) are handled by retry logic.
 
-  # Stale device removal
+  # No physical devices to become stale
   stale-devices:
     status: exempt
-    comment: No physical devices to become stale.
+    comment: >-
+      Single virtual device per config entry. No physical devices that can
+      be removed from a network.
+
+  # =========================================================================
+  # Platinum (3 rules) — Technical excellence
+  # =========================================================================
+
+  # No external dependencies; uses only HA core
+  async-dependency:
+    status: exempt
+    comment: No third-party dependencies; requirements list is empty.
+
+  # No HTTP communication required
+  inject-websession:
+    status: exempt
+    comment: No outbound HTTP calls; integration uses only HA internal APIs.
+
+  # Could add py.typed and ensure mypy strict compliance
+  strict-typing:
+    status: todo
+    comment: Could add py.typed marker and ensure mypy --strict compliance.

@@ -168,7 +168,7 @@ entry.runtime_data = LightControllerData(...)
 ## Adding New Service Parameters
 
 1. **const.py** - Add `ATTR_*` constant (and `CONF_*`/`DEFAULT_*` if configurable)
-2. \***\*init**.py\*\* - Add to voluptuous schema, use `_get_param()` helper in handler
+2. **\_\_init\_\_.py** - Add to voluptuous schema, use `_get_param()` helper in handler
 3. **services.yaml** - Add field definition with HA selector
 4. **controller.py** - Add to `ensure_state()` signature if needed
 5. **preset_manager.py** - Add to `activate_preset_with_options()` if preset-relevant
@@ -278,13 +278,3 @@ Two requirements govern all code in this repository:
 - Redundant lookups within the same scope
 - Overly broad exception handling (`except Exception`)
 - State persistence via instance variables when dataflow would be clearer
-
-## Resources
-
-- [AGENTS.md](AGENTS.md) — Codex agent instructions and architecture details
-- [REFERENCE_GUIDE.md](REFERENCE_GUIDE.md) — Comprehensive integration development
-  reference
-- [resources/](resources/) — HA development skills, agent specifications, and best
-  practices
-  - `skills/ha-skills/` — Claude Code skills for HA integration development
-  - `agents/` — Agent specifications for ha-integration-dev, debugger, and reviewer
