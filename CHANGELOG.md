@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-18
+
+### Added
+- Diagnostics support — `async_get_config_entry_diagnostics()` returns preset summary for
+  HA diagnostics downloads (IQS Gold)
+- Exception translation keys for all service errors — `ServiceValidationError` and
+  `HomeAssistantError` now carry `translation_domain`, `translation_key`, and
+  `translation_placeholders` for localizable error messages (IQS Gold)
+- `PARALLEL_UPDATES = 0` in button and sensor platforms — allows HA to update all preset
+  entities simultaneously rather than sequentially (IQS Silver)
+- Community health files: `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, and
+  `.github/pull_request_template.md`
+
+### Fixed
+- Preset status timestamps now use timezone-aware `datetime.now(tz=UTC)` instead of
+  naive `datetime.utcnow()` (Python 3.12+ deprecation)
+- Removed deprecated `homeassistant` key from `manifest.json` (hassfest compliance)
+
+### Changed
+- Removed dynamic `icon` property from `PresetButton` — icons are now declared entirely
+  via `icons.json` icon translations (IQS Gold icon-translations compliance)
+- Simplified repository documentation: removed ~25,000 lines of auto-generated reference
+  docs, replaced by the home-assistant-dev plugin which supersedes embedded skills and
+  agents
+
 ## [0.3.0] - 2026-02-18
 
 ### Added
