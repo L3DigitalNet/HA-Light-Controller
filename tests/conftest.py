@@ -114,6 +114,20 @@ mock_ha.components.group.DOMAIN = "group"
 mock_ha.components.button = MagicMock()
 
 
+# Create real exception classes for homeassistant.exceptions
+class MockHomeAssistantError(Exception):
+    """Mock HomeAssistantError."""
+
+
+class MockServiceValidationError(MockHomeAssistantError):
+    """Mock ServiceValidationError."""
+
+
+mock_exceptions = MagicMock()
+mock_exceptions.HomeAssistantError = MockHomeAssistantError
+mock_exceptions.ServiceValidationError = MockServiceValidationError
+
+
 # Create proper base classes for entities
 class MockButtonEntity:
     """Mock ButtonEntity base class."""
@@ -191,6 +205,7 @@ sys.modules["homeassistant.components.light"] = mock_ha.components.light
 sys.modules["homeassistant.components.group"] = mock_ha.components.group
 sys.modules["homeassistant.components.button"] = mock_ha.components.button
 sys.modules["homeassistant.components.sensor"] = mock_ha.components.sensor
+sys.modules["homeassistant.exceptions"] = mock_exceptions
 sys.modules["voluptuous"] = mock_vol
 
 # Now we can import the custom component

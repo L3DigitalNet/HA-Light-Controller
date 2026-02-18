@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.core import ServiceCall
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 
 from custom_components.ha_light_controller import (
     _get_optional_str,
@@ -280,21 +281,18 @@ class TestActivatePresetService:
     async def test_activate_preset_not_found(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test activate_preset returns error when preset not found."""
+        """Test activate_preset raises ServiceValidationError when preset not found."""
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "nonexistent"}
 
-        result = await activate_handler(call)
-
-        assert result["success"] is False
-        assert "not found" in result["message"]
+        with pytest.raises(ServiceValidationError, match="not found"):
+            await activate_handler(call)
 
 
 class TestCreatePresetService:
@@ -304,12 +302,11 @@ class TestCreatePresetService:
     async def test_create_preset_missing_name(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test create_preset returns error when name missing."""
+        """Test create_preset raises ServiceValidationError when name missing."""
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
@@ -318,10 +315,8 @@ class TestCreatePresetService:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert "required" in result["message"]
+        with pytest.raises(ServiceValidationError, match="required"):
+            await create_handler(call)
 
 
 class TestDeletePresetService:
@@ -331,42 +326,36 @@ class TestDeletePresetService:
     async def test_delete_preset_missing_id(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test delete_preset returns error when ID missing."""
+        """Test delete_preset raises ServiceValidationError when ID missing."""
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: ""}
 
-        result = await delete_handler(call)
-
-        assert result["success"] is False
-        assert "required" in result["message"]
+        with pytest.raises(ServiceValidationError, match="required"):
+            await delete_handler(call)
 
     @pytest.mark.asyncio
     async def test_delete_preset_not_found(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test delete_preset returns error when preset not found."""
+        """Test delete_preset raises ServiceValidationError when preset not found."""
         mock_preset_manager.delete_preset.return_value = False
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "nonexistent_id"}
 
-        result = await delete_handler(call)
-
-        assert result["success"] is False
-        assert "not found" in result["message"]
+        with pytest.raises(ServiceValidationError, match="not found"):
+            await delete_handler(call)
 
 
 class TestCreatePresetFromCurrentService:
@@ -376,12 +365,11 @@ class TestCreatePresetFromCurrentService:
     async def test_create_from_current_missing_name(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test create_preset_from_current returns error when name missing."""
+        """Test create_preset_from_current raises when name missing."""
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
@@ -390,21 +378,18 @@ class TestCreatePresetFromCurrentService:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert "required" in result["message"]
+        with pytest.raises(ServiceValidationError, match="required"):
+            await create_handler(call)
 
     @pytest.mark.asyncio
     async def test_create_from_current_missing_entities(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test create_preset_from_current returns error when entities missing."""
+        """Test create_preset_from_current raises when entities missing."""
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
         call = MagicMock(spec=ServiceCall)
@@ -413,10 +398,8 @@ class TestCreatePresetFromCurrentService:
             ATTR_ENTITIES: [],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert "required" in result["message"]
+        with pytest.raises(ServiceValidationError, match="required"):
+            await create_handler(call)
 
 
 # =============================================================================
@@ -431,7 +414,7 @@ class TestEnsureStateServiceAdvanced:
     async def test_ensure_state_exception_handling(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test ensure_state handles exceptions gracefully."""
+        """Test ensure_state raises HomeAssistantError on unexpected exception."""
         mock_controller.ensure_state = AsyncMock(
             side_effect=Exception("Controller error")
         )
@@ -439,7 +422,6 @@ class TestEnsureStateServiceAdvanced:
             hass, config_entry, mock_controller, mock_preset_manager
         )
 
-        # Get the service handler
         ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
 
         call = MagicMock(spec=ServiceCall)
@@ -448,11 +430,8 @@ class TestEnsureStateServiceAdvanced:
             ATTR_STATE_TARGET: "on",
         }
 
-        result = await ensure_state_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "Service error" in result["message"]
+        with pytest.raises(HomeAssistantError, match="ensure_state"):
+            await ensure_state_handler(call)
 
 
 class TestActivatePresetServiceAdvanced:
@@ -522,7 +501,7 @@ class TestActivatePresetServiceAdvanced:
     async def test_activate_preset_exception(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test activate_preset handles exceptions."""
+        """Test activate_preset raises HomeAssistantError on unexpected exception."""
         from custom_components.ha_light_controller.preset_manager import PresetConfig
 
         preset = PresetConfig(
@@ -543,10 +522,8 @@ class TestActivatePresetServiceAdvanced:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "test_preset"}
 
-        result = await activate_handler(call)
-
-        assert result["success"] is False
-        assert "error" in result["result"]
+        with pytest.raises(HomeAssistantError, match="Error activating preset"):
+            await activate_handler(call)
 
 
 class TestCreatePresetServiceAdvanced:
@@ -588,7 +565,7 @@ class TestCreatePresetServiceAdvanced:
     async def test_create_preset_exception(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test create_preset handles exceptions."""
+        """Test create_preset raises HomeAssistantError on unexpected exception."""
         mock_preset_manager.create_preset = AsyncMock(side_effect=Exception("DB error"))
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
@@ -602,10 +579,8 @@ class TestCreatePresetServiceAdvanced:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert "Error creating preset" in result["message"]
+        with pytest.raises(HomeAssistantError, match="Error creating preset"):
+            await create_handler(call)
 
     @pytest.mark.asyncio
     async def test_create_preset_success_includes_standard_result_fields(
@@ -670,7 +645,7 @@ class TestDeletePresetServiceAdvanced:
     async def test_delete_preset_exception(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test delete_preset handles exceptions."""
+        """Test delete_preset raises HomeAssistantError on unexpected exception."""
         mock_preset_manager.delete_preset = AsyncMock(side_effect=Exception("DB error"))
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
@@ -681,16 +656,14 @@ class TestDeletePresetServiceAdvanced:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "preset_id"}
 
-        result = await delete_handler(call)
-
-        assert result["success"] is False
-        assert "Error deleting preset" in result["message"]
+        with pytest.raises(HomeAssistantError, match="Error deleting preset"):
+            await delete_handler(call)
 
     @pytest.mark.asyncio
-    async def test_delete_preset_not_found_includes_standard_result_fields(
+    async def test_delete_preset_not_found_raises(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test delete_preset error response includes standardized fields."""
+        """Test delete_preset raises ServiceValidationError when not found."""
         mock_preset_manager.delete_preset = AsyncMock(return_value=False)
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
@@ -700,15 +673,8 @@ class TestDeletePresetServiceAdvanced:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "unknown"}
 
-        result = await delete_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert result["attempts"] == 0
-        assert result["total_lights"] == 0
-        assert result["failed_lights"] == []
-        assert result["skipped_lights"] == []
-        assert result["elapsed_seconds"] == 0.0
+        with pytest.raises(ServiceValidationError, match="not found"):
+            await delete_handler(call)
 
 
 class TestCreatePresetFromCurrentServiceAdvanced:
@@ -753,7 +719,7 @@ class TestCreatePresetFromCurrentServiceAdvanced:
     async def test_create_from_current_returns_none(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test create_preset_from_current when preset_manager returns None."""
+        """Test create_preset_from_current raises when preset_manager returns None."""
         mock_preset_manager.create_preset_from_current = AsyncMock(return_value=None)
         await _setup_services_with_entry(
             hass, config_entry, mock_controller, mock_preset_manager
@@ -767,16 +733,14 @@ class TestCreatePresetFromCurrentServiceAdvanced:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert "Failed to create preset" in result["message"]
+        with pytest.raises(HomeAssistantError, match="Failed to create preset"):
+            await create_handler(call)
 
     @pytest.mark.asyncio
     async def test_create_from_current_exception(
         self, hass, config_entry, mock_controller, mock_preset_manager
     ):
-        """Test create_preset_from_current handles exceptions."""
+        """Test create_preset_from_current raises on unexpected exception."""
         mock_preset_manager.create_preset_from_current = AsyncMock(
             side_effect=Exception("State read error")
         )
@@ -792,10 +756,8 @@ class TestCreatePresetFromCurrentServiceAdvanced:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert "Error creating preset" in result["message"]
+        with pytest.raises(HomeAssistantError, match="Error creating preset"):
+            await create_handler(call)
 
 
 # =============================================================================
@@ -808,197 +770,150 @@ class TestServiceHandlerEdgeCases:
 
     @pytest.mark.asyncio
     async def test_ensure_state_no_entries(self, hass):
-        """Test ensure_state when no config entries exist."""
-        # Register services
+        """Test ensure_state raises when no config entries exist."""
         await async_setup(hass, {})
 
-        # Mock async_entries to return empty list
         hass.config_entries.async_entries = MagicMock(return_value=[])
 
-        # Get the service handler
         ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {
             ATTR_ENTITIES: ["light.test"],
             ATTR_STATE_TARGET: "on",
         }
 
-        result = await ensure_state_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await ensure_state_handler(call)
 
     @pytest.mark.asyncio
     async def test_ensure_state_no_loaded_entries(self, hass, config_entry):
-        """Test ensure_state when config entries exist but none are loaded."""
-        # Register services
+        """Test ensure_state raises when config entries exist but none are loaded."""
         await async_setup(hass, {})
 
-        # Create entry with non-loaded state
         config_entry.state = "not_loaded"
-
-        # Mock async_entries to return non-loaded entry
         hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
 
-        # Get the service handler
         ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {
             ATTR_ENTITIES: ["light.test"],
             ATTR_STATE_TARGET: "on",
         }
 
-        result = await ensure_state_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await ensure_state_handler(call)
 
     @pytest.mark.asyncio
     async def test_ensure_state_runtime_data_none(self, hass, config_entry):
-        """Test ensure_state when runtime_data is None."""
-        # Register services
+        """Test ensure_state raises when runtime_data is None."""
         await async_setup(hass, {})
 
-        # Create entry with loaded state but None runtime_data
         config_entry.state = "loaded"
         config_entry.runtime_data = None
-
-        # Mock async_entries to return this entry
         hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
 
-        # Get the service handler
         ensure_state_handler = _get_service_handler(hass, SERVICE_ENSURE_STATE)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {
             ATTR_ENTITIES: ["light.test"],
             ATTR_STATE_TARGET: "on",
         }
 
-        result = await ensure_state_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await ensure_state_handler(call)
 
     @pytest.mark.asyncio
     async def test_activate_preset_runtime_data_none(self, hass, config_entry):
-        """Test activate_preset when runtime_data is None."""
-        # Register services
+        """Test activate_preset raises when runtime_data is None."""
         await async_setup(hass, {})
 
-        # Create entry with loaded state but None runtime_data
         config_entry.state = "loaded"
         config_entry.runtime_data = None
-
-        # Mock async_entries to return this entry
         hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
 
-        # Get the service handler
         activate_handler = _get_service_handler(hass, SERVICE_ACTIVATE_PRESET)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "test_preset"}
 
-        result = await activate_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await activate_handler(call)
 
     @pytest.mark.asyncio
     async def test_create_preset_runtime_data_none(self, hass, config_entry):
-        """Test create_preset when runtime_data is None."""
-        # Register services
+        """Test create_preset raises when runtime_data is None."""
         await async_setup(hass, {})
 
-        # Create entry with loaded state but None runtime_data
         config_entry.state = "loaded"
         config_entry.runtime_data = None
-
-        # Mock async_entries to return this entry
         hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
 
-        # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {
             ATTR_PRESET_NAME: "Test Preset",
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await create_handler(call)
 
     @pytest.mark.asyncio
     async def test_delete_preset_runtime_data_none(self, hass, config_entry):
-        """Test delete_preset when runtime_data is None."""
-        # Register services
+        """Test delete_preset raises when runtime_data is None."""
         await async_setup(hass, {})
 
-        # Create entry with loaded state but None runtime_data
         config_entry.state = "loaded"
         config_entry.runtime_data = None
-
-        # Mock async_entries to return this entry
         hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
 
-        # Get the service handler
         delete_handler = _get_service_handler(hass, SERVICE_DELETE_PRESET)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "test_id"}
 
-        result = await delete_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await delete_handler(call)
 
     @pytest.mark.asyncio
     async def test_create_preset_from_current_runtime_data_none(
         self, hass, config_entry
     ):
-        """Test create_preset_from_current when runtime_data is None."""
-        # Register services
+        """Test create_preset_from_current raises when runtime_data is None."""
         await async_setup(hass, {})
 
-        # Create entry with loaded state but None runtime_data
         config_entry.state = "loaded"
         config_entry.runtime_data = None
-
-        # Mock async_entries to return this entry
         hass.config_entries.async_entries = MagicMock(return_value=[config_entry])
 
-        # Get the service handler
         create_handler = _get_service_handler(hass, SERVICE_CREATE_PRESET_FROM_CURRENT)
 
-        # Create a service call
         call = MagicMock(spec=ServiceCall)
         call.data = {
             ATTR_PRESET_NAME: "From Current",
             ATTR_ENTITIES: ["light.test"],
         }
 
-        result = await create_handler(call)
-
-        assert result["success"] is False
-        assert result["result"] == "error"
-        assert "not configured or not loaded" in result["message"]
+        with pytest.raises(
+            ServiceValidationError, match="not configured or not loaded"
+        ):
+            await create_handler(call)
 
     def test_get_optional_str_empty_strings(self):
         """Test _get_optional_str with empty string handling."""

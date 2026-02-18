@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -19,7 +19,6 @@ from custom_components.ha_light_controller.preset_manager import (
     PresetStatus,
 )
 from custom_components.ha_light_controller.sensor import (
-    STATUS_ICONS,
     PresetStatusSensor,
     async_setup_entry,
 )
@@ -128,7 +127,6 @@ class TestPresetStatusSensor:
         assert sensor_entity._preset == mock_preset
         assert sensor_entity._attr_translation_placeholders == {"name": "Test Preset"}
         assert sensor_entity._attr_translation_key == "preset_status"
-        assert sensor_entity._attr_icon == STATUS_ICONS[PRESET_STATUS_IDLE]
 
     def test_unique_id(self, sensor_entity, config_entry):
         """Test unique ID generation."""
@@ -176,45 +174,6 @@ class TestPresetStatusSensorState:
             status=PRESET_STATUS_FAILED
         )
         assert sensor_entity.native_value == PRESET_STATUS_FAILED
-
-
-class TestPresetStatusSensorIcon:
-    """Tests for PresetStatusSensor icon property."""
-
-    def test_icon_idle(self, sensor_entity, mock_preset_manager):
-        """Test icon for idle status."""
-        mock_preset_manager.get_status.return_value = PresetStatus(
-            status=PRESET_STATUS_IDLE
-        )
-        assert sensor_entity.icon == "mdi:lightbulb-outline"
-
-    def test_icon_activating(self, sensor_entity, mock_preset_manager):
-        """Test icon for activating status."""
-        mock_preset_manager.get_status.return_value = PresetStatus(
-            status=PRESET_STATUS_ACTIVATING
-        )
-        assert sensor_entity.icon == "mdi:lightbulb-on"
-
-    def test_icon_success(self, sensor_entity, mock_preset_manager):
-        """Test icon for success status."""
-        mock_preset_manager.get_status.return_value = PresetStatus(
-            status=PRESET_STATUS_SUCCESS
-        )
-        assert sensor_entity.icon == "mdi:lightbulb-on-outline"
-
-    def test_icon_failed(self, sensor_entity, mock_preset_manager):
-        """Test icon for failed status."""
-        mock_preset_manager.get_status.return_value = PresetStatus(
-            status=PRESET_STATUS_FAILED
-        )
-        assert sensor_entity.icon == "mdi:lightbulb-alert"
-
-    def test_icon_unknown_status(self, sensor_entity, mock_preset_manager):
-        """Test icon for unknown status falls back to default."""
-        mock_preset_manager.get_status.return_value = PresetStatus(
-            status="unknown_status"
-        )
-        assert sensor_entity.icon == "mdi:lightbulb-outline"
 
 
 class TestPresetStatusSensorAttributes:
@@ -342,28 +301,17 @@ class TestPresetStatusSensorLifecycle:
         assert sensor_entity._attr_translation_placeholders == {"name": "Updated Name"}
         sensor_entity.async_write_ha_state.assert_called_once()
 
-    def test_handle_preset_update_deleted(self, sensor_entity, mock_preset_manager):
-        """Test handling when preset is deleted."""
+    def test_handle_preset_update_deleted(
+        self, sensor_entity, mock_preset_manager, hass
+    ):
+        """Test handling when preset is deleted schedules self-removal."""
         sensor_entity.async_write_ha_state = MagicMock()
+        sensor_entity.async_remove = AsyncMock()
         mock_preset_manager.get_preset.return_value = None
 
         sensor_entity._handle_preset_update()
 
-        # Should still call write_ha_state even if preset deleted
-        sensor_entity.async_write_ha_state.assert_called_once()
-
-
-class TestStatusIcons:
-    """Tests for STATUS_ICONS mapping."""
-
-    def test_all_statuses_have_icons(self):
-        """Test that all status values have icons."""
-        assert PRESET_STATUS_IDLE in STATUS_ICONS
-        assert PRESET_STATUS_ACTIVATING in STATUS_ICONS
-        assert PRESET_STATUS_SUCCESS in STATUS_ICONS
-        assert PRESET_STATUS_FAILED in STATUS_ICONS
-
-    def test_icons_are_valid_mdi(self):
-        """Test that all icons are valid mdi icons."""
-        for icon in STATUS_ICONS.values():
-            assert icon.startswith("mdi:")
+        # Should NOT call write_ha_state when preset is deleted
+        sensor_entity.async_write_ha_state.assert_not_called()
+        # Should schedule self-removal via async_create_task
+        hass.async_create_task.assert_called_once()

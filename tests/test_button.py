@@ -489,12 +489,17 @@ class TestPresetButtonLifecycle:
         assert button_entity._attr_translation_placeholders == {"name": "Updated Name"}
         button_entity.async_write_ha_state.assert_called_once()
 
-    def test_handle_preset_update_deleted(self, button_entity, mock_preset_manager):
-        """Test handling when preset is deleted."""
+    def test_handle_preset_update_deleted(
+        self, button_entity, mock_preset_manager, hass
+    ):
+        """Test handling when preset is deleted schedules self-removal."""
         button_entity.async_write_ha_state = MagicMock()
+        button_entity.async_remove = AsyncMock()
         mock_preset_manager.get_preset.return_value = None
 
         button_entity._handle_preset_update()
 
-        # Should still call write_ha_state even if preset deleted
-        button_entity.async_write_ha_state.assert_called_once()
+        # Should NOT call write_ha_state when preset is deleted
+        button_entity.async_write_ha_state.assert_not_called()
+        # Should schedule self-removal via async_create_task
+        hass.async_create_task.assert_called_once()
