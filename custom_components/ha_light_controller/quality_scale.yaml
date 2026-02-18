@@ -19,6 +19,9 @@ rules:
   # Services are registered in async_setup, not async_setup_entry
   action-setup: done
 
+  # Services raise ServiceValidationError/HomeAssistantError
+  action-exceptions: done
+
   # Has English translations in strings.json
   has-translations: done
 
@@ -33,19 +36,56 @@ rules:
     status: exempt
     comment: Integration doesn't communicate with devices directly.
 
+  # Constants in const.py, logic in controller.py/preset_manager.py
+  common-modules: done
+
+  # 315 tests, 98%+ coverage including config flow
+  config-flow-test-coverage: done
+
+  # requirements: [] in manifest.json, dependencies declared
+  dependency-transparency: done
+
+  # README.md has HACS and manual installation instructions
+  docs-installation-instructions: done
+
+  # No polling; iot_class: calculated
+  appropriate-polling:
+    status: exempt
+    comment: No polling; iot_class is calculated.
+
+  # Listeners registered in async_added_to_hass with async_on_remove
+  entity-event-setup: done
+
+  # Both entities set _attr_has_entity_name = True with translation_key
+  has-entity-name: done
+
+  # codeowners in manifest.json
+  integration-owner: done
+
+  # async_set_unique_id(DOMAIN) + _abort_if_unique_id_configured()
+  unique-config-entry: done
+
+  # No external connection to test
+  test-before-configure:
+    status: exempt
+    comment: Service integration with no external connections.
+
+  test-before-setup:
+    status: exempt
+    comment: No external API/device to validate during setup.
+
+  # 315 tests at 98%+ branch coverage
+  test-coverage: done
+
   # =========================================================================
   # Silver (Enhanced functionality)
   # =========================================================================
 
-  # Entities properly report unavailable state
-  entity-unavailable:
-    status: exempt
-    comment: Button/Sensor entities for presets don't have external state to become unavailable.
+  # Both entities implement available property checking preset existence
+  entity-unavailable: done
 
-  # Specifies PARALLEL_UPDATES for platform modules
-  parallel-updates:
-    status: exempt
-    comment: No polling or device communication; entities are preset-based.
+  # PARALLEL_UPDATES = 0 set in both platform files
+  parallel-updates: done
 
   # Supports reauthentication flow
   reauthentication-flow:
@@ -56,15 +96,11 @@ rules:
   # Gold (Advanced features)
   # =========================================================================
 
-  # Groups entities under devices
-  devices:
-    status: exempt
-    comment: Service integration without physical devices.
+  # Both entities return DeviceInfo with identifiers
+  devices: done
 
-  # Provides diagnostic data for troubleshooting
-  diagnostics:
-    status: todo
-    comment: Could add diagnostics for preset data and controller state.
+  # diagnostics.py with config entry diagnostics
+  diagnostics: done
 
   # Supports device discovery (zeroconf, dhcp, etc.)
   discovery:
@@ -87,15 +123,11 @@ rules:
   # Entity translations in strings.json
   entity-translations: done
 
-  # Exception translations for user-facing errors
-  exception-translations:
-    status: todo
-    comment: Service errors use inline messages; could add translation keys.
+  # Exception translations with translation_domain/translation_key
+  exception-translations: done
 
-  # Icon translations for state-based icons
-  icon-translations:
-    status: exempt
-    comment: Icons are static (mdi:lightbulb-group).
+  # icons.json provides state-based icons for sensor, default for button
+  icon-translations: done
 
   # =========================================================================
   # Platinum (Highest quality)
