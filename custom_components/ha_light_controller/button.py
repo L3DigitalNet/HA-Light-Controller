@@ -109,14 +109,6 @@ class PresetButton(ButtonEntity):
         )
 
     @property
-    def icon(self) -> str:
-        """Return the icon based on preset target state."""
-        preset = self._preset_manager.get_preset(self._preset_id)
-        if preset and preset.state == "off":
-            return "mdi:lightbulb-group-off"
-        return "mdi:lightbulb-group"
-
-    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
         preset = self._preset_manager.get_preset(self._preset_id)
