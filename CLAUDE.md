@@ -14,9 +14,6 @@ HA-Light-Controller is a Home Assistant custom integration providing reliable li
 control with state verification, automatic retries, and preset management. It ensures
 lights actually reach their target state after commands are sent. Distributed via HACS.
 
-**Scope**: Focused on core light control with verification/retry and preset management.
-Notification feature and blueprints removed in v0.2.0.
-
 ## Environment
 
 - **Python**: 3.14.2 (HA 2025.2+ requires Python 3.13+)
@@ -186,95 +183,23 @@ Tests mock HA modules before import. Key fixtures in `conftest.py`:
 
 ### Live Testing with HA Dev Server
 
-A Docker-based HA instance lives at `~/ha-plugin-test-workspace/` for integration
-testing against a real Home Assistant runtime.
-
-**Setup:**
+A Podman-based HA instance at `~/ha-plugin-test-workspace/` enables runtime testing.
+Connection details and access token are stored in project memory.
 
 ```bash
-# Start the dev server (HA on http://localhost:8123)
-podman compose -f ~/ha-plugin-test-workspace/docker-compose.yml up -d
-
-# Deploy current integration code to the dev server
+# Deploy and restart
 cp -r custom_components/ha_light_controller/* \
   ~/ha-plugin-test-workspace/ha-config/custom_components/ha_light_controller/
-
-# Restart HA to pick up changes
 podman restart ha-plugin-test
-
-# Tail logs to verify loading
-podman logs -f ha-plugin-test 2>&1 | grep ha_light_controller
 ```
 
-**Environment details:**
+Unit tests validate logic in isolation. Live testing validates HA runtime behavior that
+mocks can't cover — entity lifecycle, service registration persistence across reloads,
+config flow UI, and entity registry cleanup.
 
-- Runtime: Podman (rootless containers)
-- Container: `ha-plugin-test` (image: `ghcr.io/home-assistant/home-assistant:stable`)
-- Config dir: `~/ha-plugin-test-workspace/ha-config/` (mounted as `/config`)
-- The `demo` integration provides test light entities (`light.ceiling_lights`, etc.)
-- REST API enabled on port 8123
-- Debug logging enabled for `custom_components.ha_light_controller`
-- Login: `admin` / `admin`
-- Long-lived access token name: `Claude Code Dev` (value stored in project memory)
+## Code Style
 
-**Common verification commands:**
-
-```bash
-# Check integration loaded (HA_TOKEN is the long-lived access token)
-curl -s http://localhost:8123/api/states \
-  -H "Authorization: Bearer $HA_TOKEN" | python -m json.tool
-
-# Call a service
-curl -X POST http://localhost:8123/api/services/ha_light_controller/ensure_state \
-  -H "Authorization: Bearer $HA_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"entity_id": "light.ceiling_lights", "state": "on", "brightness_pct": 50}'
-
-# Verify entity cleanup (e.g., after preset deletion)
-curl -s http://localhost:8123/api/states \
-  -H "Authorization: Bearer $HA_TOKEN" \
-  | python -c "import sys,json; [print(s['entity_id']) for s in json.load(sys.stdin) if 'preset' in s['entity_id']]"
-```
-
-**Workflow:** Unit tests (`make test`) validate logic in isolation. Live testing
-validates HA runtime behavior that mocks can't cover — entity lifecycle, service
-registration persistence across reloads, config flow UI, and entity registry cleanup.
-
-## Documentation Style
-
-Target technically proficient Home Assistant users:
-
-- Use proper HA terminology (`entities`, `services`, `ConfigEntry`)
-- Prefer code examples over prose
-- Skip basic explanations (don't explain what HACS is)
-
-## Code Principles
-
-Two requirements govern all code in this repository:
-
-### 1. Readability
-
-- **Prefer flat over nested** - Avoid deep nesting (3+ levels). Extract helpers instead.
-- **Name for intent** - Variables and functions should describe what they do, not how.
-- **Consistent patterns** - Similar operations should use identical patterns throughout.
-- **Minimal comments** - Code should be self-explanatory. Comments explain "why", not
-  "what".
-
-### 2. Simplicity
-
-- **No speculative handling** - Only handle edge cases that actually occur. Delete code
-  for hypothetical scenarios.
-- **DRY without over-abstraction** - Extract repeated code, but don't create
-  abstractions for single-use cases.
-- **Delete, don't deprecate** - Remove unused code entirely. No commented-out code or
-  compatibility shims.
-- **Fail early, fail clearly** - Validate inputs at boundaries, then trust internal
-  state.
-
-### Anti-patterns to Avoid
-
-- Defensive coding for impossible cases
-- Multiple validation points for the same data
-- Redundant lookups within the same scope
-- Overly broad exception handling (`except Exception`)
-- State persistence via instance variables when dataflow would be clearer
+- Prefer flat over nested (3+ levels → extract helpers)
+- Consistent patterns — similar operations use identical structure throughout
+- Delete, don't deprecate — no commented-out code or compatibility shims
+- Fail early, fail clearly — validate at boundaries, trust internal state
