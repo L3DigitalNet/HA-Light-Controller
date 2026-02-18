@@ -3,11 +3,11 @@
   "name": "Light Controller",
   "codeowners": ["@L3DigitalNet"],
   "config_flow": true,
+  "dependencies": ["light", "group"],
   "documentation": "https://github.com/L3DigitalNet/HA-Light-Controller",
+  "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/L3DigitalNet/HA-Light-Controller/issues",
-  "version": "0.3.0",
-  "integration_type": "service",
   "requirements": [],
-  "dependencies": ["light", "group"]
+  "version": "0.3.0"
 }
