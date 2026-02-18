@@ -301,7 +301,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             raise ServiceValidationError(
-                "Light Controller is not configured or not loaded"
+                translation_domain=DOMAIN,
+                translation_key="not_configured",
             )
 
         controller = entry.runtime_data.controller
@@ -372,7 +373,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         except (HomeAssistantError, ServiceValidationError):
             raise
         except Exception as e:
-            raise HomeAssistantError(f"Error in ensure_state service: {e}") from e
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="ensure_state_error",
+                translation_placeholders={"error": str(e)},
+            ) from e
 
     # =========================================================================
     # Service: activate_preset
@@ -383,7 +388,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             raise ServiceValidationError(
-                "Light Controller is not configured or not loaded"
+                translation_domain=DOMAIN,
+                translation_key="not_configured",
             )
 
         preset_manager = entry.runtime_data.preset_manager
@@ -394,7 +400,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
 
         preset = preset_manager.find_preset(preset_name_or_id)
         if not preset:
-            raise ServiceValidationError(f"Preset not found: {preset_name_or_id}")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="preset_not_found",
+                translation_placeholders={"preset": preset_name_or_id},
+            )
 
         _LOGGER.info("Activating preset: %s", preset.name)
         await preset_manager.set_status(preset.id, PRESET_STATUS_ACTIVATING)
@@ -417,7 +427,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
                 preset.id, PRESET_STATUS_FAILED, {"message": str(e)}
             )
             raise HomeAssistantError(
-                f"Error activating preset {preset.name}: {e}"
+                translation_domain=DOMAIN,
+                translation_key="activate_preset_error",
+                translation_placeholders={
+                    "preset_name": preset.name,
+                    "error": str(e),
+                },
             ) from e
 
     # =========================================================================
@@ -429,7 +444,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             raise ServiceValidationError(
-                "Light Controller is not configured or not loaded"
+                translation_domain=DOMAIN,
+                translation_key="not_configured",
             )
 
         preset_manager = entry.runtime_data.preset_manager
@@ -438,7 +454,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entities = call.data.get(ATTR_ENTITIES, [])
 
         if not name or not entities:
-            raise ServiceValidationError("Name and entities are required")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="name_entities_required",
+            )
 
         try:
             preset = await preset_manager.create_preset(
@@ -468,7 +487,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         except (HomeAssistantError, ServiceValidationError):
             raise
         except Exception as e:
-            raise HomeAssistantError(f"Error creating preset: {e}") from e
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="create_preset_error",
+                translation_placeholders={"error": str(e)},
+            ) from e
 
     # =========================================================================
     # Service: delete_preset
@@ -479,20 +502,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             raise ServiceValidationError(
-                "Light Controller is not configured or not loaded"
+                translation_domain=DOMAIN,
+                translation_key="not_configured",
             )
 
         preset_manager = entry.runtime_data.preset_manager
         preset_id = call.data.get(ATTR_PRESET_ID, "")
 
         if not preset_id:
-            raise ServiceValidationError("Preset ID is required")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="preset_id_required",
+            )
 
         try:
             success = await preset_manager.delete_preset(preset_id)
 
             if not success:
-                raise ServiceValidationError(f"Preset not found: {preset_id}")
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="preset_not_found",
+                    translation_placeholders={"preset": preset_id},
+                )
 
             _LOGGER.info("Deleted preset: %s", preset_id)
             return _service_response(
@@ -504,7 +535,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         except (HomeAssistantError, ServiceValidationError):
             raise
         except Exception as e:
-            raise HomeAssistantError(f"Error deleting preset: {e}") from e
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="delete_preset_error",
+                translation_placeholders={"error": str(e)},
+            ) from e
 
     # =========================================================================
     # Service: create_preset_from_current
@@ -517,7 +552,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entry = _get_loaded_entry(hass)
         if not entry or not entry.runtime_data:
             raise ServiceValidationError(
-                "Light Controller is not configured or not loaded"
+                translation_domain=DOMAIN,
+                translation_key="not_configured",
             )
 
         preset_manager = entry.runtime_data.preset_manager
@@ -526,13 +562,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
         entities = call.data.get(ATTR_ENTITIES, [])
 
         if not name or not entities:
-            raise ServiceValidationError("Name and entities are required")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="name_entities_required",
+            )
 
         try:
             preset = await preset_manager.create_preset_from_current(name, entities)
 
             if not preset:
-                raise HomeAssistantError("Failed to create preset from current state")
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="preset_create_failed",
+                )
 
             _LOGGER.info(
                 "Created preset from current state: %s (%s)", preset.name, preset.id
@@ -550,7 +592,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:  # noqa:
             raise
         except Exception as e:
             raise HomeAssistantError(
-                f"Error creating preset from current state: {e}"
+                translation_domain=DOMAIN,
+                translation_key="create_from_current_error",
+                translation_placeholders={"error": str(e)},
             ) from e
 
     # =========================================================================

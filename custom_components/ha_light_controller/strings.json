@@ -364,6 +364,38 @@
       }
     }
   },
+  "exceptions": {
+    "not_configured": {
+      "message": "Light Controller is not configured or not loaded"
+    },
+    "preset_not_found": {
+      "message": "Preset not found: {preset}"
+    },
+    "name_entities_required": {
+      "message": "Name and entities are required"
+    },
+    "preset_id_required": {
+      "message": "Preset ID is required"
+    },
+    "preset_create_failed": {
+      "message": "Failed to create preset from current state"
+    },
+    "ensure_state_error": {
+      "message": "Error in ensure_state service: {error}"
+    },
+    "activate_preset_error": {
+      "message": "Error activating preset {preset_name}: {error}"
+    },
+    "create_preset_error": {
+      "message": "Error creating preset: {error}"
+    },
+    "delete_preset_error": {
+      "message": "Error deleting preset: {error}"
+    },
+    "create_from_current_error": {
+      "message": "Error creating preset from current state: {error}"
+    }
+  },
   "entity": {
     "button": {
       "preset": {

@@ -291,8 +291,9 @@ class TestActivatePresetService:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "nonexistent"}
 
-        with pytest.raises(ServiceValidationError, match="not found"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await activate_handler(call)
+        assert exc_info.value.translation_key == "preset_not_found"
 
 
 class TestCreatePresetService:
@@ -315,8 +316,9 @@ class TestCreatePresetService:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(ServiceValidationError, match="required"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "name_entities_required"
 
 
 class TestDeletePresetService:
@@ -336,8 +338,9 @@ class TestDeletePresetService:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: ""}
 
-        with pytest.raises(ServiceValidationError, match="required"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await delete_handler(call)
+        assert exc_info.value.translation_key == "preset_id_required"
 
     @pytest.mark.asyncio
     async def test_delete_preset_not_found(
@@ -354,8 +357,9 @@ class TestDeletePresetService:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "nonexistent_id"}
 
-        with pytest.raises(ServiceValidationError, match="not found"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await delete_handler(call)
+        assert exc_info.value.translation_key == "preset_not_found"
 
 
 class TestCreatePresetFromCurrentService:
@@ -378,8 +382,9 @@ class TestCreatePresetFromCurrentService:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(ServiceValidationError, match="required"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "name_entities_required"
 
     @pytest.mark.asyncio
     async def test_create_from_current_missing_entities(
@@ -398,8 +403,9 @@ class TestCreatePresetFromCurrentService:
             ATTR_ENTITIES: [],
         }
 
-        with pytest.raises(ServiceValidationError, match="required"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "name_entities_required"
 
 
 # =============================================================================
@@ -430,8 +436,9 @@ class TestEnsureStateServiceAdvanced:
             ATTR_STATE_TARGET: "on",
         }
 
-        with pytest.raises(HomeAssistantError, match="ensure_state"):
+        with pytest.raises(HomeAssistantError) as exc_info:
             await ensure_state_handler(call)
+        assert exc_info.value.translation_key == "ensure_state_error"
 
 
 class TestActivatePresetServiceAdvanced:
@@ -522,8 +529,9 @@ class TestActivatePresetServiceAdvanced:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "test_preset"}
 
-        with pytest.raises(HomeAssistantError, match="Error activating preset"):
+        with pytest.raises(HomeAssistantError) as exc_info:
             await activate_handler(call)
+        assert exc_info.value.translation_key == "activate_preset_error"
 
 
 class TestCreatePresetServiceAdvanced:
@@ -579,8 +587,9 @@ class TestCreatePresetServiceAdvanced:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(HomeAssistantError, match="Error creating preset"):
+        with pytest.raises(HomeAssistantError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "create_preset_error"
 
     @pytest.mark.asyncio
     async def test_create_preset_success_includes_standard_result_fields(
@@ -656,8 +665,9 @@ class TestDeletePresetServiceAdvanced:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "preset_id"}
 
-        with pytest.raises(HomeAssistantError, match="Error deleting preset"):
+        with pytest.raises(HomeAssistantError) as exc_info:
             await delete_handler(call)
+        assert exc_info.value.translation_key == "delete_preset_error"
 
     @pytest.mark.asyncio
     async def test_delete_preset_not_found_raises(
@@ -673,8 +683,9 @@ class TestDeletePresetServiceAdvanced:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "unknown"}
 
-        with pytest.raises(ServiceValidationError, match="not found"):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await delete_handler(call)
+        assert exc_info.value.translation_key == "preset_not_found"
 
 
 class TestCreatePresetFromCurrentServiceAdvanced:
@@ -733,8 +744,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(HomeAssistantError, match="Failed to create preset"):
+        with pytest.raises(HomeAssistantError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "preset_create_failed"
 
     @pytest.mark.asyncio
     async def test_create_from_current_exception(
@@ -756,8 +768,9 @@ class TestCreatePresetFromCurrentServiceAdvanced:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(HomeAssistantError, match="Error creating preset"):
+        with pytest.raises(HomeAssistantError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "create_from_current_error"
 
 
 # =============================================================================
@@ -783,10 +796,9 @@ class TestServiceHandlerEdgeCases:
             ATTR_STATE_TARGET: "on",
         }
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await ensure_state_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     @pytest.mark.asyncio
     async def test_ensure_state_no_loaded_entries(self, hass, config_entry):
@@ -804,10 +816,9 @@ class TestServiceHandlerEdgeCases:
             ATTR_STATE_TARGET: "on",
         }
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await ensure_state_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     @pytest.mark.asyncio
     async def test_ensure_state_runtime_data_none(self, hass, config_entry):
@@ -826,10 +837,9 @@ class TestServiceHandlerEdgeCases:
             ATTR_STATE_TARGET: "on",
         }
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await ensure_state_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     @pytest.mark.asyncio
     async def test_activate_preset_runtime_data_none(self, hass, config_entry):
@@ -845,10 +855,9 @@ class TestServiceHandlerEdgeCases:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET: "test_preset"}
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await activate_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     @pytest.mark.asyncio
     async def test_create_preset_runtime_data_none(self, hass, config_entry):
@@ -867,10 +876,9 @@ class TestServiceHandlerEdgeCases:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     @pytest.mark.asyncio
     async def test_delete_preset_runtime_data_none(self, hass, config_entry):
@@ -886,10 +894,9 @@ class TestServiceHandlerEdgeCases:
         call = MagicMock(spec=ServiceCall)
         call.data = {ATTR_PRESET_ID: "test_id"}
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await delete_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     @pytest.mark.asyncio
     async def test_create_preset_from_current_runtime_data_none(
@@ -910,10 +917,9 @@ class TestServiceHandlerEdgeCases:
             ATTR_ENTITIES: ["light.test"],
         }
 
-        with pytest.raises(
-            ServiceValidationError, match="not configured or not loaded"
-        ):
+        with pytest.raises(ServiceValidationError) as exc_info:
             await create_handler(call)
+        assert exc_info.value.translation_key == "not_configured"
 
     def test_get_optional_str_empty_strings(self):
         """Test _get_optional_str with empty string handling."""
