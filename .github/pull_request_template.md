@@ -16,7 +16,7 @@ Please delete options that are not relevant.
 
 ## Integration Quality Scale
 
-Which quality tier does this PR target or improve? See [docs/QUALITY_CHECKLIST.md](../docs/QUALITY_CHECKLIST.md) for detailed requirements.
+Which quality tier does this PR target or improve? See the [HA Integration Quality Scale](https://developers.home-assistant.io/docs/integration_quality_scale_index) for detailed requirements.
 
 - [ ] Bronze (Config flow, basic tests, manifest)
 - [ ] Silver (Error handling, availability, documentation)
