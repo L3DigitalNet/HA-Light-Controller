@@ -6,7 +6,7 @@ import logging
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -221,7 +221,7 @@ class PresetManager:
             self._status[preset_id].last_result = result
 
         if status in [PRESET_STATUS_SUCCESS, PRESET_STATUS_FAILED]:
-            self._status[preset_id].last_activated = datetime.now().isoformat()
+            self._status[preset_id].last_activated = datetime.now(tz=UTC).isoformat()
 
         # Trigger entity updates
         await self._notify_listeners()
