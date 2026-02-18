@@ -4,7 +4,6 @@
   "codeowners": ["@L3DigitalNet"],
   "config_flow": true,
   "documentation": "https://github.com/L3DigitalNet/HA-Light-Controller",
-  "homeassistant": "2025.2.0",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/L3DigitalNet/HA-Light-Controller/issues",
   "version": "0.3.0",

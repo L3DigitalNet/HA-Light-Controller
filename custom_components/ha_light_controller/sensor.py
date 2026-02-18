@@ -24,6 +24,8 @@ from .preset_manager import PresetConfig, PresetManager
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 0  # No I/O; entities are locally managed
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -73,6 +75,7 @@ class PresetStatusSensor(SensorEntity):
 
     _attr_has_entity_name = True
     _attr_device_class = SensorDeviceClass.ENUM
+    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "preset_status"
     _attr_options = [
         PRESET_STATUS_IDLE,

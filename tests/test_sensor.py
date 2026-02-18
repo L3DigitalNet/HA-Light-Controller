@@ -137,6 +137,10 @@ class TestPresetStatusSensor:
         """Test has_entity_name flag."""
         assert sensor_entity._attr_has_entity_name is True
 
+    def test_disabled_by_default(self, sensor_entity):
+        """Test that status sensor is disabled by default (IQS entity-disabled-by-default)."""
+        assert sensor_entity._attr_entity_registry_enabled_default is False
+
     def test_device_info(self, sensor_entity, config_entry):
         """Test device info."""
         device_info = sensor_entity.device_info

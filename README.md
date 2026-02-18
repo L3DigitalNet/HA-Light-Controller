@@ -55,6 +55,16 @@ centrally with configurable tolerances and backoff strategies.
    directory
 2. Restart Home Assistant
 
+## Removal
+
+1. Go to **Settings** → **Devices & Services** → **Light Controller**
+2. Click the three-dot menu → **Delete**
+3. Restart Home Assistant
+4. (Optional) Remove the `custom_components/ha_light_controller` directory
+
+All preset entities (buttons and sensors) are automatically removed when the integration
+is deleted.
+
 ## Configuration
 
 Add the integration via **Settings** → **Devices & Services** → **Add Integration** →

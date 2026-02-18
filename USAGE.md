@@ -4,6 +4,9 @@ Complete reference for services, configuration options, and examples.
 
 ## Table of Contents
 
+- [How It Works](#how-it-works)
+- [Supported Functions](#supported-functions)
+- [Use Cases](#use-cases)
 - [Configuration Options](#configuration-options)
 - [Services](#services)
   - [ensure_state](#ha_light_controllerensure_state)
@@ -13,7 +16,165 @@ Complete reference for services, configuration options, and examples.
   - [delete_preset](#ha_light_controllerdelete_preset)
 - [Working with Presets](#working-with-presets)
 - [Example Automations](#example-automations)
+- [Known Limitations](#known-limitations)
 - [Troubleshooting](#troubleshooting)
+
+---
+
+## How It Works
+
+Light Controller is entirely **event-driven** — it does not poll devices or maintain
+background update loops. When you call a service (e.g., `ensure_state`), the integration:
+
+1. Resolves target entities (expanding groups into individual lights)
+2. Sends light commands via Home Assistant's `light.turn_on` / `light.turn_off` services
+3. Waits a configurable delay for state to propagate
+4. Reads entity state from HA's state machine to verify the command succeeded
+5. Retries failed entities with configurable backoff
+
+**Preset entities** (buttons and sensors) update via a listener pattern. When a preset is
+activated, created, or deleted, the preset manager notifies all registered entity
+listeners, which then update their state. No periodic refresh is needed.
+
+The integration's `iot_class` is `calculated` — it derives state from other HA entities
+rather than communicating with external devices directly.
+
+---
+
+## Supported Functions
+
+| Feature | Description |
+|---------|-------------|
+| **State verification** | Confirms lights reached target brightness, color temperature, and RGB values within configurable tolerances |
+| **Automatic retries** | Retries failed lights with configurable attempts, delays, and optional exponential backoff |
+| **Hard timeout** | Aborts the operation after a configurable maximum runtime regardless of retry count |
+| **Group expansion** | Automatically expands `light.*` groups and `group.*` helper groups to individual light entities |
+| **Per-entity overrides** | Set different brightness, color, state, and transition for each light in a single service call |
+| **Fire-and-forget mode** | Skip verification for faster execution when reliability isn't critical |
+| **Preset management** | Store light configurations and activate them via button entities or service calls |
+| **Preset capture** | Create presets by capturing the current state of lights (brightness, color, effect) |
+| **Preset UI management** | Create, edit, and delete presets through the integration's options flow with per-entity configuration |
+| **Status tracking** | Optional sensor entity per preset tracks activation status (idle, activating, success, failed) |
+| **Logbook integration** | Optionally log successful operations to the Home Assistant logbook |
+| **Service responses** | All services return structured response data (success, attempts, failed lights, elapsed time) |
+
+---
+
+## Use Cases
+
+### Reliable Room Lighting
+
+Replace `light.turn_on` in automations with `ensure_state` to guarantee lights actually
+reach the target state. Useful for Zigbee/Z-Wave networks where commands occasionally
+get lost:
+
+```yaml
+service: ha_light_controller.ensure_state
+data:
+  entities:
+    - light.living_room_ceiling
+    - light.living_room_lamp
+  state: 'on'
+  brightness_pct: 80
+  color_temp_kelvin: 3000
+```
+
+### Movie Mode Preset
+
+Create a preset where different lights have different settings — main lights dim, TV
+backlight warm, accent lights off:
+
+```yaml
+service: ha_light_controller.create_preset
+data:
+  name: 'Movie Mode'
+  entities:
+    - light.ceiling
+    - light.tv_backlight
+    - light.accent
+  targets:
+    - entity_id: light.ceiling
+      state: 'off'
+    - entity_id: light.tv_backlight
+      state: 'on'
+      brightness_pct: 15
+      color_temp_kelvin: 2700
+    - entity_id: light.accent
+      state: 'off'
+```
+
+Activate it from a dashboard button or automation:
+
+```yaml
+service: ha_light_controller.activate_preset
+data:
+  preset: 'Movie Mode'
+```
+
+### Wake-Up Routine
+
+Gradually increase brightness and color temperature over time:
+
+```yaml
+automation:
+  - alias: 'Wake Up Sequence'
+    trigger:
+      - platform: time
+        at: '06:30:00'
+    action:
+      - service: ha_light_controller.ensure_state
+        data:
+          entities:
+            - light.bedroom
+          brightness_pct: 10
+          color_temp_kelvin: 2700
+          transition: 1
+      - delay: '00:10:00'
+      - service: ha_light_controller.ensure_state
+        data:
+          entities:
+            - light.bedroom
+          brightness_pct: 80
+          color_temp_kelvin: 5000
+          transition: 600
+```
+
+### Capture and Replay Scenes
+
+Manually set your lights to a look you like, then capture it as a preset:
+
+```yaml
+service: ha_light_controller.create_preset_from_current
+data:
+  name: 'Cozy Evening'
+  entities:
+    - light.living_room_ceiling
+    - light.floor_lamp
+    - light.accent_strip
+```
+
+The integration reads each light's current brightness, color, and effect and stores them.
+Activate it any time to restore that exact scene.
+
+### All-Off with Verification
+
+Ensure every light in the house is actually off at bedtime:
+
+```yaml
+automation:
+  - alias: 'Bedtime All Off'
+    trigger:
+      - platform: time
+        at: '23:00:00'
+    action:
+      - service: ha_light_controller.ensure_state
+        data:
+          entities:
+            - group.all_lights
+          state: 'off'
+          max_retries: 5
+          log_success: true
+```
 
 ---
 
@@ -486,6 +647,42 @@ script:
             - light.living_room_lamp
             - light.tv_backlight
 ```
+
+---
+
+## Known Limitations
+
+- **Light entities only**: Only `light.*` entities are controlled. Other entity types
+  (switches, fans, covers) are not supported. `group.*` helper groups are expanded, but
+  only their `light.*` members are controlled.
+
+- **State verification depends on entity reporting**: Verification reads the entity's
+  state from Home Assistant's state machine. If a light reports inaccurate values (some
+  cheap bulbs round brightness or don't report color), verification may fail even though
+  the light visually looks correct. Increase tolerances to compensate.
+
+- **Transition on first attempt only**: The `transition` parameter is only sent on the
+  first attempt. Retries skip transitions for faster recovery. Per-entity transitions in
+  `targets` follow the same rule.
+
+- **Single config entry**: Only one Light Controller instance can be configured. This is
+  enforced via `async_set_unique_id`.
+
+- **Color mode mutual exclusivity**: You can set `rgb_color` or `color_temp_kelvin` per
+  entity, but not both. If both are provided, RGB takes precedence.
+
+- **No effect verification**: Effects (e.g., `colorloop`) are sent but not verified.
+  There is no standard way to confirm an effect is active since not all lights report
+  their current effect.
+
+- **Group expansion is one level deep**: `group.*` helpers are expanded to their direct
+  `light.*` members. Nested groups (a group containing another group) are not recursively
+  expanded.
+
+- **Preset status sensor disabled by default**: The status sensor for each preset is
+  disabled in the entity registry by default. Enable it manually in **Settings** →
+  **Devices & Services** → **Light Controller** → **Entities** if you want to track
+  activation status.
 
 ---
 

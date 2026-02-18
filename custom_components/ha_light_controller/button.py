@@ -23,6 +23,8 @@ from .preset_manager import PresetConfig, PresetManager
 
 _LOGGER = logging.getLogger(__name__)
 
+PARALLEL_UPDATES = 0  # No I/O; entities are locally managed
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -105,14 +107,6 @@ class PresetButton(ButtonEntity):
             manufacturer="Light Controller",
             model="Preset Manager",
         )
-
-    @property
-    def icon(self) -> str:
-        """Return the icon based on preset target state."""
-        preset = self._preset_manager.get_preset(self._preset_id)
-        if preset and preset.state == "off":
-            return "mdi:lightbulb-group-off"
-        return "mdi:lightbulb-group"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
