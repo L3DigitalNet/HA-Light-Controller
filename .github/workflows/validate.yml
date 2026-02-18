@@ -13,6 +13,8 @@ jobs:
   validate-hacs:
     name: HACS Validation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: HACS Validation
@@ -23,6 +25,8 @@ jobs:
   validate-hassfest:
     name: Hassfest Validation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Hassfest Validation
