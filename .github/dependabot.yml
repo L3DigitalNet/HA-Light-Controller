@@ -9,9 +9,9 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 10
     reviewers:
-      - "L3DigitalNet"
+      - "L3Digital-Net"
     assignees:
-      - "L3DigitalNet"
+      - "L3Digital-Net"
     commit-message:
       prefix: "deps"
       include: "scope"
@@ -43,7 +43,7 @@ updates:
       time: "09:00"
     open-pull-requests-limit: 5
     reviewers:
-      - "L3DigitalNet"
+      - "L3Digital-Net"
     commit-message:
       prefix: "ci"
       include: "scope"

@@ -743,5 +743,5 @@ logger:
 
 ## Links
 
-- [GitHub Repository](https://github.com/L3DigitalNet/HA-Light-Controller)
-- [Issue Tracker](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
+- [GitHub Repository](https://github.com/L3Digital-Net/HA-Light-Controller)
+- [Issue Tracker](https://github.com/L3Digital-Net/HA-Light-Controller/issues)

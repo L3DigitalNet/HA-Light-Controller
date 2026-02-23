@@ -92,7 +92,7 @@ rules:
   # Both entities implement available property checking preset existence
   entity-unavailable: done
 
-  # @L3DigitalNet in manifest.json codeowners
+  # @L3Digital-Net in manifest.json codeowners
   integration-owner: done
 
   # Integration doesn't communicate with devices directly

@@ -7,9 +7,9 @@
 </picture>
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
-[![GitHub Release](https://img.shields.io/github/release/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/releases)
-[![License](https://img.shields.io/github/license/L3DigitalNet/HA-Light-Controller.svg)](LICENSE)
-[![Issues](https://img.shields.io/github/issues/L3DigitalNet/HA-Light-Controller.svg)](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
+[![GitHub Release](https://img.shields.io/github/release/L3Digital-Net/HA-Light-Controller.svg)](https://github.com/L3Digital-Net/HA-Light-Controller/releases)
+[![License](https://img.shields.io/github/license/L3Digital-Net/HA-Light-Controller.svg)](LICENSE)
+[![Issues](https://img.shields.io/github/issues/L3Digital-Net/HA-Light-Controller.svg)](https://github.com/L3Digital-Net/HA-Light-Controller/issues)
 
 HA Light Controller adds state verification and automatic retries to light commands.
 When you call `light.turn_on`, Home Assistant sends the command once and assumes
@@ -44,7 +44,7 @@ centrally with configurable tolerances and backoff strategies.
 
 ### HACS
 
-1. Add `https://github.com/L3DigitalNet/HA-Light-Controller` as a custom repository
+1. Add `https://github.com/L3Digital-Net/HA-Light-Controller` as a custom repository
    (Integration)
 2. Install "HA Light Controller"
 3. Restart Home Assistant
@@ -131,5 +131,5 @@ options, and examples.
 
 ## Links
 
-- [Issue Tracker](https://github.com/L3DigitalNet/HA-Light-Controller/issues)
+- [Issue Tracker](https://github.com/L3Digital-Net/HA-Light-Controller/issues)
 - [License (MIT)](LICENSE)
