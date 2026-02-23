@@ -10,7 +10,7 @@ on:
 jobs:
   lint:
     name: Lint with Ruff
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -43,7 +43,7 @@ jobs:
 
   type-check:
     name: Type Check with mypy
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -73,7 +73,7 @@ jobs:
 
   test:
     name: Test with pytest
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     strategy:
@@ -120,7 +120,7 @@ jobs:
 
   verify-environment:
     name: Verify Development Environment
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
@@ -152,7 +152,7 @@ jobs:
 
   all-checks:
     name: All Checks Passed
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     needs: [lint, type-check, test, verify-environment]
     if: always()
     permissions: {}

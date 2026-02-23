@@ -12,7 +12,7 @@ on:
 jobs:
   validate-hacs:
     name: HACS Validation
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: HACS Validation
@@ -22,7 +22,7 @@ jobs:
 
   validate-hassfest:
     name: Hassfest Validation
-    runs-on: [self-hosted, linux, l3digital]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Hassfest Validation
