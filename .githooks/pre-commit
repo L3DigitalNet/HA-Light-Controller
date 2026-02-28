@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Blocks direct commits to main. All changes must go through the testing branch.
+# See CLAUDE.md: "All changes must be made on the testing branch"
+
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+if [ "$branch" = "main" ]; then
+    echo "ERROR: Direct commits to 'main' are not allowed."
+    echo "Switch to the 'testing' branch: git checkout testing"
+    exit 1
+fi

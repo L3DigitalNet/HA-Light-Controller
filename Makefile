@@ -87,6 +87,7 @@ install: ## Install dependencies in virtual environment
 setup: install ## Initial project setup (install + pre-commit hooks)
 	@echo "$(BLUE)Setting up pre-commit hooks...$(NC)"
 	@pre-commit install
+	@git config core.hooksPath .githooks
 	@echo "$(GREEN)Project setup complete!$(NC)"
 	@echo "$(YELLOW)Run 'make verify' to check your environment$(NC)"
 
