@@ -1,0 +1,58 @@
+version: 2.1
+
+jobs:
+  quality:
+    docker:
+      - image: cimg/python:3.13
+    resource_class: medium
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - pip-deps-v1-{{ checksum "pyproject.toml" }}
+            - pip-deps-v1-
+      - run:
+          name: Install dependencies
+          command: |
+            pip install -q homeassistant aiohttp voluptuous
+            pip install -q pytest pytest-asyncio pytest-homeassistant-custom-component pytest-cov
+            pip install -q ruff mypy
+      - save_cache:
+          key: pip-deps-v1-{{ checksum "pyproject.toml" }}
+          paths:
+            - ~/.cache/pip
+      - run:
+          name: Lint
+          command: ruff check custom_components/ tests/
+      - run:
+          name: Format check
+          command: ruff format --check custom_components/ tests/
+      - run:
+          name: Type check
+          command: mypy custom_components/
+      - run:
+          name: Tests
+          command: |
+            mkdir -p test-results
+            pytest tests/ \
+              --cov=custom_components \
+              --cov-report=xml \
+              --junitxml=test-results/junit.xml \
+              -v
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: coverage.xml
+          destination: coverage
+
+workflows:
+  ci:
+    jobs:
+      - quality:
+          filters:
+            branches:
+              only:
+                - main
+                - testing
+                - /ci\/.*/
+                - /feature\/.*/
