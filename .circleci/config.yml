@@ -5,8 +5,18 @@ jobs:
     docker:
       - image: cimg/python:3.13
     resource_class: medium
+    working_directory: ~/project
     steps:
-      - checkout
+      - run:
+          name: Configure SSH and checkout
+          command: |
+            mkdir -p ~/.ssh
+            echo "$CHECKOUT_SSH_KEY_B64" | base64 -d > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+            ssh-keygen -p -N "" -P "$CHECKOUT_SSH_KEY_PASS" -f ~/.ssh/id_ed25519
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            git clone --branch "$CIRCLE_BRANCH" --depth 1 \
+              "git@github.com:L3DigitalNet/$CIRCLE_PROJECT_REPONAME.git" .
       - restore_cache:
           keys:
             - pip-deps-v1-{{ checksum "pyproject.toml" }}
